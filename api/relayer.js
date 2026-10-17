@@ -16,7 +16,8 @@ module.exports = async (req, res) => {
         ;[code, body] = await (await relayer).handle(req.method, path, ip, raw)
     } catch (e) {
         relayer = null // startup failed (RPC down, missing env): retry on the next request
-        ;[code, body] = [503, { error: `relayer unavailable: ${e.message}` }]
+        console.error("relayer startup failed", e) // details stay in the Vercel log, not the response
+        ;[code, body] = [503, { error: "relayer unavailable, try again shortly" }]
     }
     res.writeHead(code, HEADERS)
     res.end(JSON.stringify(body))
