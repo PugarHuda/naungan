@@ -17,9 +17,11 @@ const T = {
         newWallet: "Create a wallet on this phone", ownWallet: "Use my own address", addr: "Wallet address (0x…)",
         backup: "Write down this backup key and keep it safe. Anyone with it controls the money.",
         claim: "Claim now", proving: "Creating your private proof on this phone…", sending: "Sending through the relayer…",
-        done: "Paid", balance: "Wallet balance", tx: "View transaction", err: "Something went wrong", underfunded: "The program has no funds left right now. Try again later.",
+        done: "Paid", balance: "Paid to", tx: "View transaction", err: "Something went wrong", underfunded: "The program has no funds left right now. Try again later.",
         offline: "No signal. Showing the program as saved on this phone at", queued: "Your claim is ready and saved on this phone. It will be sent automatically when you are back online.",
-        privacy: "Your name, ID and location never leave this phone. The blockchain only learns that one enrolled household claimed."
+        privacy: "Your name, ID and location never leave this phone. The blockchain only learns that one enrolled household claimed.",
+        wallet: "Wallet on this phone", spend: "Send to a cash-out agent or shop. No fees: you do not need any other coin.",
+        to: "Recipient address (0x…)", amt: "Amount in USDC", send: "Send", sent: "Sent", badAmt: "Enter an amount up to your balance"
     },
     id: {
         title: "Klaim bantuan Anda", load: "Memuat program…", noCard: "Pindai kartu Naungan dengan kamera ponsel, atau tempel kode kartu di bawah.",
@@ -32,9 +34,11 @@ const T = {
         newWallet: "Buat dompet di ponsel ini", ownWallet: "Pakai alamat saya sendiri", addr: "Alamat dompet (0x…)",
         backup: "Catat kunci cadangan ini dan simpan baik-baik. Siapa pun yang memilikinya menguasai uangnya.",
         claim: "Klaim sekarang", proving: "Membuat bukti privat di ponsel ini…", sending: "Mengirim lewat relayer…",
-        done: "Terbayar", balance: "Saldo dompet", tx: "Lihat transaksi", err: "Terjadi kesalahan", underfunded: "Dana program sedang habis. Coba lagi nanti.",
+        done: "Terbayar", balance: "Dibayar ke", tx: "Lihat transaksi", err: "Terjadi kesalahan", underfunded: "Dana program sedang habis. Coba lagi nanti.",
         offline: "Tidak ada sinyal. Menampilkan data program yang tersimpan di ponsel ini pada", queued: "Klaim Anda sudah siap dan tersimpan di ponsel ini. Akan dikirim otomatis saat sinyal kembali.",
-        privacy: "Nama, NIK, dan lokasi Anda tidak pernah keluar dari ponsel ini. Blockchain hanya tahu bahwa satu keluarga terdaftar telah klaim."
+        privacy: "Nama, NIK, dan lokasi Anda tidak pernah keluar dari ponsel ini. Blockchain hanya tahu bahwa satu keluarga terdaftar telah klaim.",
+        wallet: "Dompet di ponsel ini", spend: "Kirim ke agen tarik tunai atau toko. Tanpa biaya: Anda tidak perlu koin lain.",
+        to: "Alamat penerima (0x…)", amt: "Jumlah USDC", send: "Kirim", sent: "Terkirim", badAmt: "Masukkan jumlah sampai sebesar saldo Anda"
     }
 }
 let lang = (() => { try { return localStorage.getItem("naungan-lang") } catch { return null } })() || (navigator.language?.startsWith("id") ? "id" : "en")
@@ -49,7 +53,8 @@ const ABI = [
     "function members(uint256) view returns (uint256[])",
     "function nullifierUsed(uint256, uint256) view returns (bool)"
 ]
-const ERC20 = ["function balanceOf(address) view returns (uint256)", "function decimals() view returns (uint8)"]
+const ERC20 = ["function balanceOf(address) view returns (uint256)", "function decimals() view returns (uint8)", "function name() view returns (string)", "function version() view returns (string)"]
+const rpc = (d) => new ethers.JsonRpcProvider(d.rpc, d.chainId, { staticNetwork: true })
 
 const state = { pid: null, identity: null }
 
@@ -67,6 +72,8 @@ function render() {
     document.documentElement.lang = lang
     document.querySelectorAll("[data-t]").forEach((el) => (el.textContent = t(el.dataset.t)))
     $("addr").placeholder = t("addr")
+    $("sendTo").placeholder = t("to")
+    $("sendAmt").placeholder = t("amt")
     $("lang").textContent = lang === "en" ? "Bahasa Indonesia" : "English"
 }
 
@@ -97,6 +104,7 @@ async function main() {
     try { ok = readCard(fragment) } catch { ok = false }
     if (location.hash) history.replaceState(null, "", location.pathname) // keep the secret out of history and screenshots
     if (!ok) {
+        fetch("deployment.json").then((r) => r.json()).then(walletPanel).catch(() => {})
         show("nocard")
         $("openCard").onclick = () => {
             const v = $("code").value.trim()
@@ -125,7 +133,7 @@ async function snapshot(d) {
     const key = `naungan-program-${d.naungan}-${state.pid}`
     if (!navigator.onLine && store.get(key)) return { ...store.get(key), offline: true }
     try {
-        const provider = new ethers.JsonRpcProvider(d.rpc, d.chainId, { staticNetwork: true })
+        const provider = rpc(d)
         const c = new ethers.Contract(d.naungan, ABI, provider)
         const usdc = new ethers.Contract(d.usdc, ERC20, provider)
         const nullifier = poseidon2([scopeHash(state.pid), state.identity.secretScalar])
@@ -176,6 +184,7 @@ async function load() {
         $("txlink").textContent = d.explorer ? t("tx") : body.txHash
         $("bal").textContent = `${ethers.formatUnits(amount, snap.dec)} USDC`
         $("to").textContent = `${t("balance")} ${body.payout}`
+        walletPanel(d)
     }
 
     // A proof made while offline waits here and is sent the moment the phone is back online.
@@ -202,6 +211,7 @@ async function load() {
     $("cardmsg").dataset.t = msg
     $("cardmsg").className = enrolled && !snap.claimed ? "note ok" : "note bad"
     render()
+    walletPanel(d)
     if (!enrolled || snap.claimed || !open) return
 
     show("pay")
@@ -249,6 +259,58 @@ async function load() {
             show("error")
             $("claim").disabled = false
         }
+    }
+}
+
+/**
+ * The payout wallet holds USDC but no ETH. The household signs an EIP-3009 transferWithAuthorization
+ * (Circle USDC supports it natively) and the relayer submits it, so cashing out needs no gas token.
+ */
+async function walletPanel(d) {
+    let key
+    try { key = localStorage.getItem("naungan-wallet") } catch {}
+    if (!key || !navigator.onLine) return
+    const w = new ethers.Wallet(key)
+    const token = new ethers.Contract(d.usdc, ERC20, rpc(d))
+    const [bal, dec] = await Promise.all([token.balanceOf(w.address), token.decimals()]).catch(() => [0n, 6])
+    if (bal === 0n) return show("wallet", false)
+    show("wallet")
+    $("wbal").textContent = `${ethers.formatUnits(bal, dec)} USDC`
+    $("waddr").textContent = w.address
+    $("send").onclick = async () => {
+        let to, value
+        try { to = ethers.getAddress($("sendTo").value.trim()) } catch { return $("sendTo").setCustomValidity(t("to")), $("sendTo").reportValidity() }
+        $("sendTo").setCustomValidity("")
+        try { value = ethers.parseUnits($("sendAmt").value.trim() || "0", dec) } catch { value = 0n }
+        if (value <= 0n || value > bal) return $("sendAmt").setCustomValidity(t("badAmt")), $("sendAmt").reportValidity()
+        $("sendAmt").setCustomValidity("")
+        $("send").disabled = true
+        $("wmsg").textContent = ""
+        try {
+            const [name, version] = await Promise.all([token.name(), token.version()])
+            const now = Math.floor(Date.now() / 1000)
+            const msg = { from: w.address, to, value, validAfter: now - 60, validBefore: now + 3600, nonce: ethers.hexlify(ethers.randomBytes(32)) }
+            const signature = await w.signTypedData({ name, version, chainId: d.chainId, verifyingContract: d.usdc }, {
+                TransferWithAuthorization: [
+                    { name: "from", type: "address" }, { name: "to", type: "address" }, { name: "value", type: "uint256" },
+                    { name: "validAfter", type: "uint256" }, { name: "validBefore", type: "uint256" }, { name: "nonce", type: "bytes32" }
+                ]
+            }, msg)
+            const res = await fetch(new URL("/transfer", d.relayer ?? "http://localhost:8788"), {
+                method: "POST", headers: { "content-type": "application/json" },
+                body: JSON.stringify({ ...msg, value: value.toString(), signature })
+            })
+            const body = await res.json()
+            if (!res.ok) throw new Error(body.error)
+            $("wmsg").className = "note ok"
+            $("wmsg").textContent = `${t("sent")} ${ethers.formatUnits(value, dec)} USDC → ${to}`
+            $("sendAmt").value = ""
+            await walletPanel(d)
+        } catch (e) {
+            $("wmsg").className = "note bad"
+            $("wmsg").textContent = `${t("err")}: ${e.message}`
+        }
+        $("send").disabled = false
     }
 }
 

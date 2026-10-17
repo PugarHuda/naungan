@@ -28,3 +28,38 @@ describe("services input validation", () => {
         expect(() => parseProof(null)).to.throw()
     })
 })
+
+describe("gasless spending (EIP-3009)", () => {
+    const { ethers } = require("hardhat")
+    const { parseTransfer } = require("../scripts/relayer")
+    const TYPES = { TransferWithAuthorization: ["from:address", "to:address", "value:uint256", "validAfter:uint256", "validBefore:uint256", "nonce:bytes32"].map((x) => ({ name: x.split(":")[0], type: x.split(":")[1] })) }
+
+    it("a household wallet with no ETH moves USDC through a relayer, once, as signed", async () => {
+        const [relayer, shop] = await ethers.getSigners()
+        const usdc = await (await ethers.getContractFactory("MockUSDC")).deploy()
+        const household = ethers.Wallet.createRandom()
+        await usdc.mint(household.address, 50_000000n)
+        const now = (await ethers.provider.getBlock("latest")).timestamp
+        const msg = { from: household.address, to: shop.address, value: 20_000000n, validAfter: now - 60, validBefore: now + 3600, nonce: ethers.hexlify(ethers.randomBytes(32)) }
+        const domain = { name: await usdc.name(), version: await usdc.version(), chainId: (await ethers.provider.getNetwork()).chainId, verifyingContract: await usdc.getAddress() }
+        const signature = await household.signTypedData(domain, TYPES, msg)
+        const a = parseTransfer({ ...msg, value: msg.value.toString(), signature })
+        const args = [a.from, a.to, a.value, a.validAfter, a.validBefore, a.nonce, a.v, a.r, a.s]
+
+        await expect(usdc.connect(relayer).transferWithAuthorization(a.from, relayer.address, ...args.slice(2))).to.be.revertedWith("invalid signature") // relayer cannot redirect
+        await usdc.connect(relayer).transferWithAuthorization(...args)
+        expect(await usdc.balanceOf(shop.address)).to.equal(20_000000n)
+        expect(await ethers.provider.getBalance(household.address)).to.equal(0n)
+        await expect(usdc.connect(relayer).transferWithAuthorization(...args)).to.be.revertedWith("authorization is used or canceled")
+    })
+
+    it("relayer rejects malformed authorizations", () => {
+        const ok = { from: ethers.ZeroAddress, to: ethers.ZeroAddress, value: "1", validAfter: "0", validBefore: "9", nonce: ethers.ZeroHash, signature: "0x" + "11".repeat(32) + "22".repeat(32) + "1b" }
+        expect(parseTransfer(ok).v).to.equal(27)
+        expect(() => parseTransfer({ ...ok, from: "0x12" })).to.throw(/address/)
+        expect(() => parseTransfer({ ...ok, value: "0" })).to.throw(/positive/)
+        expect(() => parseTransfer({ ...ok, value: "-5" })).to.throw(/malformed/)
+        expect(() => parseTransfer({ ...ok, nonce: "0x01" })).to.throw(/nonce/)
+        expect(() => parseTransfer({ ...ok, signature: "0x00" })).to.throw(/signature/)
+    })
+})

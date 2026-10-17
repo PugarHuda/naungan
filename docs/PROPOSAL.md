@@ -40,7 +40,7 @@ Cash assistance is now a core part of humanitarian response (about 21% of intern
         L3 Flood oracle: 51-member GloFAS ensemble vs the river's 1-in-5-year flood → % on-chain + evidence
                                                      │
         Household scans its card → phone builds a ZK proof "I am an enrolled, unclaimed member"
-        → gas relayer submits (no ETH, no seed phrase) → Circle USDC to a fresh wallet on the phone
+        → gas relayer submits (no ETH, no seed phrase) → Circle USDC to a fresh wallet on the phone → spent gaslessly (EIP-3009) at a cash-out agent or shop
 ```
 
 1. **L1 – Private cross-agency dedup.** Agencies run DDH private set intersection over normalised biographic keys with phonetic matching, so *Fatima/Fatimah* and *Muhammad/Mohammed* still match while two different men named Abdul Karim stay separate. Agency A learns only which of *its* households B already serves; B learns only set sizes. The dedup service answers **only agencies registered on-chain for the program**: every query is signed, time-boxed and checked against `isAgency()`, which closes the membership-probing attack an open PSI endpoint would allow.
@@ -65,7 +65,7 @@ Cash assistance is now a core part of humanitarian response (about 21% of intern
 | `contracts/Naungan.sol` | Programs with on-chain hazard metadata, M-of-N oracle quorum, agency add/remove, anonymous enrollment, oracle trigger with evidence, ZK claim with relayer-safe payout, own nullifier set (front-running safe), per-program pools, season end and refunds | ✅ 15 contract tests; Slither: 0 medium/high |
 | `lib/psi.js` + `scripts/agency.js` | DDH-PSI over ristretto255, served over HTTP to signed, on-chain-registered agencies only; enrollment and QR claim cards | ✅ Tested, attack-tested (unsigned, non-agency, replayed queries rejected) |
 | `lib/hazard.js` + `scripts/oracle.js` | Live GloFAS ensemble probability, Gumbel return levels, labelled replay of past events | ✅ Live data, tested |
-| `scripts/relayer.js` | Validates and simulates each claim before paying gas; nonce-safe queue; rate limit | ✅ Tested end-to-end |
+| `scripts/relayer.js` | Validates and simulates each claim before paying gas; sponsors gasless USDC spends (EIP-3009, Circle-native) for payout wallets only; nonce-safe queue; rate limit | ✅ Tested end-to-end |
 | `web/claim.html` | Household app (installable PWA): in-browser Groth16 proof, works offline and sends the claim when signal returns, EN/ID | ✅ Browser-tested: claim, offline claim, double claim, underfunded, unenrolled card; axe-core WCAG 2.1 AA: 0 violations |
 | `web/dashboard.html`, `web/index.html` | Public totals, oracle evidence and CSV/JSON audit export from chain events only | ✅ XSS- and CSV-injection-tested; WCAG 2.1 AA: 0 violations |
 | CI, Pages, hosted oracle | Tests, build and a Slither gate on every push; web apps on GitHub Pages; the GloFAS oracle runs every 6 hours on GitHub Actions | ✅ |

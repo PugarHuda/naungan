@@ -39,11 +39,13 @@
   .row { display: flex; gap: 12px; align-items: center; }
   .big { font-size: 34px; font-weight: 800; color: var(--accent); margin: 6px 0 2px; }
   .to { font: 14px ui-monospace, monospace; color: var(--muted); margin-bottom: 10px; }
-  #txlink { word-break: break-all; font-size: 14px; }
+  #txlink, #wmsg { word-break: break-all; }
+  #txlink { font-size: 14px; }
   .privacy { color: var(--muted); font-size: 14px; }
   a { color: var(--accent); }
   .offline { margin: 10px 0 0; font-size: 14px; color: var(--warn); }
   #queued { background: var(--accent-soft); color: var(--accent); }
+  .note:empty { display: none; }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -91,6 +93,17 @@
     <div class="big" id="bal"></div>
     <div class="to" id="to"></div>
     <a id="txlink" target="_blank" rel="noopener"></a>
+  </section>
+
+  <section class="card" id="wallet" hidden>
+    <strong data-t="wallet"></strong>
+    <div class="big" id="wbal"></div>
+    <div class="to" id="waddr"></div>
+    <p class="privacy" data-t="spend"></p>
+    <input type="text" id="sendTo" autocomplete="off" spellcheck="false" aria-label="recipient address" />
+    <input type="text" id="sendAmt" inputmode="decimal" autocomplete="off" aria-label="amount in USDC" />
+    <button class="primary" id="send" type="button" data-t="send">Send</button>
+    <p class="note" id="wmsg" aria-live="polite"></p>
   </section>
 
   <section class="card note bad" id="error" hidden role="alert"></section>

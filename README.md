@@ -4,7 +4,7 @@ Privacy-preserving, anticipatory humanitarian cash. Agencies deduplicate their b
 
 ```bash
 npm install
-npm test        # 24 tests: contract (real Groth16 proofs), PSI, GloFAS trigger math, service input validation
+npm test        # 26 tests: contract (real Groth16 proofs), PSI, GloFAS trigger math, gasless EIP-3009 spend, service input validation
 npm run demo    # Aceh scenario in-process: live GloFAS reading, then a replay of the real Nov 2025 flood
 ```
 
@@ -18,7 +18,7 @@ npm run demo    # Aceh scenario in-process: live GloFAS reading, then a replay o
 | `scripts/coordinator.js` | Create a program, add/remove agencies, fund (USDC), refund, status |
 | `scripts/agency.js` | `serve`: answer dedup queries, only from agencies registered on-chain (signed, fresh requests). `enroll`: dedup against peers over HTTP, enroll the rest, print QR claim cards |
 | `scripts/oracle.js` | Post the GloFAS trigger for a program (`--watch` hours, `--replay` date, `--dry-run`) |
-| `scripts/relayer.js` | Gas relayer: validates proof shape, simulates the claim, then submits; nonce-safe queue, rate limit |
+| `scripts/relayer.js` | Gas relayer: validates proof shape, simulates the claim, then submits; also sponsors EIP-3009 `transferWithAuthorization` so a paid household can send USDC to a cash-out agent without ever holding ETH (only for Naungan payout wallets); nonce-safe queue, rate limit |
 | `web/index.html` | Landing page with live counters |
 | `web/dashboard.html` | Public dashboard rebuilt from chain events, oracle evidence, per-program view, CSV/JSON audit export |
 | `web/claim.html` + `web/sw.js` | Household claim app (EN / Bahasa Indonesia, installable PWA): reads the QR card, proves membership in the browser, works offline and sends the queued claim when signal returns |
