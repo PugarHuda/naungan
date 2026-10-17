@@ -4,23 +4,25 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="referrer" content="no-referrer" />
-<meta name="theme-color" content="#1f6f5c" />
+<meta name="theme-color" content="#070912" />
+<link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@700&display=swap" rel="stylesheet" />
 <link rel="manifest" href="manifest.webmanifest" />
 <link rel="apple-touch-icon" href="icon.svg" />
 <title>Naungan Claim</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M1 9 8 2l7 7v6H1z' fill='%231f6f5c'/></svg>" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M1 9 8 2l7 7v6H1z' fill='%23ff3d8b'/></svg>" />
 <style>
-  :root { --bg: #f6f3ee; --surface: #fffdf9; --ink: #1d2a26; --muted: #5c6863; --line: #e4ddd2; --accent: #1f6f5c; --accent-soft: #dcefe8; --warn: #98440f; --warn-soft: #f8e4d6; }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) { --bg: #111715; --surface: #18201d; --ink: #e8efe9; --muted: #93a39c; --line: #26322e; --accent: #5cc4a6; --accent-soft: #173a31; --warn: #f0935a; --warn-soft: #3b2418; }
+  :root {
+    /* Same dark, neon-lit theme as the landing page. */
+    --bg: #070912; --surface: #111629; --ink: #f3f5ff; --muted: #a3abcc; --line: #232b4a;
+    --accent: #5cc8ff; --accent-soft: #10284a; --warn: #ffb36b; --warn-soft: #3a2414; --private: #c8b6ff; --private-soft: #251f45; --cta: #d9126a;
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
   main { max-width: 480px; margin: 0 auto; padding: 20px 16px 48px; }
   header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
-  .logo { display: flex; gap: 8px; align-items: center; font-weight: 700; font-size: 20px; color: inherit; text-decoration: none; }
+  .logo { display: flex; gap: 8px; align-items: center; font: 700 20px Comfortaa, system-ui, sans-serif; color: inherit; text-decoration: none; }
   button.link { background: none; border: 1px solid var(--line); color: var(--muted); border-radius: 99px; padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer; }
-  h1 { font-size: 26px; line-height: 1.2; margin: 0 0 16px; }
+  h1 { font: 700 26px/1.25 Comfortaa, system-ui, sans-serif; margin: 0 0 16px; }
   .card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 18px; margin-bottom: 14px; }
   dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; }
   dt { color: var(--muted); font-size: 14px; } dd { margin: 0; font-weight: 600; }
@@ -30,7 +32,7 @@
   .note.ok { background: var(--accent-soft); color: var(--accent); } .note.bad { background: var(--warn-soft); color: var(--warn); }
   label.opt { display: flex; gap: 10px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); }
   input[type=text], input[type=password], textarea { width: 100%; font: 15px ui-monospace, monospace; padding: 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); margin-top: 12px; }
-  .primary { width: 100%; margin-top: 16px; padding: 16px; font: 700 18px system-ui, sans-serif; border: 0; border-radius: 14px; background: var(--accent); color: var(--surface); cursor: pointer; }
+  .primary { width: 100%; margin-top: 16px; padding: 16px; font: 700 18px system-ui, sans-serif; border: 0; border-radius: 14px; background: var(--cta); color: #fff; cursor: pointer; border-radius: 99px; }
   .primary:disabled { opacity: .5; cursor: wait; }
   .backup { font-size: 13px; color: var(--warn); margin-top: 12px; }
   .backup code { display: block; word-break: break-all; margin-top: 6px; color: var(--ink); background: var(--bg); padding: 8px; border-radius: 8px; }

@@ -5,8 +5,8 @@
   "start_url": "claim.html",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f6f3ee",
-  "theme_color": "#1f6f5c",
+  "background_color": "#070912",
+  "theme_color": "#070912",
   "icons": [
     { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
   ]

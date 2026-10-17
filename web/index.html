@@ -5,102 +5,105 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Naungan</title>
 <meta name="description" content="Privacy-preserving, anticipatory humanitarian cash: agencies deduplicate privately, families claim with zero-knowledge proofs, donors verify everything on-chain." />
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M1 9 8 2l7 7v6H1z' fill='%231f6f5c'/></svg>" />
+<meta name="theme-color" content="#070912" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M1 9 8 2l7 7v6H1z' fill='%23ff3d8b'/></svg>" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet" />
 <style>
+  /* Dark, neon-lit look: deep navy, magenta call to action, electric-blue glass. */
   :root {
-    --bg: #f6f3ee; --surface: #fffdf9; --ink: #1d2a26; --muted: #5c6863; --line: #e4ddd2;
-    --accent: #1f6f5c; --accent-soft: #dcefe8; --warn: #98440f; --warn-soft: #f8e4d6; --private: #5b4b8a; --private-soft: #ebe6f6;
-    --deep: #14201c; --deep-ink: #f6f3ee; --deep-muted: #a9bab3;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --bg: #111715; --surface: #18201d; --ink: #e8efe9; --muted: #93a39c; --line: #26322e;
-      --accent: #5cc4a6; --accent-soft: #173a31; --warn: #f0935a; --warn-soft: #3b2418; --private: #b4a4ec; --private-soft: #2a2442;
-      --deep: #0b100e;
-    }
+    --bg: #070912; --bg2: #0c1020; --surface: #111629; --surface2: #161c34; --line: #232b4a;
+    --ink: #f3f5ff; --muted: #a3abcc; --accent: #ff3d8b; --cta: #d9126a; --blue: #5cc8ff; --blue-soft: #10284a;
+    --warn: #ffb36b; --warn-soft: #3a2414;
   }
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
   body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.6 Inter, system-ui, sans-serif; }
   a { color: inherit; }
-  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 16px; }
-  .serif { font-family: Fraunces, Georgia, serif; }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 0 16px; }
   .mono { font-family: "JetBrains Mono", monospace; }
+  :focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
 
-  nav { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
-  nav .wrap { display: flex; align-items: center; gap: 24px; height: 64px; }
-  .logo { display: flex; align-items: center; gap: 10px; font: 600 22px Fraunces, Georgia, serif; text-decoration: none; }
-  .links { display: flex; gap: 22px; margin-left: auto; font-size: 14px; color: var(--muted); }
-  .links a { text-decoration: none; } .links a:hover { color: var(--ink); }
-  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 11px 20px; border-radius: 99px; font: 600 15px Inter, sans-serif; text-decoration: none; border: 1px solid transparent; transition: transform .15s; }
+  nav { position: absolute; inset: 0 0 auto; z-index: 5; }
+  nav .wrap { display: flex; align-items: center; gap: 28px; height: 84px; }
+  .logo { display: flex; align-items: center; gap: 10px; font: 700 24px Comfortaa, sans-serif; text-decoration: none; }
+  .links { display: flex; gap: 6px; font-size: 15px; color: var(--muted); }
+  .links a { text-decoration: none; padding: 9px 18px; border-radius: 99px; }
+  .links a:hover { color: var(--ink); background: rgba(255, 255, 255, .08); }
+  .links a.on { color: var(--ink); background: rgba(255, 255, 255, .1); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12); }
+  .nav-cta { margin-left: auto; display: flex; gap: 10px; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 14px 28px; border-radius: 99px; font: 600 15px Inter, sans-serif; text-decoration: none; transition: transform .15s; }
   .btn:hover { transform: translateY(-1px); }
-  .btn.primary { background: var(--accent); color: var(--surface); }
-  .btn.ghost { border-color: var(--line); background: var(--surface); }
-  nav .btn { padding: 8px 16px; font-size: 14px; }
+  .btn.primary { background: var(--cta); color: #fff; box-shadow: 0 10px 30px -10px rgba(255, 45, 135, .7); }
+  .btn.light { background: #f6f7ff; color: #0b0e1c; }
+  .btn.glass { background: rgba(140, 160, 255, .16); color: var(--ink); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14); }
+  nav .btn { padding: 10px 20px; font-size: 14px; }
 
-  .hero { padding: 88px 0 72px; display: grid; grid-template-columns: 1.25fr 1fr; gap: 56px; align-items: center; }
-  .eyebrow { font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
-  h1 { font: 600 clamp(38px, 5.4vw, 62px)/1.05 Fraunces, Georgia, serif; letter-spacing: -0.02em; margin: 16px 0 20px; }
-  h1 em { font-style: italic; font-weight: 400; color: var(--accent); }
-  .lede { font-size: 19px; color: var(--muted); max-width: 560px; margin: 0 0 32px; }
+  .hero { position: relative; min-height: min(100vh, 900px); overflow: hidden; background: var(--bg); }
+  #scene { position: absolute; top: 0; right: 0; width: 64%; height: 100%; display: block; opacity: 0; transition: opacity 1.2s; }
+  #scene.ready { opacity: 1; }
+  .shade { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(90deg, var(--bg) 30%, rgba(7, 9, 18, .55) 46%, transparent 62%); }
+  .hero .wrap { position: relative; z-index: 2; min-height: inherit; display: flex; flex-direction: column; justify-content: center; padding-top: 110px; padding-bottom: 72px; }
+  .copy { max-width: 560px; }
+  .eyebrow { font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--blue); font-weight: 600; }
+  h1 { font: 700 clamp(40px, 5.6vw, 70px)/1.08 Comfortaa, sans-serif; letter-spacing: -0.02em; margin: 18px 0 22px; }
+  h1 em { font-style: normal; background: linear-gradient(90deg, var(--accent), var(--blue)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .lede { font-size: 18px; color: var(--muted); max-width: 520px; margin: 0 0 32px; }
   .ctas { display: flex; flex-wrap: wrap; gap: 12px; }
 
-  .proof { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 26px; box-shadow: 0 20px 50px -30px rgba(20, 32, 28, .35); }
+  .proof { margin-top: 44px; max-width: 540px; background: rgba(17, 22, 41, .78); border: 1px solid var(--line); border-radius: 22px; padding: 20px; backdrop-filter: blur(10px); }
   .proof-head { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--muted); }
+  .proof-head a { color: var(--blue); }
   .live { display: inline-flex; align-items: center; gap: 8px; }
-  .live i { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: pulse 1.8s infinite; }
-  @keyframes pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 60%, transparent); } 100% { box-shadow: 0 0 0 10px transparent; } }
-  .stat-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 18px 0; }
-  .stat { background: var(--bg); border-radius: 12px; padding: 14px; }
-  .stat b { display: block; font: 600 34px/1.1 Fraunces, Georgia, serif; font-variant-numeric: tabular-nums; }
-  .stat span { font-size: 13px; color: var(--muted); }
-  .trig { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; border-radius: 12px; background: var(--warn-soft); color: var(--warn); font-weight: 600; font-size: 14px; }
-  .zero-line { margin-top: 14px; display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); }
-  .zero-line .mono { color: var(--private); background: var(--private-soft); padding: 0 8px; border-radius: 6px; font-weight: 600; }
+  .live i { width: 8px; height: 8px; border-radius: 50%; background: var(--blue); animation: pulse 1.8s infinite; }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(92, 200, 255, .6); } 100% { box-shadow: 0 0 0 10px transparent; } }
+  .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 14px 0; }
+  .stat { background: rgba(255, 255, 255, .04); border-radius: 14px; padding: 12px; }
+  .stat b { display: block; font: 700 28px/1.1 Comfortaa, sans-serif; font-variant-numeric: tabular-nums; }
+  .stat span { font-size: 12px; color: var(--muted); }
+  .trig { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 12px; background: var(--blue-soft); color: var(--blue); font-weight: 600; font-size: 14px; }
+  #trig { white-space: nowrap; }
+  .trig.on { background: var(--warn-soft); color: var(--warn); }
 
-  section.band { padding: 88px 0; border-top: 1px solid var(--line); }
-  h2 { font: 600 clamp(30px, 3.6vw, 42px)/1.12 Fraunces, Georgia, serif; letter-spacing: -0.01em; margin: 12px 0 16px; max-width: 760px; }
-  .intro { color: var(--muted); font-size: 18px; max-width: 680px; margin: 0 0 44px; }
+  section.band { padding: 104px 0; border-top: 1px solid var(--line); }
+  h2 { font: 700 clamp(30px, 3.6vw, 46px)/1.15 Comfortaa, sans-serif; letter-spacing: -0.01em; margin: 14px 0 16px; max-width: 800px; }
+  .intro { color: var(--muted); font-size: 18px; max-width: 680px; margin: 0 0 48px; }
+  .problem, .step, .card, .ledger { background: linear-gradient(180deg, var(--surface2), var(--surface)); border: 1px solid var(--line); border-radius: 24px; }
 
   .problems { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
-  .problem { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 28px; }
-  .problem .num { font: 600 44px/1 Fraunces, Georgia, serif; color: var(--warn); }
-  .problem h3 { font: 600 20px/1.3 Fraunces, Georgia, serif; margin: 16px 0 8px; }
-  .problem p { color: var(--muted); font-size: 15px; margin: 0; }
+  .problem { padding: 30px; }
+  .problem .num { font: 700 42px/1 Comfortaa, sans-serif; color: var(--accent); }
+  .problem h3, .step h3 { font: 700 19px/1.35 Comfortaa, sans-serif; margin: 16px 0 8px; }
+  .problem p, .step p { color: var(--muted); font-size: 15px; margin: 0; }
   .problem small { display: block; margin-top: 14px; font-size: 12px; color: var(--muted); }
 
   .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; counter-reset: s; }
-  .step { position: relative; padding: 28px 22px; border-radius: 18px; background: var(--surface); border: 1px solid var(--line); }
-  .step::before { counter-increment: s; content: "0" counter(s); font: 400 13px "JetBrains Mono", monospace; color: var(--accent); }
-  .step h3 { font: 600 20px/1.3 Fraunces, Georgia, serif; margin: 10px 0 8px; }
-  .step p { color: var(--muted); font-size: 15px; margin: 0; }
-  .step .tag { display: inline-block; margin-top: 16px; font: 12px "JetBrains Mono", monospace; padding: 3px 9px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); }
+  .step { padding: 28px 22px; }
+  .step::before { counter-increment: s; content: "0" counter(s); display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; font: 700 14px Comfortaa, sans-serif; color: #fff; background: linear-gradient(135deg, var(--cta), #6a3dff); }
+  .step .tag { display: inline-block; margin-top: 16px; font: 12px "JetBrains Mono", monospace; padding: 4px 10px; border-radius: 99px; background: var(--blue-soft); color: var(--blue); }
 
-  .deep { background: var(--deep); color: var(--deep-ink); border-top: 0; }
-  .deep .eyebrow { color: #5cc4a6; } .deep .intro { color: var(--deep-muted); }
+  .deep { background: radial-gradient(900px 400px at 20% 0%, #1a1440, var(--bg2)); }
   .split { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
-  .ledger { border: 1px solid #2a3833; border-radius: 18px; padding: 28px; }
-  .ledger h3 { font: 600 22px Fraunces, Georgia, serif; margin: 0 0 18px; }
-  .ledger li { list-style: none; display: flex; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px dashed #2a3833; color: var(--deep-muted); }
+  .ledger { padding: 28px; }
+  .ledger h3 { font: 700 21px Comfortaa, sans-serif; margin: 0 0 18px; }
   .ledger ul { margin: 0; padding: 0; }
-  .ledger .yes { color: #5cc4a6; } .ledger .no { color: #f0935a; }
+  .ledger li { list-style: none; display: flex; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px dashed var(--line); color: var(--muted); }
+  .ledger .yes { color: var(--blue); } .ledger .no { color: var(--accent); }
 
   .aceh { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; }
   .facts { display: grid; gap: 14px; }
   .fact { display: flex; gap: 18px; align-items: baseline; padding: 18px 0; border-bottom: 1px solid var(--line); }
-  .fact b { font: 600 34px Fraunces, Georgia, serif; min-width: 120px; color: var(--accent); }
+  .fact b { font: 700 32px Comfortaa, sans-serif; min-width: 130px; color: var(--blue); }
   .fact span { color: var(--muted); }
 
   .built { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
-  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 24px; text-decoration: none; display: block; transition: border-color .15s; }
-  a.card:hover { border-color: var(--accent); }
-  .card h3 { font: 600 19px Fraunces, Georgia, serif; margin: 0 0 6px; }
+  .card { padding: 26px; text-decoration: none; display: block; transition: border-color .15s, transform .15s; }
+  a.card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .card h3 { font: 700 18px Comfortaa, sans-serif; margin: 0 0 8px; }
   .card p { color: var(--muted); font-size: 14px; margin: 0; }
   .card p.mono { word-break: break-all; }
 
-  .closing { text-align: center; padding: 104px 0; }
+  .closing { text-align: center; padding: 120px 0; background: radial-gradient(700px 300px at 50% 100%, #2a1240, var(--bg)); }
   .closing h2 { margin: 0 auto 16px; }
   .closing .intro { margin: 0 auto 32px; }
   .closing .ctas { justify-content: center; }
@@ -108,52 +111,58 @@
   footer .wrap { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; }
 
   @media (max-width: 900px) {
-    .hero, .aceh { grid-template-columns: 1fr; gap: 40px; padding-top: 56px; }
-    .problems, .built { grid-template-columns: 1fr; }
+    .links, .nav-cta .glass { display: none; }
+    .hero { min-height: 0; }
+    #scene { position: relative; width: 100%; height: 340px; margin-top: 64px; }
+    .shade { display: none; }
+    .hero .wrap { padding-top: 8px; padding-bottom: 8px; }
+    .aceh { grid-template-columns: 1fr; gap: 40px; }
+    .problems, .built, .split { grid-template-columns: 1fr; }
     .steps { grid-template-columns: 1fr 1fr; }
-    .split { grid-template-columns: 1fr; }
-    .links { display: none; }
-    nav .btn { margin-left: auto; }
   }
-  @media (max-width: 520px) { .steps { grid-template-columns: 1fr; } section.band { padding: 64px 0; } }
+  @media (max-width: 520px) { .steps { grid-template-columns: 1fr; } .stat b { font-size: 22px; } .stat { padding: 10px; } section.band { padding: 72px 0; } }
 </style>
 </head>
 <body>
 
-<nav>
+<nav aria-label="Main">
   <div class="wrap">
-    <a class="logo" href="#"><svg width="22" height="22" viewBox="0 0 16 16" aria-hidden="true"><path d="M1 9 8 2l7 7v6H1z" fill="var(--accent)"/></svg>Naungan</a>
+    <a class="logo" href="#"><svg width="26" height="26" viewBox="0 0 16 16" aria-hidden="true"><defs><linearGradient id="lg" x1="0" x2="1"><stop offset="0" stop-color="#ff3d8b"/><stop offset="1" stop-color="#5cc8ff"/></linearGradient></defs><path d="M1 9 8 2l7 7v6H1z" fill="url(#lg)"/></svg>naungan</a>
     <div class="links">
-      <a href="#problem">Problem</a><a href="#how">How it works</a><a href="#privacy">Privacy</a><a href="#built">Proof</a><a href="claim.html">Claim</a>
+      <a class="on" href="#">Home</a><a href="#how">How it works</a><a href="#privacy">Privacy</a><a href="#built">Proof</a><a href="claim.html">Claim</a>
     </div>
-    <a class="btn primary" href="dashboard.html">Live dashboard →</a>
+    <div class="nav-cta">
+      <a class="btn light" href="dashboard.html">Live dashboard</a>
+      <a class="btn glass" href="https://github.com/PugarHuda/naungan" target="_blank" rel="noopener">GitHub</a>
+    </div>
   </div>
 </nav>
 
 <main>
-<div class="wrap">
-  <section class="hero">
-    <div>
+<section class="hero" aria-labelledby="h1">
+  <canvas id="scene" aria-hidden="true"></canvas>
+  <div class="shade"></div>
+  <div class="wrap">
+    <div class="copy">
       <div class="eyebrow">Web3 for Social Good 2026 · Tech Track</div>
-      <h1>Cash that reaches families <em>before</em> the flood, without exposing who they are.</h1>
-      <p class="lede">Naungan (“shelter” in Indonesian) lets aid agencies avoid paying the same family twice without sharing their lists, opens payouts when the GloFAS flood forecast used by the Red Cross crosses a trigger, and lets donors verify every dollar with zero personal data on-chain.</p>
+      <h1 id="h1">Cash that reaches families <em>before</em> the flood</h1>
+      <p class="lede">Naungan (“shelter” in Indonesian) lets aid agencies avoid paying a family twice without sharing their lists, opens payouts when the GloFAS flood forecast used by the Red Cross crosses a trigger, and lets donors verify every dollar with zero personal data on-chain.</p>
       <div class="ctas">
-        <a class="btn primary" href="dashboard.html">See it running on Base →</a>
-        <a class="btn ghost" href="https://github.com/PugarHuda/naungan" target="_blank" rel="noopener">View the code</a>
+        <a class="btn primary" href="dashboard.html">See it running on Base</a>
+        <a class="btn light" href="claim.html">Claim with a card</a>
+      </div>
+      <div class="proof" aria-live="polite">
+        <div class="proof-head"><span class="live"><i></i><span id="net">Live on Base Sepolia</span></span><a class="mono" id="addr" target="_blank" rel="noopener">…</a></div>
+        <div class="stat-row">
+          <div class="stat"><b id="enrolled">–</b><span>households enrolled anonymously</span></div>
+          <div class="stat"><b id="paid">–</b><span>paid by ZK proof</span></div>
+          <div class="stat"><b id="usd">–</b><span>USDC disbursed</span></div>
+        </div>
+        <div class="trig" id="trigBox"><span id="trigLabel">Flood probability (GloFAS)</span><span class="mono" id="trig">– / –%</span></div>
       </div>
     </div>
-
-    <div class="proof" aria-live="polite">
-      <div class="proof-head"><span class="live"><i></i><span id="net">Live on Base Sepolia</span></span><a class="mono" id="addr" target="_blank" rel="noopener">…</a></div>
-      <div class="stat-row">
-        <div class="stat"><b id="enrolled">–</b><span>households enrolled anonymously</span></div>
-        <div class="stat"><b id="paid">–</b><span>unique households paid by ZK proof</span></div>
-      </div>
-      <div class="trig"><span id="trigLabel">Flood probability (GloFAS)</span><span class="mono" id="trig">– / –%</span></div>
-      <div class="zero-line"><span>Names, IDs or locations on-chain</span><span class="mono">0</span></div>
-    </div>
-  </section>
-</div>
+  </div>
+</section>
 
 <section class="band" id="problem">
   <div class="wrap">
@@ -175,9 +184,9 @@
     <p class="intro">Each layer removes one reason agencies refuse to coordinate, and the chain only ever stores commitments, nullifiers and totals.</p>
     <div class="steps">
       <div class="step"><h3>Private dedup</h3><p>Agencies compare lists with private set intersection. Each learns only “already served?” for its own records. Fatima and Fatimah still match.</p><span class="tag">DDH-PSI · ristretto255</span></div>
-      <div class="step"><h3>Anonymous enrollment</h3><p>Each family holds its own credential. Agencies enroll only a cryptographic commitment into the program group.</p><span class="tag">Semaphore v4</span></div>
-      <div class="step"><h3>Anticipatory trigger</h3><p>The oracle reads 51 GloFAS river forecasts and posts the share that exceed the 1-in-5-year flood, with its evidence. Crossing the trigger opens claims days before the peak.</p><span class="tag">GloFAS · Copernicus</span></div>
-      <div class="step"><h3>Private claim</h3><p>A family proves “I’m enrolled and haven’t claimed” in zero knowledge. A relayer pays gas, yet can’t redirect the money.</p><span class="tag">Groth16 · nullifiers</span></div>
+      <div class="step"><h3>Anonymous enrollment</h3><p>Each family holds its own credential, optionally PIN-locked. Agencies enroll only a cryptographic commitment into the program group.</p><span class="tag">Semaphore v4</span></div>
+      <div class="step"><h3>Anticipatory trigger</h3><p>The oracle reads 51 GloFAS river forecasts every 6 hours and posts the share that exceed the 1-in-5-year flood, with its evidence. Crossing the trigger opens claims days before the peak.</p><span class="tag">GloFAS · Copernicus</span></div>
+      <div class="step"><h3>Private claim</h3><p>A family proves “I’m enrolled and haven’t claimed” in zero knowledge, even offline. A relayer pays gas, yet can’t redirect the money, and the family spends it with no gas token.</p><span class="tag">Groth16 · EIP-3009</span></div>
     </div>
   </div>
 </section>
@@ -223,7 +232,7 @@
   <div class="wrap">
     <div class="eyebrow">Built, not just pitched</div>
     <h2>A working prototype you can verify yourself.</h2>
-    <p class="intro">Real Groth16 proofs generated on the phone and verified on-chain, a gas relayer, an authenticated agency dedup service, a GloFAS flood oracle and 27 automated tests.</p>
+    <p class="intro">Real Groth16 proofs generated on the phone and verified on-chain, a hosted gas relayer, an authenticated agency dedup service, a GloFAS flood oracle running every 6 hours and 27 automated tests.</p>
     <div class="built">
       <a class="card" href="dashboard.html"><h3>Live dashboard →</h3><p>Totals rebuilt from chain events only, refreshed every two seconds.</p></a>
       <a class="card" id="contractCard" target="_blank" rel="noopener"><h3>Contract on Basescan →</h3><p class="mono" id="contract">…</p></a>
@@ -237,19 +246,29 @@
     <h2>Built with agencies and communities, not for them.</h2>
     <p class="intro">Looking for one NGO and one zakat or humanitarian partner to co-design the Aceh pilot.</p>
     <div class="ctas">
-      <a class="btn primary" href="dashboard.html">Open the live dashboard →</a>
-      <a class="btn ghost" href="https://github.com/PugarHuda/naungan" target="_blank" rel="noopener">GitHub</a>
+      <a class="btn primary" href="dashboard.html">Open the live dashboard</a>
+      <a class="btn light" href="https://github.com/PugarHuda/naungan" target="_blank" rel="noopener">GitHub</a>
     </div>
   </div>
 </section>
-
 </main>
 
 <footer><div class="wrap"><span>Naungan · Pugar Huda Mantoro · Web3 for Social Good 2026</span><span>SMU × GSR Foundation × University of Málaga</span></div></footer>
 
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.min.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+// No WebGL (old phone, blocked GPU): the hero keeps its gradient and the page works the same.
+const gl = document.createElement("canvas").getContext("webgl2")
+if (gl) import("./hero3d.js").catch((e) => console.warn("3D scene unavailable:", e.message))
+</script>
 <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js" integrity="sha384-6Zl0Pc8zjSz8KvmNeXRvUQgY4ryFb+BwDvKCmLYcBME0joAaru491tQgi9B7zsMM" crossorigin="anonymous"></script>
 <script>
-// ponytail: same deployment.json as the dashboard; the hero card just reads the latest program's counters
+// Totals across every program, read from the contract (same deployment.json as the dashboard).
 const $ = (id) => document.getElementById(id)
 ;(async () => {
   try {
@@ -262,14 +281,18 @@ const $ = (id) => document.getElementById(id)
     const c = new ethers.Contract(d.naungan, [
       "function programCount() view returns (uint256)",
       "function programs(uint256) view returns (address coordinator, uint256 quorum, uint256 groupId, uint256 amountPerHousehold, uint256 triggerThreshold, uint256 claimWindow, uint256 claimDeadline, uint256 lastIndex, uint256 enrolled, uint256 funded, uint256 claims, uint256 seasonEnd)"
-    ], new ethers.JsonRpcProvider(d.rpc))
-    const n = await c.programCount()
-    if (n === 0n) return
-    const p = await c.programs(n)
-    $("enrolled").textContent = p.enrolled
-    $("paid").textContent = p.claims
-    $("trig").textContent = `${p.lastIndex}% / ${p.triggerThreshold}%`
-    $("trigLabel").textContent = p.claimDeadline > 0n ? "Trigger fired · claims open" : "Flood probability (GloFAS)"
+    ], new ethers.JsonRpcProvider(d.rpc, d.chainId, { staticNetwork: true }))
+    const n = Number(await c.programCount())
+    if (n === 0) return
+    const ps = await Promise.all(Array.from({ length: n }, (_, i) => c.programs(i + 1)))
+    $("enrolled").textContent = ps.reduce((s, p) => s + p.enrolled, 0n)
+    $("paid").textContent = ps.reduce((s, p) => s + p.claims, 0n)
+    $("usd").textContent = Number(ethers.formatUnits(ps.reduce((s, p) => s + p.claims * p.amountPerHousehold, 0n), 6)).toLocaleString("en", { maximumFractionDigits: 2 })
+    const latest = ps.at(-1) // the newest program is the one the hosted oracle is watching
+    $("trig").textContent = `${latest.lastIndex}% / ${latest.triggerThreshold}%`
+    const fired = latest.claimDeadline > 0n
+    $("trigLabel").textContent = fired ? "Trigger fired · claims open" : `Flood probability now (GloFAS, program #${n})`
+    $("trigBox").classList.toggle("on", fired)
   } catch (e) {
     console.error(e)
     $("net").textContent = "Deployment unavailable"

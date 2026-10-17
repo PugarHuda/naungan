@@ -4,32 +4,27 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Naungan Dashboard</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M1 9 8 2l7 7v6H1z' fill='%231f6f5c'/></svg>" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M1 9 8 2l7 7v6H1z' fill='%23ff3d8b'/></svg>" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet" />
 <style>
   :root {
-    --bg: #f6f3ee; --surface: #fffdf9; --ink: #1d2a26; --muted: #5c6863; --line: #e4ddd2;
-    --accent: #1f6f5c; --accent-soft: #dcefe8; --warn: #98440f; --warn-soft: #f8e4d6; --private: #5b4b8a; --private-soft: #ebe6f6;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --bg: #111715; --surface: #18201d; --ink: #e8efe9; --muted: #93a39c; --line: #26322e;
-      --accent: #5cc4a6; --accent-soft: #173a31; --warn: #f0935a; --warn-soft: #3b2418; --private: #b4a4ec; --private-soft: #2a2442;
-    }
+    /* Same dark, neon-lit theme as the landing page. */
+    --bg: #070912; --surface: #111629; --ink: #f3f5ff; --muted: #a3abcc; --line: #232b4a;
+    --accent: #5cc8ff; --accent-soft: #10284a; --warn: #ffb36b; --warn-soft: #3a2414; --private: #c8b6ff; --private-soft: #251f45; --cta: #d9126a;
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 Inter, system-ui, sans-serif; }
   .wrap { max-width: 1100px; margin: 0 auto; padding: 28px 16px 60px; }
   header { display: flex; flex-wrap: wrap; gap: 12px; align-items: baseline; justify-content: space-between; }
-  h1 { font: 600 34px/1.1 Fraunces, Georgia, serif; margin: 0; letter-spacing: -0.01em; }
+  h1 { font: 600 34px/1.1 Comfortaa, Inter, sans-serif; margin: 0; letter-spacing: -0.01em; }
   h1 small { display: block; font: 400 14px Inter, sans-serif; color: var(--muted); margin-top: 6px; letter-spacing: 0; }
   .badge { font: 12px "JetBrains Mono", monospace; color: var(--muted); border: 1px solid var(--line); padding: 4px 10px; border-radius: 99px; }
   .badge a { color: inherit; }
   .grid { display: grid; gap: 14px; grid-template-columns: repeat(4, 1fr); margin-top: 24px; }
   .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }
   .kpi .label { color: var(--muted); font-size: 13px; }
-  .kpi .value { font: 600 34px/1.1 Fraunces, Georgia, serif; margin-top: 6px; font-variant-numeric: tabular-nums; }
+  .kpi .value { font: 600 34px/1.1 Comfortaa, Inter, sans-serif; margin-top: 6px; font-variant-numeric: tabular-nums; }
   .kpi .sub { color: var(--muted); font-size: 12px; margin-top: 4px; }
   .bar { height: 8px; background: var(--line); border-radius: 99px; overflow: hidden; margin-top: 10px; }
   .bar > i { display: block; height: 100%; background: var(--accent); width: 0; transition: width .6s; }
@@ -39,7 +34,7 @@
   .status { display: inline-block; font-weight: 600; font-size: 12px; padding: 3px 9px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); }
   .hazard.on .status { background: var(--warn); color: var(--surface); }
   .two { display: grid; gap: 14px; grid-template-columns: 1fr 1.4fr; margin-top: 14px; }
-  h2 { font: 600 18px Fraunces, Georgia, serif; margin: 0 0 12px; }
+  h2 { font: 600 18px Comfortaa, Inter, sans-serif; margin: 0 0 12px; }
   .priv li { list-style: none; display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px dashed var(--line); }
   .priv ul { padding: 0; margin: 0; }
   .priv .zero { font: 600 13px "JetBrains Mono", monospace; color: var(--private); background: var(--private-soft); padding: 1px 8px; border-radius: 6px; }

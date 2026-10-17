@@ -1,6 +1,6 @@
 // Offline support for the household claim app. Signal drops exactly when floods hit, so the app,
 // the Semaphore proving keys and the last deployment info are served from cache when offline.
-const SHELL = "naungan-shell-v1"
+const SHELL = "naungan-shell-v2"
 const ARTIFACTS = "naungan-artifacts-v1" // proving keys are immutable per version: cache forever
 const PRECACHE = ["claim.html", "claim.js", "manifest.webmanifest", "icon.svg", "deployment.json"]
 
