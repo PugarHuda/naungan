@@ -2,6 +2,8 @@
 
 Privacy-preserving, anticipatory humanitarian cash. Agencies deduplicate their beneficiary lists without sharing them (private set intersection), enroll households as anonymous Semaphore commitments, a flood oracle opens claims when the **GloFAS** river forecast (the same model IFRC Early Action Protocols trigger on) crosses a return-period threshold, and households claim once from their phone with a zero-knowledge proof. Donors verify every total on-chain, with zero personal data there. Full pitch: [docs/PROPOSAL.md](docs/PROPOSAL.md).
 
+**Try it live (Base Sepolia, Circle testnet USDC):** [landing](https://pugarhuda.github.io/naungan/) · [public dashboard](https://pugarhuda.github.io/naungan/dashboard.html?program=2) · gas relayer [naungan.vercel.app/health](https://naungan.vercel.app/health). One enrolled household card is left unclaimed for reviewers: [open the demo card](https://pugarhuda.github.io/naungan/claim.html#p=2&id=sG0DdcsCNBfd7i%2FIGGuxLmkPFbIN2ydmlblYsEm3rK8%3D) on a phone, tap Claim, and 1 USDC lands in a wallet created on the phone, about 12 s end to end. First come, first served: a second claim is rejected by design.
+
 ```bash
 npm install
 npm test        # 26 tests: contract (real Groth16 proofs), PSI, GloFAS trigger math, gasless EIP-3009 spend, service input validation
@@ -57,7 +59,7 @@ npx hardhat run scripts/deploy.js --network baseSepolia                         
 node scripts/verify.js                                                           # Sourcify API v2, no API key
 ```
 
-Live deployment: Naungan [`0xA56D554C9364C332ed361AD01833fA7BAf87c25E`](https://sepolia.basescan.org/address/0xA56D554C9364C332ed361AD01833fA7BAf87c25E) ([Sourcify exact match](https://repo.sourcify.dev/84532/0xA56D554C9364C332ed361AD01833fA7BAf87c25E)), Semaphore `0x647787568ADf29dBA55Dbc068C618ECF575b420F`. Program #1 has real claims and a gasless spend on its ledger. The claim app needs a relayer the phone can reach: run `node scripts/relayer.js` and set `RELAYER_URL` before deploying.
+Live deployment: Naungan [`0xA56D554C9364C332ed361AD01833fA7BAf87c25E`](https://sepolia.basescan.org/address/0xA56D554C9364C332ed361AD01833fA7BAf87c25E) ([Sourcify exact match](https://repo.sourcify.dev/84532/0xA56D554C9364C332ed361AD01833fA7BAf87c25E)), Semaphore `0x647787568ADf29dBA55Dbc068C618ECF575b420F`. Program #1 has real claims and a gasless spend on its ledger. The relayer runs on Vercel (`api/relayer.js`, same core as `node scripts/relayer.js`; `vercel env add PRIVATE_KEY` then `vercel deploy --prod`); `RELAYER_URL` at deploy time points the claim app at it.
 
 Funding uses Circle's official testnet USDC (`0x036CbD53842c5426634e7929541eC2318f3dCF7e`); get some at [faucet.circle.com](https://faucet.circle.com). `MockUSDC` exists only for the local dev chain, where Circle has no contract.
 
