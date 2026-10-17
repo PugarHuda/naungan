@@ -5,7 +5,8 @@
 //   node scripts/agency.js serve  --program 1 --list data/unhcr.csv --port 7001
 // Agency A dedups against B, enrolls the households B does not already serve, prints QR claim cards:
 //   node scripts/agency.js enroll --program 1 --list data/zakat.csv --peer http://localhost:7001 \
-//        --claim-url http://localhost:5173/claim.html --cards cards/zakat.html
+//        --claim-url http://localhost:5173/claim.html --cards cards/zakat.html [--pin]
+//   --pin locks each card with a 6-digit PIN printed on a separate slip (cards/zakat.pins.html).
 //
 // CSV columns: name,birthYear,village (quotes allowed). Cards hold claim secrets: keep them offline.
 const fs = require("fs")
@@ -14,6 +15,7 @@ const http = require("http")
 const { parseArgs } = require("util")
 const { ethers } = require("ethers")
 const QRCode = require("qrcode")
+const { lock, newPin } = require("../lib/cardlock")
 const { Identity } = require("@semaphore-protocol/core")
 const { Agency } = require("../lib/psi")
 const { connect, explain } = require("../lib/chain")
@@ -47,7 +49,7 @@ async function serve({ program, list, port }) {
     }).listen(port, () => console.log(`agency ${wallet.address} answering dedup for program ${program} on :${port} (${me.records.length} households)`))
 }
 
-async function enroll({ program, list, peer = [], "claim-url": claimUrl, cards }) {
+async function enroll({ program, list, peer = [], "claim-url": claimUrl, cards, pin: withPin }) {
     const { naungan, wallet } = await connect()
     if (!(await naungan.isAgency(program, wallet.address))) throw new Error(`${wallet.address} is not an agency of program ${program}`)
     const records = readCsv(list)
@@ -75,15 +77,24 @@ async function enroll({ program, list, peer = [], "claim-url": claimUrl, cards }
     }
 
     const meta = JSON.parse(await naungan.metadata(program))
+    const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`)
+    // --pin: the QR holds the secret encrypted under a 6-digit PIN that goes on a separate slip.
+    const pins = withPin ? fresh.map(newPin) : []
     const cardHtml = await Promise.all(fresh.map(async (r, i) => {
-        const link = `${claimUrl}#p=${program}&id=${encodeURIComponent(ids[i].export())}`
-        const svg = await QRCode.toString(link, { type: "svg", errorCorrectionLevel: "M", margin: 1 })
-        const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`)
-        return `<article><div class="qr">${svg}</div><div><h2>Naungan claim card</h2><p class="who">${esc(r.name)} · ${esc(r.village)}</p>
-<p>${esc(meta.name)}</p><ol><li>Scan with your phone camera.</li><li>When the flood alert opens claims, tap <b>Claim</b>.</li></ol>
-<p class="code">No camera? Open ${esc(claimUrl)} and enter: <code>p=${program}&amp;id=${esc(encodeURIComponent(ids[i].export()))}</code></p>
-<p class="warn">Keep this card private. Anyone holding it can claim once for this household.</p></div></article>`
+        const code = withPin ? `p=${program}&e=${await lock(ids[i].export(), pins[i], program)}` : `p=${program}&id=${encodeURIComponent(ids[i].export())}`
+        const svg = await QRCode.toString(`${claimUrl}#${code}`, { type: "svg", errorCorrectionLevel: "M", margin: 1 })
+        return `<article><div class="qr">${svg}</div><div><h2>Naungan claim card #${i + 1}</h2><p class="who">${esc(r.name)} · ${esc(r.village)}</p>
+<p>${esc(meta.name)}</p><ol><li>Scan with your phone camera.</li>${withPin ? "<li>Enter the 6-digit PIN your agency gave you.</li>" : ""}<li>When the flood alert opens claims, tap <b>Claim</b>.</li></ol>
+<p class="code">No camera? Open ${esc(claimUrl)} and enter: <code>${esc(code)}</code></p>
+<p class="warn">${withPin ? "Keep your PIN apart from this card. The card alone cannot be claimed." : "Keep this card private. Anyone holding it can claim once for this household."}</p></div></article>`
     }))
+    if (withPin) {
+        const pinFile = cards.replace(/\.html?$/, "") + ".pins.html"
+        fs.writeFileSync(pinFile, `<!doctype html><meta charset="utf-8"><title>Naungan PIN slips</title><style>body{font:15px system-ui,sans-serif;margin:16px}
+p{border:1px dashed #999;border-radius:8px;padding:12px;max-width:420px;page-break-inside:avoid}b{font:700 24px ui-monospace,monospace;letter-spacing:4px}</style>
+${fresh.map((r, i) => `<p>Card #${i + 1} · ${esc(r.name)} · ${esc(r.village)}<br>PIN <b>${pins[i]}</b><br>Hand over separately from the card.</p>`).join("\n")}`)
+        console.log(`wrote ${fresh.length} PIN slips → ${pinFile} (print and hand out apart from the cards)`)
+    }
     fs.mkdirSync(path.dirname(cards), { recursive: true })
     fs.writeFileSync(cards, `<!doctype html><meta charset="utf-8"><title>Naungan claim cards</title><style>
 body{font:14px/1.4 system-ui,sans-serif;margin:16px}article{display:flex;gap:16px;border:1px solid #999;border-radius:10px;padding:14px;margin:0 0 12px;page-break-inside:avoid;max-width:640px}
@@ -94,7 +105,7 @@ body{font:14px/1.4 system-ui,sans-serif;margin:16px}article{display:flex;gap:16p
 
 const { values: a, positionals: [cmd] } = parseArgs({
     allowPositionals: true,
-    options: { program: { type: "string" }, list: { type: "string" }, port: { type: "string", default: "7001" }, peer: { type: "string", multiple: true }, "claim-url": { type: "string" }, cards: { type: "string" } }
+    options: { program: { type: "string" }, list: { type: "string" }, port: { type: "string", default: "7001" }, peer: { type: "string", multiple: true }, "claim-url": { type: "string" }, cards: { type: "string" }, pin: { type: "boolean" } }
 })
 const need = (...k) => k.forEach((x) => { if (!a[x]) throw new Error(`--${x} is required`) })
 

@@ -63,7 +63,7 @@ Cash assistance is now a core part of humanitarian response (about 21% of intern
 | Component | What it does | Status |
 |---|---|---|
 | `contracts/Naungan.sol` | Programs with on-chain hazard metadata, M-of-N oracle quorum, agency add/remove, anonymous enrollment, oracle trigger with evidence, ZK claim with relayer-safe payout, own nullifier set (front-running safe), per-program pools, season end and refunds | ✅ 15 contract tests; Slither: 0 medium/high |
-| `lib/psi.js` + `scripts/agency.js` | DDH-PSI over ristretto255, served over HTTP to signed, on-chain-registered agencies only; enrollment and QR claim cards | ✅ Tested, attack-tested (unsigned, non-agency, replayed queries rejected) |
+| `lib/psi.js` + `scripts/agency.js` | DDH-PSI over ristretto255, served over HTTP to signed, on-chain-registered agencies only; enrollment and QR claim cards, optionally PIN-locked (a lost or photographed card cannot be claimed) | ✅ Tested, attack-tested (unsigned, non-agency, replayed queries rejected) |
 | `lib/hazard.js` + `scripts/oracle.js` | Live GloFAS ensemble probability, Gumbel return levels, labelled replay of past events | ✅ Live data, tested |
 | `scripts/relayer.js` | Validates and simulates each claim before paying gas; sponsors gasless USDC spends (EIP-3009, Circle-native) for payout wallets only; nonce-safe queue; rate limit | ✅ Tested end-to-end |
 | `web/claim.html` | Household app (installable PWA): in-browser Groth16 proof, works offline and sends the claim when signal returns, EN/ID | ✅ Browser-tested: claim, offline claim, double claim, underfunded, unenrolled card; axe-core WCAG 2.1 AA: 0 violations |

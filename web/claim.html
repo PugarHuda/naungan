@@ -29,7 +29,7 @@
   .note { padding: 12px 14px; border-radius: 12px; font-weight: 600; margin: 14px 0 0; }
   .note.ok { background: var(--accent-soft); color: var(--accent); } .note.bad { background: var(--warn-soft); color: var(--warn); }
   label.opt { display: flex; gap: 10px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); }
-  input[type=text], textarea { width: 100%; font: 15px ui-monospace, monospace; padding: 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); margin-top: 12px; }
+  input[type=text], input[type=password], textarea { width: 100%; font: 15px ui-monospace, monospace; padding: 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); margin-top: 12px; }
   .primary { width: 100%; margin-top: 16px; padding: 16px; font: 700 18px system-ui, sans-serif; border: 0; border-radius: 14px; background: var(--accent); color: var(--surface); cursor: pointer; }
   .primary:disabled { opacity: .5; cursor: wait; }
   .backup { font-size: 13px; color: var(--warn); margin-top: 12px; }
@@ -62,6 +62,13 @@
     <label for="code" data-t="paste"></label>
     <textarea id="code" rows="3" autocomplete="off" spellcheck="false"></textarea>
     <button class="primary" id="openCard" type="button" data-t="open">Open card</button>
+  </section>
+
+  <section class="card" id="pinbox" hidden>
+    <label for="pin" data-t="pinTitle"></label>
+    <input type="password" id="pin" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="off" />
+    <button class="primary" id="pinGo" type="button" data-t="unlock">Unlock card</button>
+    <p class="note" id="pinmsg" aria-live="polite"></p>
   </section>
 
   <section class="card" id="program" hidden>

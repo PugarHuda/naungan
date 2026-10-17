@@ -4,6 +4,7 @@
 import { ethers } from "ethers"
 import { Identity, Group, generateProof } from "@semaphore-protocol/core"
 import { poseidon2 } from "poseidon-lite"
+import { unlock } from "../../lib/cardlock.js"
 
 const T = {
     en: {
@@ -21,7 +22,8 @@ const T = {
         offline: "No signal. Showing the program as saved on this phone at", queued: "Your claim is ready and saved on this phone. It will be sent automatically when you are back online.",
         privacy: "Your name, ID and location never leave this phone. The blockchain only learns that one enrolled household claimed.",
         wallet: "Wallet on this phone", spend: "Send to a cash-out agent or shop. No fees: you do not need any other coin.",
-        to: "Recipient address (0x…)", amt: "Amount in USDC", send: "Send", sent: "Sent", badAmt: "Enter an amount up to your balance"
+        to: "Recipient address (0x…)", amt: "Amount in USDC", send: "Send", sent: "Sent", badAmt: "Enter an amount up to your balance",
+        pinTitle: "This card is locked. Enter the 6-digit PIN your agency gave you.", unlock: "Unlock card", checking: "Checking PIN…", pinBad: "That PIN does not open this card. Check the slip from your agency."
     },
     id: {
         title: "Klaim bantuan Anda", load: "Memuat program…", noCard: "Pindai kartu Naungan dengan kamera ponsel, atau tempel kode kartu di bawah.",
@@ -38,7 +40,8 @@ const T = {
         offline: "Tidak ada sinyal. Menampilkan data program yang tersimpan di ponsel ini pada", queued: "Klaim Anda sudah siap dan tersimpan di ponsel ini. Akan dikirim otomatis saat sinyal kembali.",
         privacy: "Nama, NIK, dan lokasi Anda tidak pernah keluar dari ponsel ini. Blockchain hanya tahu bahwa satu keluarga terdaftar telah klaim.",
         wallet: "Dompet di ponsel ini", spend: "Kirim ke agen tarik tunai atau toko. Tanpa biaya: Anda tidak perlu koin lain.",
-        to: "Alamat penerima (0x…)", amt: "Jumlah USDC", send: "Kirim", sent: "Terkirim", badAmt: "Masukkan jumlah sampai sebesar saldo Anda"
+        to: "Alamat penerima (0x…)", amt: "Jumlah USDC", send: "Kirim", sent: "Terkirim", badAmt: "Masukkan jumlah sampai sebesar saldo Anda",
+        pinTitle: "Kartu ini terkunci. Masukkan PIN 6 angka dari lembaga bantuan Anda.", unlock: "Buka kartu", checking: "Memeriksa PIN…", pinBad: "PIN tidak cocok untuk kartu ini. Periksa lembar PIN dari lembaga Anda."
     }
 }
 let lang = (() => { try { return localStorage.getItem("naungan-lang") } catch { return null } })() || (navigator.language?.startsWith("id") ? "id" : "en")
@@ -60,12 +63,13 @@ const state = { pid: null, identity: null }
 
 function readCard(fragment) {
     const q = new URLSearchParams(fragment.replace(/^#/, ""))
-    const pid = q.get("p"), id = q.get("id")
-    if (!pid || !id || !/^\d+$/.test(pid)) return false
+    const pid = q.get("p"), id = q.get("id"), locked = q.get("e")
+    if (!pid || !(id || locked) || !/^\d+$/.test(pid)) return false
     state.pid = BigInt(pid)
-    state.identity = Identity.import(id) // throws on a corrupted card
-    try { sessionStorage.setItem("naungan-card", fragment) } catch {}
-    return true
+    if (locked) state.locked = locked // PIN-locked card: decrypted on the phone in askPin()
+    else state.identity = Identity.import(id) // throws on a corrupted card
+    try { sessionStorage.setItem("naungan-card", fragment) } catch {} // a locked card stays encrypted here too
+    return locked ? "locked" : true
 }
 
 function render() {
@@ -110,13 +114,39 @@ async function main() {
             const v = $("code").value.trim()
             const frag = v.includes("#") ? v.slice(v.indexOf("#")) : v
             try {
-                if (readCard(frag)) return show("nocard", false), load()
+                const r = readCard(frag)
+                if (r === "locked") return askPin()
+                if (r) return show("nocard", false), load()
             } catch {}
             $("code").setCustomValidity(t("err")), $("code").reportValidity()
         }
         return
     }
+    if (ok === "locked") return askPin()
     await load()
+}
+
+function askPin() {
+    show("nocard", false), show("pinbox")
+    $("pin").focus()
+    $("pinGo").onclick = async () => {
+        const pin = $("pin").value.trim()
+        $("pin").setCustomValidity("")
+        if (!/^[0-9]{6}$/.test(pin)) return $("pin").setCustomValidity(t("pinBad")), $("pin").reportValidity()
+        $("pinGo").disabled = true
+        $("pinmsg").className = "note", $("pinmsg").textContent = t("checking")
+        let secret
+        try {
+            secret = await unlock(state.locked, pin, state.pid)
+        } catch {
+            $("pinmsg").className = "note bad", $("pinmsg").textContent = t("pinBad")
+            $("pinGo").disabled = false
+            return
+        }
+        state.identity = Identity.import(secret)
+        show("pinbox", false)
+        await load().catch((e) => (($("error").textContent = `${t("err")}: ${e.message}`), show("error")))
+    }
 }
 
 const store = {

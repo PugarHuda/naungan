@@ -6,7 +6,7 @@ Privacy-preserving, anticipatory humanitarian cash. Agencies deduplicate their b
 
 ```bash
 npm install
-npm test        # 26 tests: contract (real Groth16 proofs), PSI, GloFAS trigger math, gasless EIP-3009 spend, service input validation
+npm test        # 27 tests: contract (real Groth16 proofs), PSI, GloFAS trigger math, gasless EIP-3009 spend, PIN-locked cards, service input validation
 npm run demo    # Aceh scenario in-process: live GloFAS reading, then a replay of the real Nov 2025 flood
 ```
 
@@ -19,7 +19,7 @@ npm run demo    # Aceh scenario in-process: live GloFAS reading, then a replay o
 | `lib/hazard.js` | GloFAS v4 (via Open-Meteo): Gumbel 1-in-T-year flood from reanalysis, ensemble exceedance probability, replay of past events |
 | `scripts/verify.js` | Source verification on Sourcify (API v2) |
 | `scripts/coordinator.js` | Create a program, add/remove agencies, fund (USDC), refund, status |
-| `scripts/agency.js` | `serve`: answer dedup queries, only from agencies registered on-chain (signed, fresh requests). `enroll`: dedup against peers over HTTP, enroll the rest, print QR claim cards |
+| `scripts/agency.js` | `serve`: answer dedup queries, only from agencies registered on-chain (signed, fresh requests). `enroll`: dedup against peers over HTTP, enroll the rest, print QR claim cards; `--pin` locks each card with a 6-digit PIN on a separate slip (AES-256-GCM under PBKDF2-SHA256, 600k iterations, `lib/cardlock.js`), so a lost or photographed card cannot be claimed |
 | `scripts/oracle.js` | Post the GloFAS trigger for a program (`--watch` hours, `--replay` date, `--dry-run`) |
 | `scripts/relayer.js` | Gas relayer: validates proof shape, simulates the claim, then submits; also sponsors EIP-3009 `transferWithAuthorization` so a paid household can send USDC to a cash-out agent without ever holding ETH (only for Naungan payout wallets); nonce-safe queue, rate limit |
 | `web/index.html` | Landing page with live counters |
@@ -68,4 +68,6 @@ Funding uses Circle's official testnet USDC (`0x036CbD53842c5426634e7929541eC231
 - **Trigger data** is live GloFAS v4 from Copernicus via Open-Meteo. A `--replay` report is labelled `REPLAY` in its on-chain evidence and never presented as a forecast.
 - **Oracle trust** is an M-of-N quorum of keys chosen by the coordinator; each report is re-derivable from the public API and its on-chain evidence string.
 - **Dedup** is semi-honest DDH-PSI over exact and phonetic keys: Fatima/Fatimah and Muhammad/Mohammed match, typo-level variants beyond Soundex do not.
+- **PIN cards** stop casual theft and photo copies; a 6-digit PIN can still be brute-forced offline with real compute (hours per card on a GPU), so a stolen card plus a GPU is the residual risk.
+- **Event history** for the dashboard and relayer comes from the Blockscout indexer (`deployment.json.indexer`), falling back to 200-block RPC windows when it is unreachable.
 - **The relayer** must be reachable from the household's phone; `deployment.json.relayer` points the claim app at it.
