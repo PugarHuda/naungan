@@ -11,7 +11,7 @@ npm run demo    # Aceh end-to-end scenario + public dashboard
 **Live dashboard** (3 terminals):
 ```bash
 npx hardhat node
-npx hardhat run scripts/deploy.js --network localhost && node scripts/serve.js   # → http://localhost:5173
+npx hardhat run scripts/deploy.js --network localhost && node scripts/serve.js   # → http://localhost:5173 (landing) · /dashboard.html
 STEP_DELAY=3000 npx hardhat run scripts/demo.js --network localhost              # watch it fill in
 ```
 
@@ -23,4 +23,5 @@ STEP_DELAY=3000 npx hardhat run scripts/demo.js --network localhost             
 | `lib/psi.js` | DDH-PSI over ristretto255 with phonetic matching |
 | `scripts/demo.js` | Pitch demo (in-process, or against a deployed network) |
 | `scripts/deploy.js` | Deploy + write `web/deployment.json` |
-| `web/index.html` | Public dashboard, chain events only |
+| `web/index.html` | Landing page with live counters |
+| `web/dashboard.html` | Public dashboard, chain events only |
