@@ -7,6 +7,6 @@
   "usdc": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
   "usdcIsCircle": true,
   "semaphore": "0x647787568ADf29dBA55Dbc068C618ECF575b420F",
-  "relayer": "http://localhost:8788",
+  "relayer": "https://naungan.vercel.app",
   "fromBlock": 48245411
 }

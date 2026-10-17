@@ -7,3 +7,6 @@ typechain-types/
 
 cards/
 web/claim.js
+
+.vercel
+.env*

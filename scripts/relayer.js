@@ -14,6 +14,7 @@ const { connect, explain, logs } = require("../lib/chain")
 
 const PORT = Number(process.env.PORT || 8788)
 const PER_MINUTE = Number(process.env.RATE_LIMIT || 10)
+const MAX_BODY = 16e3
 const uint = (v) => typeof v === "string" || typeof v === "number" || typeof v === "bigint" ? BigInt(v) : NaN
 
 /** Strict shape check at the trust boundary; throws on anything that is not a Semaphore v4 proof. */
@@ -51,7 +52,11 @@ function parseTransfer(body) {
 
 const revertName = explain
 
-async function main() {
+/**
+ * The relayer core, independent of the transport: `handle(method, path, ip, raw)` → [status, body].
+ * Served by the Node http server below and by the Vercel function in api/relayer.js.
+ */
+async function createRelayer() {
     const { naungan, wallet, signer, provider, d } = await connect()
     const usdc = new ethers.Contract(d.usdc, ["function transferWithAuthorization(address,address,uint256,uint256,uint256,bytes32,uint8,bytes32,bytes32)"], signer)
     const payees = new Set()
@@ -98,67 +103,73 @@ async function main() {
         queue = job.catch(() => signer.reset()) // a failed send leaves the local nonce ahead of the chain
         return job.then((h) => (settled.set(key, h), h)).finally(() => inFlight.delete(key)) // ponytail: in-memory, grows by one entry per payout
     }
-    const reply = (res, code, body) => {
-        res.writeHead(code, { "content-type": "application/json", "access-control-allow-origin": "*", "access-control-allow-headers": "content-type" })
-        res.end(JSON.stringify(body))
-    }
-
-    http.createServer(async (req, res) => {
-        if (req.method === "OPTIONS") return reply(res, 204, {})
-        if (req.method === "GET" && req.url === "/health")
-            return reply(res, 200, { relayer: wallet.address, balance: ethers.formatEther(await provider.getBalance(wallet.address)), chainId: d.chainId, naungan: d.naungan })
-        if (req.method !== "POST" || !["/relay", "/transfer"].includes(req.url)) return reply(res, 404, { error: "not found" })
-        if (limited(req.socket.remoteAddress)) return reply(res, 429, { error: "too many requests, try again in a minute" })
-
-        let raw = ""
-        for await (const chunk of req) {
-            raw += chunk
-            if (raw.length > 16e3) return reply(res, 413, { error: "body too large" })
-        }
-        if (req.url === "/transfer") {
+    const handle = async (method, url, ip, raw) => {
+        if (method === "OPTIONS") return [204, {}]
+        if (method === "GET" && url === "/health")
+            return [200, { relayer: wallet.address, balance: ethers.formatEther(await provider.getBalance(wallet.address)), chainId: d.chainId, naungan: d.naungan }]
+        if (method !== "POST" || !["/relay", "/transfer"].includes(url)) return [404, { error: "not found" }]
+        if (limited(ip)) return [429, { error: "too many requests, try again in a minute" }]
+        if (raw.length > MAX_BODY) return [413, { error: "body too large" }]
+        if (url === "/transfer") {
             let a
             try {
                 a = parseTransfer(JSON.parse(raw))
             } catch (e) {
-                return reply(res, 400, { error: e.message })
+                return [400, { error: e.message }]
             }
-            if (!(await isPayee(a.from))) return reply(res, 403, { error: "only Naungan payout wallets are sponsored" })
+            if (!(await isPayee(a.from))) return [403, { error: "only Naungan payout wallets are sponsored" }]
             const args = [a.from, a.to, a.value, a.validAfter, a.validBefore, a.nonce, a.v, a.r, a.s]
             try {
                 await usdc.transferWithAuthorization.staticCall(...args)
             } catch (e) {
-                return reply(res, 422, { error: e.reason ?? revertName(e) })
+                return [422, { error: e.reason ?? revertName(e) }]
             }
             try {
                 const txHash = await send(`auth:${a.from}:${a.nonce}`, () => usdc.transferWithAuthorization(...args), "authorization is used or canceled")
                 console.log(`${new Date().toISOString()} transfer ${a.from} → ${a.to} ${ethers.formatUnits(a.value, 6)} USDC · ${txHash}`)
-                return reply(res, 200, { txHash })
+                return [200, { txHash }]
             } catch (e) {
-                return reply(res, e.status ?? 502, { error: e.status ? e.message : revertName(e) })
+                return [e.status ?? 502, { error: e.status ? e.message : revertName(e) }]
             }
         }
         let pid, proof
         try {
             ;({ pid, proof } = parseProof(JSON.parse(raw)))
         } catch (e) {
-            return reply(res, 400, { error: e.message })
+            return [400, { error: e.message }]
         }
         try {
             await naungan.claim.staticCall(pid, proof) // dry run first: never spend gas on a doomed claim
         } catch (e) {
-            return reply(res, 422, { error: revertName(e) })
+            return [422, { error: revertName(e) }]
         }
         try {
             const txHash = await send(`claim:${pid}:${proof.nullifier}`, () => naungan.claim(pid, proof), "AlreadyClaimed")
             payees.add(ethers.getAddress(ethers.toBeHex(proof.message, 20)))
             const p = await naungan.programs(pid)
             console.log(`${new Date().toISOString()} program ${pid} paid ${ethers.getAddress(ethers.toBeHex(proof.message, 20))} · ${txHash}`)
-            reply(res, 200, { txHash, payout: ethers.getAddress(ethers.toBeHex(proof.message, 20)), amount: p.amountPerHousehold.toString() })
+            return [200, { txHash, payout: ethers.getAddress(ethers.toBeHex(proof.message, 20)), amount: p.amountPerHousehold.toString() }]
         } catch (e) {
-            reply(res, e.status ?? 502, { error: e.status ? e.message : revertName(e) })
+            return [e.status ?? 502, { error: e.status ? e.message : revertName(e) }]
         }
+    }
+    // An RPC hiccup inside a request must answer 500, not crash the server with an unhandled rejection.
+    return { handle: (...a) => handle(...a).catch((e) => [500, { error: revertName(e) }]), wallet, d }
+}
+
+const HEADERS = { "content-type": "application/json", "access-control-allow-origin": "*", "access-control-allow-headers": "content-type" }
+
+async function main() {
+    const { handle, wallet, d } = await createRelayer()
+    http.createServer(async (req, res) => {
+        const ip = req.socket.remoteAddress
+        let raw = ""
+        for await (const chunk of req) if (raw.length <= MAX_BODY) raw += chunk // drain, don't break: breaking destroys the socket
+        const [code, body] = await handle(req.method, req.url, ip, raw)
+        res.writeHead(code, HEADERS)
+        res.end(JSON.stringify(body))
     }).listen(PORT, () => console.log(`relayer ${wallet.address} on ${d.network} · http://localhost:${PORT}`))
 }
 
 if (require.main === module) main().catch((e) => (console.error(e.message), process.exit(1)))
-module.exports = { parseProof, parseTransfer }
+module.exports = { parseProof, parseTransfer, createRelayer, HEADERS, MAX_BODY }

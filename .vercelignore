@@ -1,0 +1,8 @@
+.env
+.env.*
+node_modules
+cache
+cards
+.playwright-mcp
+artifacts/build-info
+coverage

@@ -1,0 +1,15 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "web",
+  "functions": {
+    "api/relayer.js": {
+      "includeFiles": "{web/deployment.json,artifacts/contracts/Naungan.sol/Naungan.json,artifacts/@semaphore-protocol/contracts/Semaphore.sol/Semaphore.json}",
+      "maxDuration": 60
+    }
+  },
+  "rewrites": [
+    { "source": "/relay", "destination": "/api/relayer?route=/relay" },
+    { "source": "/transfer", "destination": "/api/relayer?route=/transfer" },
+    { "source": "/health", "destination": "/api/relayer?route=/health" }
+  ]
+}
