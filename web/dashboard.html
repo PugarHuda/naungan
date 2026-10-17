@@ -201,12 +201,44 @@ function select(id) {
   history.replaceState(null, "", `?program=${id}`)
 }
 
+/**
+ * Event history from a Blockscout indexer (one request per 1000 events, no block-range cap), parsed into
+ * the same {args, fragment, blockNumber, index, transactionHash} shape as ethers' EventLog.
+ */
+async function indexed(indexer, contract, fromBlock, toBlock) {
+  const out = [], seen = new Set()
+  for (let b = fromBlock; ; ) {
+      const r = await (await fetch(`${indexer}?module=logs&action=getLogs&fromBlock=${b}&toBlock=${toBlock}&address=${contract.target}`)).json()
+      if (r.status !== "1" && !/no records/i.test(r.message ?? "")) throw new Error(`indexer: ${r.message}`)
+      const rows = Array.isArray(r.result) ? r.result : []
+      for (const l of rows) {
+          const key = l.transactionHash + l.logIndex
+          if (seen.has(key)) continue
+          seen.add(key)
+          const p = contract.interface.parseLog({ topics: l.topics.filter(Boolean), data: l.data })
+          if (p) out.push({ args: p.args, fragment: p.fragment, blockNumber: Number(l.blockNumber), index: Number(l.logIndex), transactionHash: l.transactionHash })
+      }
+      if (rows.length < 1000) return out
+      b = Number(rows.at(-1).blockNumber) // the boundary block is read again; `seen` drops the repeats
+  }
+}
+
 async function tick() {
   await programs()
   if (count === 0n) return
   const p = await c.programs(pid)
-  // ponytail: public RPCs cap eth_getLogs at 200 blocks, so scan forward in chunks from the last block read
+  // Public RPCs cap eth_getLogs at 200 blocks: history comes from the Blockscout indexer in one request,
+  // the newest 200 blocks (its lag margin) and every later tick from the RPC; RPC windows if it is down.
   const head = await c.runner.getBlockNumber()
+  if (next === undefined && d.indexer && head - d.fromBlock > 200) {
+    try {
+      events.push(...(await indexed(d.indexer, c, d.fromBlock, head - 200)))
+      next = head - 199
+    } catch (e) {
+      console.warn(e.message, "; reading the RPC instead")
+      events.length = 0
+    }
+  }
   for (next ??= d.fromBlock; next <= head; next += 200) events.push(...(await c.queryFilter("*", next, Math.min(next + 199, head))))
   const mine = events.filter((e) => e.args?.programId === pid && e.fragment)
   current = mine

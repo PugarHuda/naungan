@@ -9,6 +9,8 @@ const { ethers, run, network } = require("hardhat")
 // Only a local dev chain, where Circle has no contract, gets the MockUSDC test token.
 const CIRCLE_USDC = { baseSepolia: "0x036CbD53842c5426634e7929541eC2318f3dCF7e", sepolia: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238" }
 const EXPLORER = { baseSepolia: "https://sepolia.basescan.org", sepolia: "https://sepolia.etherscan.io" }
+// Blockscout etherscan-compatible API: event history without the RPC 200-block cap (free, no key, CORS open).
+const INDEXER = { baseSepolia: "https://base-sepolia.blockscout.com/api", sepolia: "https://eth-sepolia.blockscout.com/api" }
 
 async function main() {
     const [deployer] = await ethers.getSigners()
@@ -31,6 +33,7 @@ async function main() {
         chainId: Number((await ethers.provider.getNetwork()).chainId),
         rpc: network.config.url ?? "http://127.0.0.1:8545",
         explorer: EXPLORER[network.name] ?? null,
+        indexer: INDEXER[network.name] ?? null,
         naungan: await naungan.getAddress(),
         usdc,
         usdcIsCircle: Boolean(CIRCLE_USDC[network.name]),
