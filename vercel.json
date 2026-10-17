@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm run build",
+  "buildCommand": "npx hardhat compile && npm run build",
   "outputDirectory": "web",
   "functions": {
     "api/relayer.js": {

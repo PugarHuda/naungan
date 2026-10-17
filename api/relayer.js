@@ -11,7 +11,13 @@ module.exports = async (req, res) => {
     let raw = ""
     for await (const chunk of req) if (raw.length <= MAX_BODY) raw += chunk // drain, don't break: breaking destroys the socket
     const path = new URL(req.url, "http://x").searchParams.get("route") ?? "/health"
-    const [code, body] = await (await relayer).handle(req.method, path, ip, raw)
+    let code, body
+    try {
+        ;[code, body] = await (await relayer).handle(req.method, path, ip, raw)
+    } catch (e) {
+        relayer = null // startup failed (RPC down, missing env): retry on the next request
+        ;[code, body] = [503, { error: `relayer unavailable: ${e.message}` }]
+    }
     res.writeHead(code, HEADERS)
     res.end(JSON.stringify(body))
 }
