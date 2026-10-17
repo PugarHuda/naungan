@@ -68,6 +68,6 @@ Funding uses Circle's official testnet USDC (`0x036CbD53842c5426634e7929541eC231
 - **Trigger data** is live GloFAS v4 from Copernicus via Open-Meteo. A `--replay` report is labelled `REPLAY` in its on-chain evidence and never presented as a forecast.
 - **Oracle trust** is an M-of-N quorum of keys chosen by the coordinator; each report is re-derivable from the public API and its on-chain evidence string.
 - **Dedup** is semi-honest DDH-PSI over exact and phonetic keys: Fatima/Fatimah and Muhammad/Mohammed match, typo-level variants beyond Soundex do not.
-- **PIN cards** stop casual theft and photo copies; a 6-digit PIN can still be brute-forced offline with real compute (hours per card on a GPU), so a stolen card plus a GPU is the residual risk.
+- **PIN cards** stop casual theft, photo copies and guessing on the phone (each try costs ~3 s). They do not stop an attacker who has the card and a GPU: a 6-digit PIN falls to an offline search in about a minute. Attempt-limited PIN checks would need a server-side OPRF, which this build does not have.
 - **Event history** for the dashboard and relayer comes from the Blockscout indexer (`deployment.json.indexer`), falling back to 200-block RPC windows when it is unreachable.
 - **The relayer** must be reachable from the household's phone; `deployment.json.relayer` points the claim app at it.
