@@ -3,8 +3,10 @@
   "chainId": 84532,
   "rpc": "https://sepolia.base.org",
   "explorer": "https://sepolia.basescan.org",
-  "naungan": "0x1794e29cc18Ea6832b3Da8A48623c3c4ec603E34",
-  "usdc": "0x083507f71Ab6E0aBCDDF6A0BaAb012F3212Ab04b",
-  "semaphore": "0x7F1fFc96160467Af072bc9a0E9DC246739AcdBdA",
-  "fromBlock": 48224892
+  "naungan": "0xA56D554C9364C332ed361AD01833fA7BAf87c25E",
+  "usdc": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+  "usdcIsCircle": true,
+  "semaphore": "0x647787568ADf29dBA55Dbc068C618ECF575b420F",
+  "relayer": "http://localhost:8788",
+  "fromBlock": 48245411
 }

@@ -158,7 +158,8 @@ async function snapshot(d) {
 async function relay(relayer, job) {
     const res = await fetch(new URL("/relay", relayer), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ programId: job.pid, proof: job.proof }) })
     const body = await res.json()
-    if (!res.ok) throw Object.assign(new Error(body.error === "Underfunded" ? t("underfunded") : body.error === "AlreadyClaimed" ? t("claimed") : body.error), { business: true })
+    // Only a verdict on the proof itself (400/422) is final; 409/429/5xx mean "try again", so a queued claim is kept.
+    if (!res.ok) throw Object.assign(new Error(body.error === "Underfunded" ? t("underfunded") : body.error === "AlreadyClaimed" ? t("claimed") : body.error), { business: res.status === 400 || res.status === 422 })
     return body
 }
 
@@ -184,13 +185,15 @@ async function load() {
         $("txlink").textContent = d.explorer ? t("tx") : body.txHash
         $("bal").textContent = `${ethers.formatUnits(amount, snap.dec)} USDC`
         $("to").textContent = `${t("balance")} ${body.payout}`
-        walletPanel(d)
+        if (body.payout === wallet().address) walletPanel(d, (b) => b >= amount)
     }
 
     // A proof made while offline waits here and is sent the moment the phone is back online.
+    let flushing = false // `online` can fire more than once per reconnect
     const flush = async () => {
         const job = store.get(PENDING)
-        if (!job || job.pid !== state.pid.toString() || !navigator.onLine) return
+        if (flushing || !job || job.pid !== state.pid.toString() || !navigator.onLine) return
+        flushing = true
         try {
             const body = await relay(relayer, job)
             store.del(PENDING)
@@ -198,8 +201,10 @@ async function load() {
         } catch (e) {
             if (e.business) store.del(PENDING), ($("error").textContent = `${t("err")}: ${e.message}`), show("error"), show("queued", false)
         }
+        flushing = false
     }
     window.addEventListener("online", flush)
+    setInterval(flush, 30e3) // also retry a claim held back by a busy or rate-limited relayer
     if (store.get(PENDING)?.pid === state.pid.toString()) {
         show("queued")
         await flush()
@@ -266,13 +271,19 @@ async function load() {
  * The payout wallet holds USDC but no ETH. The household signs an EIP-3009 transferWithAuthorization
  * (Circle USDC supports it natively) and the relayer submits it, so cashing out needs no gas token.
  */
-async function walletPanel(d) {
+async function walletPanel(d, settled = () => true) {
     let key
     try { key = localStorage.getItem("naungan-wallet") } catch {}
     if (!key || !navigator.onLine) return
     const w = new ethers.Wallet(key)
     const token = new ethers.Contract(d.usdc, ERC20, rpc(d))
-    const [bal, dec] = await Promise.all([token.balanceOf(w.address), token.decimals()]).catch(() => [0n, 6])
+    let bal = 0n, dec = 6
+    // Right after a payment, a load-balanced public RPC can still answer from a node a block behind.
+    for (let i = 0; i < 6; i++) {
+        ;[bal, dec] = await Promise.all([token.balanceOf(w.address), token.decimals()]).catch(() => [0n, 6])
+        if (settled(bal)) break
+        await new Promise((r) => setTimeout(r, 2000))
+    }
     if (bal === 0n) return show("wallet", false)
     show("wallet")
     $("wbal").textContent = `${ethers.formatUnits(bal, dec)} USDC`
@@ -305,7 +316,7 @@ async function walletPanel(d) {
             $("wmsg").className = "note ok"
             $("wmsg").textContent = `${t("sent")} ${ethers.formatUnits(value, dec)} USDC → ${to}`
             $("sendAmt").value = ""
-            await walletPanel(d)
+            await walletPanel(d, (b) => b <= bal - value)
         } catch (e) {
             $("wmsg").className = "note bad"
             $("wmsg").textContent = `${t("err")}: ${e.message}`

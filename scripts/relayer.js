@@ -72,7 +72,15 @@ async function main() {
         hits.set(ip, recent)
         return recent.length > PER_MINUTE
     }
-    const send = (submit) => {
+    // The same proof (or authorization) sent twice before the first is mined passes simulation both
+    // times, and the second reverts on-chain at the relayer's expense. One in flight per key.
+    // Settled keys are remembered too: a load-balanced public RPC can answer the simulation from a node
+    // that has not seen our last claim yet, which would let a replayed proof through to revert on-chain.
+    const inFlight = new Set(), settled = new Map()
+    const send = (key, submit, spentError) => {
+        if (settled.has(key)) return Promise.reject(Object.assign(new Error(spentError), { status: 422 }))
+        if (inFlight.has(key)) return Promise.reject(Object.assign(new Error("already being submitted"), { status: 409 }))
+        inFlight.add(key)
         const job = queue.then(async () => {
             let tx
             try {
@@ -88,7 +96,7 @@ async function main() {
             return tx.hash
         })
         queue = job.catch(() => signer.reset()) // a failed send leaves the local nonce ahead of the chain
-        return job
+        return job.then((h) => (settled.set(key, h), h)).finally(() => inFlight.delete(key)) // ponytail: in-memory, grows by one entry per payout
     }
     const reply = (res, code, body) => {
         res.writeHead(code, { "content-type": "application/json", "access-control-allow-origin": "*", "access-control-allow-headers": "content-type" })
@@ -122,11 +130,11 @@ async function main() {
                 return reply(res, 422, { error: e.reason ?? revertName(e) })
             }
             try {
-                const txHash = await send(() => usdc.transferWithAuthorization(...args))
+                const txHash = await send(`auth:${a.from}:${a.nonce}`, () => usdc.transferWithAuthorization(...args), "authorization is used or canceled")
                 console.log(`${new Date().toISOString()} transfer ${a.from} → ${a.to} ${ethers.formatUnits(a.value, 6)} USDC · ${txHash}`)
                 return reply(res, 200, { txHash })
             } catch (e) {
-                return reply(res, 502, { error: revertName(e) })
+                return reply(res, e.status ?? 502, { error: e.status ? e.message : revertName(e) })
             }
         }
         let pid, proof
@@ -141,13 +149,13 @@ async function main() {
             return reply(res, 422, { error: revertName(e) })
         }
         try {
-            const txHash = await send(() => naungan.claim(pid, proof))
+            const txHash = await send(`claim:${pid}:${proof.nullifier}`, () => naungan.claim(pid, proof), "AlreadyClaimed")
             payees.add(ethers.getAddress(ethers.toBeHex(proof.message, 20)))
             const p = await naungan.programs(pid)
             console.log(`${new Date().toISOString()} program ${pid} paid ${ethers.getAddress(ethers.toBeHex(proof.message, 20))} · ${txHash}`)
             reply(res, 200, { txHash, payout: ethers.getAddress(ethers.toBeHex(proof.message, 20)), amount: p.amountPerHousehold.toString() })
         } catch (e) {
-            reply(res, 502, { error: revertName(e) })
+            reply(res, e.status ?? 502, { error: e.status ? e.message : revertName(e) })
         }
     }).listen(PORT, () => console.log(`relayer ${wallet.address} on ${d.network} · http://localhost:${PORT}`))
 }

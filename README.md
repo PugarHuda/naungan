@@ -15,6 +15,7 @@ npm run demo    # Aceh scenario in-process: live GloFAS reading, then a replay o
 | `contracts/Naungan.sol` | Programs with on-chain hazard metadata, M-of-N oracle quorum (24 h freshness), agency allow-list (add/remove), anonymous enrollment, oracle trigger with evidence string, ZK claim with relayer-safe payout binding, per-program pools, season end + refunds |
 | `lib/psi.js` | DDH private set intersection over ristretto255 with name normalisation and phonetic keys |
 | `lib/hazard.js` | GloFAS v4 (via Open-Meteo): Gumbel 1-in-T-year flood from reanalysis, ensemble exceedance probability, replay of past events |
+| `scripts/verify.js` | Source verification on Sourcify (API v2) |
 | `scripts/coordinator.js` | Create a program, add/remove agencies, fund (USDC), refund, status |
 | `scripts/agency.js` | `serve`: answer dedup queries, only from agencies registered on-chain (signed, fresh requests). `enroll`: dedup against peers over HTTP, enroll the rest, print QR claim cards |
 | `scripts/oracle.js` | Post the GloFAS trigger for a program (`--watch` hours, `--replay` date, `--dry-run`) |
@@ -53,8 +54,10 @@ Open a card's QR (or paste its code at `/claim.html`) and claim. The services re
 ```bash
 PRIVATE_KEY=<funded key> npx hardhat run scripts/topup.js --network baseSepolia   # gas for the .env service wallet
 npx hardhat run scripts/deploy.js --network baseSepolia                          # Circle testnet USDC, not a mock
-npx hardhat verify --network baseSepolia <naungan> <semaphore> <usdc>             # Sourcify, no API key
+node scripts/verify.js                                                           # Sourcify API v2, no API key
 ```
+
+Live deployment: Naungan [`0xA56D554C9364C332ed361AD01833fA7BAf87c25E`](https://sepolia.basescan.org/address/0xA56D554C9364C332ed361AD01833fA7BAf87c25E) ([Sourcify exact match](https://repo.sourcify.dev/84532/0xA56D554C9364C332ed361AD01833fA7BAf87c25E)), Semaphore `0x647787568ADf29dBA55Dbc068C618ECF575b420F`. Program #1 has real claims and a gasless spend on its ledger. The claim app needs a relayer the phone can reach: run `node scripts/relayer.js` and set `RELAYER_URL` before deploying.
 
 Funding uses Circle's official testnet USDC (`0x036CbD53842c5426634e7929541eC2318f3dCF7e`); get some at [faucet.circle.com](https://faucet.circle.com). `MockUSDC` exists only for the local dev chain, where Circle has no contract.
 

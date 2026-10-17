@@ -50,7 +50,8 @@ const wait = async (txp) => {
         const oracleList = (a.oracles ?? wallet.address).split(",").map((x) => ethers.getAddress(x.trim()))
         const quorum = a.quorum ? num("quorum", 1, oracleList.length) : 1
         const now = (await wallet.provider.getBlock("latest")).timestamp
-        const hash = await wait(naungan.createProgram(
+        // Read the id from the receipt: a load-balanced public RPC can answer programCount() from a stale node.
+        const tx = await naungan.createProgram(
             oracleList,
             quorum,
             ethers.parseUnits(a.amount, dec),
@@ -58,8 +59,9 @@ const wait = async (txp) => {
             Math.round(num("claim-days", 0.01, 365) * 86400),
             now + Math.round(num("season-days", 1, 3650) * 86400),
             JSON.stringify(meta)
-        ))
-        return console.log(`program ${await naungan.programCount()} created · ${hash}`)
+        )
+        const pid = (await tx.wait()).logs.map((l) => naungan.interface.parseLog(l)).find((e) => e?.name === "ProgramCreated").args.programId
+        return console.log(`program ${pid} created · ${tx.hash}`)
     }
 
     if (cmd === "mint") {
