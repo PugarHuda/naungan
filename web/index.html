@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Naungan Dashboard</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M1 9 8 2l7 7v6H1z' fill='%231f6f5c'/></svg>" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #f6f3ee; --surface: #fffdf9; --ink: #1d2a26; --muted: #66736e; --line: #e4ddd2;
+    --accent: #1f6f5c; --accent-soft: #dcefe8; --warn: #b5541c; --warn-soft: #f8e4d6; --private: #5b4b8a; --private-soft: #ebe6f6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #111715; --surface: #18201d; --ink: #e8efe9; --muted: #93a39c; --line: #26322e;
+      --accent: #5cc4a6; --accent-soft: #173a31; --warn: #f0935a; --warn-soft: #3b2418; --private: #b4a4ec; --private-soft: #2a2442;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 Inter, system-ui, sans-serif; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 28px 16px 60px; }
+  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: baseline; justify-content: space-between; }
+  h1 { font: 600 34px/1.1 Fraunces, Georgia, serif; margin: 0; letter-spacing: -0.01em; }
+  h1 small { display: block; font: 400 14px Inter, sans-serif; color: var(--muted); margin-top: 6px; letter-spacing: 0; }
+  .badge { font: 12px "JetBrains Mono", monospace; color: var(--muted); border: 1px solid var(--line); padding: 4px 10px; border-radius: 99px; }
+  .badge a { color: inherit; }
+  .grid { display: grid; gap: 14px; grid-template-columns: repeat(4, 1fr); margin-top: 24px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }
+  .kpi .label { color: var(--muted); font-size: 13px; }
+  .kpi .value { font: 600 34px/1.1 Fraunces, Georgia, serif; margin-top: 6px; font-variant-numeric: tabular-nums; }
+  .kpi .sub { color: var(--muted); font-size: 12px; margin-top: 4px; }
+  .bar { height: 8px; background: var(--line); border-radius: 99px; overflow: hidden; margin-top: 10px; }
+  .bar > i { display: block; height: 100%; background: var(--accent); width: 0; transition: width .6s; }
+  .hazard { grid-column: span 2; }
+  .hazard.on { border-color: var(--warn); background: var(--warn-soft); }
+  .hazard .bar > i { background: var(--warn); }
+  .status { display: inline-block; font-weight: 600; font-size: 12px; padding: 3px 9px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); }
+  .hazard.on .status { background: var(--warn); color: var(--surface); }
+  .two { display: grid; gap: 14px; grid-template-columns: 1fr 1.4fr; margin-top: 14px; }
+  h2 { font: 600 18px Fraunces, Georgia, serif; margin: 0 0 12px; }
+  .priv li { list-style: none; display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px dashed var(--line); }
+  .priv ul { padding: 0; margin: 0; }
+  .priv .zero { font: 600 13px "JetBrains Mono", monospace; color: var(--private); background: var(--private-soft); padding: 1px 8px; border-radius: 6px; }
+  .feed { max-height: 420px; overflow-y: auto; }
+  .row { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); align-items: start; }
+  .row .dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 6px; background: var(--muted); }
+  .row.Claimed .dot { background: var(--accent); } .row.IndexReported.on .dot { background: var(--warn); }
+  .row.Enrolled .dot, .row.AgencyAdded .dot { background: var(--private); }
+  .row .meta { font: 12px "JetBrains Mono", monospace; color: var(--muted); word-break: break-all; }
+  .row .blk { font: 12px "JetBrains Mono", monospace; color: var(--muted); }
+  .new { animation: flash 1.2s ease-out; }
+  @keyframes flash { from { background: var(--accent-soft); } to { background: transparent; } }
+  .empty { color: var(--muted); padding: 24px 0; text-align: center; }
+  footer { color: var(--muted); font-size: 12px; margin-top: 18px; }
+  @media (max-width: 820px) { .grid { grid-template-columns: 1fr 1fr; } .two { grid-template-columns: 1fr; } }
+  @media (max-width: 480px) { .grid { grid-template-columns: 1fr; } .hazard { grid-column: auto; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Naungan<small>Public accountability for humanitarian cash, with zero personal data on-chain</small></h1>
+    <span class="badge" id="net">connecting…</span>
+  </header>
+
+  <section class="grid">
+    <div class="card kpi"><div class="label">Households enrolled</div><div class="value" id="enrolled">–</div><div class="sub" id="agencies">–</div></div>
+    <div class="card kpi"><div class="label">Unique households paid</div><div class="value" id="paid">–</div><div class="sub">one ZK claim each, enforced by nullifier</div></div>
+    <div class="card kpi hazard" id="hazardCard">
+      <div class="label">Hazard trigger · forecast rainfall</div>
+      <div class="value"><span id="index">–</span> <span style="font-size:16px;color:var(--muted)">/ <span id="threshold">–</span> mm</span></div>
+      <div class="bar"><i id="hazardBar"></i></div>
+      <div class="sub"><span class="status" id="status">Watching</span> <span id="deadline"></span></div>
+    </div>
+    <div class="card kpi" style="grid-column: span 4">
+      <div class="label">Disbursed vs funded</div>
+      <div class="value"><span id="disbursed">–</span> <span style="font-size:16px;color:var(--muted)">/ <span id="funded">–</span> USDC</span></div>
+      <div class="bar"><i id="fundBar"></i></div>
+    </div>
+  </section>
+
+  <section class="two">
+    <div class="card priv">
+      <h2>Never touches the chain</h2>
+      <ul>
+        <li>Names, ID numbers, locations <span class="zero">0</span></li>
+        <li>Which agency serves which household <span class="zero">0</span></li>
+        <li>Link between a household and its payout <span class="zero">0</span></li>
+        <li>Agencies' beneficiary lists (dedup via PSI) <span class="zero">0</span></li>
+      </ul>
+      <p style="color:var(--muted);font-size:13px;margin:14px 0 0">Everything on this page comes from public chain events only. Anyone can rebuild these numbers. Nobody can learn who was helped.</p>
+    </div>
+    <div class="card">
+      <h2>Live ledger</h2>
+      <div class="feed" id="feed"><div class="empty">Waiting for events…</div></div>
+    </div>
+  </section>
+  <footer id="foot"></footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js" integrity="sha384-6Zl0Pc8zjSz8KvmNeXRvUQgY4ryFb+BwDvKCmLYcBME0joAaru491tQgi9B7zsMM" crossorigin="anonymous"></script>
+<script>
+const ABI = [
+  "function programCount() view returns (uint256)",
+  "function programs(uint256) view returns (address coordinator,address oracle,uint256 groupId,uint256 amountPerHousehold,uint256 triggerThreshold,uint256 claimWindow,uint256 claimDeadline,uint256 lastIndex,uint256 enrolled,uint256 funded,uint256 claims)",
+  "event AgencyAdded(uint256 indexed programId, address agency)",
+  "event Enrolled(uint256 indexed programId, address indexed agency, uint256 households)",
+  "event Funded(uint256 indexed programId, address indexed donor, uint256 amount)",
+  "event IndexReported(uint256 indexed programId, uint256 value, bool triggered)",
+  "event Claimed(uint256 indexed programId, uint256 nullifier, address payout)",
+  "event Refunded(uint256 indexed programId, uint256 amount)"
+]
+const $ = (id) => document.getElementById(id)
+const usd = (v) => (Number(v) / 1e6).toLocaleString()
+const short = (h) => h.slice(0, 8) + "…" + h.slice(-4)
+const seen = new Set()
+let d, c, pid, next, events = []
+
+function describe(e) {
+  const a = e.args
+  switch (e.fragment.name) {
+    case "AgencyAdded": return ["Agency joined the program", short(a.agency)]
+    case "Enrolled": return [`${a.households} households enrolled anonymously`, `by agency ${short(a.agency)} · commitments only`]
+    case "Funded": return [`${usd(a.amount)} USDC funded`, `donor ${short(a.donor)}`]
+    case "IndexReported": return [a.triggered ? `Forecast ${a.value} mm: TRIGGER, claims open` : `Forecast ${a.value} mm: below threshold`, "oracle report"]
+    case "Claimed": return ["A household was paid", `nullifier ${short(ethers.toBeHex(a.nullifier))} → ${short(a.payout)}`]
+    case "Refunded": return [`${usd(a.amount)} USDC unclaimed returned`, "after claim window"]
+  }
+}
+
+async function tick() {
+  const count = await c.programCount()
+  if (count === 0n) return
+  if (pid !== count) { pid = count; seen.clear(); $("feed").innerHTML = "" }
+  const p = await c.programs(pid)
+  // ponytail: public RPCs cap eth_getLogs at 200 blocks, so scan forward in chunks from the last block read
+  const head = await c.runner.getBlockNumber()
+  for (next ??= d.fromBlock; next <= head; next += 200) events.push(...(await c.queryFilter("*", next, Math.min(next + 199, head))))
+  const mine = events.filter((e) => e.args?.programId === pid)
+  const agencies = mine.filter((e) => e.fragment.name === "AgencyAdded")
+  const logs = [mine.filter((e) => e.fragment.name !== "AgencyAdded")]
+  const disbursed = p.claims * p.amountPerHousehold
+  $("enrolled").textContent = p.enrolled
+  $("agencies").textContent = `across ${agencies.length} agencies, no shared lists`
+  $("paid").textContent = p.claims
+  $("index").textContent = p.lastIndex
+  $("threshold").textContent = p.triggerThreshold
+  $("hazardBar").style.width = Math.min(100, Number(p.lastIndex) / Number(p.triggerThreshold) * 100) + "%"
+  const on = p.claimDeadline > 0n
+  $("hazardCard").classList.toggle("on", on)
+  $("status").textContent = on ? "TRIGGERED · claims open" : "Watching"
+  $("deadline").textContent = on ? "until " + new Date(Number(p.claimDeadline) * 1000).toLocaleString() : ""
+  $("disbursed").textContent = usd(disbursed)
+  $("funded").textContent = usd(p.funded)
+  $("fundBar").style.width = (p.funded > 0n ? Number(disbursed * 100n / p.funded) : 0) + "%"
+
+  const all = [agencies, ...logs].flat().sort((x, y) => x.blockNumber - y.blockNumber || x.index - y.index)
+  const feed = $("feed")
+  for (const e of all) {
+    const key = e.transactionHash + e.index
+    if (seen.has(key)) continue
+    seen.add(key)
+    const [title, meta] = describe(e)
+    const row = document.createElement("div")
+    row.className = `row ${e.fragment.name} ${e.args.triggered ? "on" : ""} new`
+    const link = d.explorer ? `<a class="blk" href="${d.explorer}/tx/${e.transactionHash}" target="_blank">#${e.blockNumber}</a>` : `<span class="blk">#${e.blockNumber}</span>`
+    row.innerHTML = `<span class="dot"></span><div><div>${title}</div><div class="meta">${meta}</div></div>${link}`
+    feed.prepend(row)
+  }
+}
+
+;(async () => {
+  try {
+    d = await (await fetch("deployment.json", { cache: "no-store" })).json()
+    c = new ethers.Contract(d.naungan, ABI, new ethers.JsonRpcProvider(d.rpc))
+    const addr = d.explorer ? `<a href="${d.explorer}/address/${d.naungan}" target="_blank">${short(d.naungan)}</a>` : short(d.naungan)
+    $("net").innerHTML = `${d.network} · ${addr}`
+    $("foot").textContent = `Contract ${d.naungan} · chain ${d.chainId} · refreshes every 2s`
+    // ponytail: chained timeout so a slow chunked scan never overlaps the next tick
+    const loop = () => tick().catch(console.error).finally(() => setTimeout(loop, 2000))
+    await tick()
+    setTimeout(loop, 2000)
+  } catch (err) {
+    $("net").textContent = "no deployment found: run scripts/deploy.js"
+    console.error(err)
+  }
+})()
+</script>
+</body>
+</html>
