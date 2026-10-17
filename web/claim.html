@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="referrer" content="no-referrer" />
+<title>Naungan Claim</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M1 9 8 2l7 7v6H1z' fill='%231f6f5c'/></svg>" />
+<style>
+  :root { --bg: #f6f3ee; --surface: #fffdf9; --ink: #1d2a26; --muted: #66736e; --line: #e4ddd2; --accent: #1f6f5c; --accent-soft: #dcefe8; --warn: #b5541c; --warn-soft: #f8e4d6; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg: #111715; --surface: #18201d; --ink: #e8efe9; --muted: #93a39c; --line: #26322e; --accent: #5cc4a6; --accent-soft: #173a31; --warn: #f0935a; --warn-soft: #3b2418; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 480px; margin: 0 auto; padding: 20px 16px 48px; }
+  header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+  .logo { display: flex; gap: 8px; align-items: center; font-weight: 700; font-size: 20px; color: inherit; text-decoration: none; }
+  button.link { background: none; border: 1px solid var(--line); color: var(--muted); border-radius: 99px; padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+  h1 { font-size: 26px; line-height: 1.2; margin: 0 0 16px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 18px; margin-bottom: 14px; }
+  dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; }
+  dt { color: var(--muted); font-size: 14px; } dd { margin: 0; font-weight: 600; }
+  .pill { display: inline-block; font-size: 14px; font-weight: 600; padding: 4px 10px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); }
+  .pill.on { background: var(--warn-soft); color: var(--warn); }
+  .note { padding: 12px 14px; border-radius: 12px; font-weight: 600; margin: 14px 0 0; }
+  .note.ok { background: var(--accent-soft); color: var(--accent); } .note.bad { background: var(--warn-soft); color: var(--warn); }
+  label.opt { display: flex; gap: 10px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  input[type=text], textarea { width: 100%; font: 15px ui-monospace, monospace; padding: 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); margin-top: 12px; }
+  .primary { width: 100%; margin-top: 16px; padding: 16px; font: 700 18px system-ui, sans-serif; border: 0; border-radius: 14px; background: var(--accent); color: var(--surface); cursor: pointer; }
+  .primary:disabled { opacity: .5; cursor: wait; }
+  .backup { font-size: 13px; color: var(--warn); margin-top: 12px; }
+  .backup code { display: block; word-break: break-all; margin-top: 6px; color: var(--ink); background: var(--bg); padding: 8px; border-radius: 8px; }
+  .spinner { width: 22px; height: 22px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; flex: none; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .row { display: flex; gap: 12px; align-items: center; }
+  .big { font-size: 34px; font-weight: 800; color: var(--accent); margin: 6px 0 2px; }
+  .to { font: 14px ui-monospace, monospace; color: var(--muted); margin-bottom: 10px; }
+  #txlink { word-break: break-all; font-size: 14px; }
+  .privacy { color: var(--muted); font-size: 14px; }
+  a { color: var(--accent); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <a class="logo" href="./"><svg width="20" height="20" viewBox="0 0 16 16" aria-hidden="true"><path d="M1 9 8 2l7 7v6H1z" fill="var(--accent)"/></svg>Naungan</a>
+    <button class="link" id="lang" type="button">Bahasa Indonesia</button>
+  </header>
+  <h1 data-t="title">Claim your support</h1>
+
+  <section class="card" id="nocard" hidden>
+    <p data-t="noCard"></p>
+    <label for="code" data-t="paste"></label>
+    <textarea id="code" rows="3" autocomplete="off" spellcheck="false"></textarea>
+    <button class="primary" id="openCard" type="button" data-t="open">Open card</button>
+  </section>
+
+  <section class="card" id="program" hidden>
+    <dl>
+      <dt data-t="program"></dt><dd id="pname">…</dd>
+      <dt data-t="amount"></dt><dd id="pamount">–</dd>
+      <dt>GloFAS</dt><dd id="pindex">–</dd>
+    </dl>
+    <p style="margin:14px 0 0"><span class="pill" id="pstatus">–</span></p>
+    <p class="note" id="cardmsg" aria-live="polite"></p>
+  </section>
+
+  <section class="card" id="pay" hidden>
+    <strong data-t="payTo"></strong>
+    <label class="opt"><input type="radio" name="mode" id="modeNew" checked /> <span data-t="newWallet"></span></label>
+    <label class="opt"><input type="radio" name="mode" id="modeOwn" /> <span data-t="ownWallet"></span></label>
+    <input type="text" id="addr" autocomplete="off" spellcheck="false" aria-label="wallet address" />
+    <div class="backup" id="backup" hidden><span data-t="backup"></span><code id="backupKey"></code></div>
+    <button class="primary" id="claim" type="button" data-t="claim">Claim now</button>
+  </section>
+
+  <section class="card row" id="progress" hidden aria-live="polite"><div class="spinner"></div><span id="step"></span></section>
+
+  <section class="card" id="done" hidden>
+    <span class="pill" data-t="done"></span>
+    <div class="big" id="bal"></div>
+    <div class="to" id="to"></div>
+    <a id="txlink" target="_blank" rel="noopener"></a>
+  </section>
+
+  <section class="card note bad" id="error" hidden role="alert"></section>
+  <p class="privacy" data-t="privacy"></p>
+</main>
+<script type="module" src="claim.js"></script>
+</body>
+</html>

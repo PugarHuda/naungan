@@ -24,5 +24,8 @@ module.exports = {
             accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : []
         }
     },
+    // Source verification on Sourcify (no API key); Basescan reads Sourcify-verified sources too.
+    sourcify: { enabled: true },
+    etherscan: { enabled: false },
     mocha: { timeout: 300000 }
 }

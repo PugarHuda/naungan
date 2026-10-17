@@ -4,3 +4,6 @@ cache/
 typechain-types/
 .playwright-mcp/
 .env
+
+cards/
+web/claim.js

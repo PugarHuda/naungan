@@ -124,7 +124,7 @@
   <div class="wrap">
     <a class="logo" href="#"><svg width="22" height="22" viewBox="0 0 16 16" aria-hidden="true"><path d="M1 9 8 2l7 7v6H1z" fill="var(--accent)"/></svg>Naungan</a>
     <div class="links">
-      <a href="#problem">Problem</a><a href="#how">How it works</a><a href="#privacy">Privacy</a><a href="#built">Proof</a>
+      <a href="#problem">Problem</a><a href="#how">How it works</a><a href="#privacy">Privacy</a><a href="#built">Proof</a><a href="claim.html">Claim</a>
     </div>
     <a class="btn primary" href="dashboard.html">Live dashboard →</a>
   </div>
@@ -135,7 +135,7 @@
     <div>
       <div class="eyebrow">Web3 for Social Good 2026 · Tech Track</div>
       <h1>Cash that reaches families <em>before</em> the flood, without exposing who they are.</h1>
-      <p class="lede">Naungan (“shelter” in Indonesian) lets aid agencies avoid paying the same family twice without sharing their lists, opens payouts when a forecast crosses a threshold, and lets donors verify every dollar with zero personal data on-chain.</p>
+      <p class="lede">Naungan (“shelter” in Indonesian) lets aid agencies avoid paying the same family twice without sharing their lists, opens payouts when the GloFAS flood forecast used by the Red Cross crosses a trigger, and lets donors verify every dollar with zero personal data on-chain.</p>
       <div class="ctas">
         <a class="btn primary" href="dashboard.html">See it running on Base →</a>
         <a class="btn ghost" href="https://github.com/PugarHuda/naungan" target="_blank" rel="noopener">View the code</a>
@@ -148,7 +148,7 @@
         <div class="stat"><b id="enrolled">–</b><span>households enrolled anonymously</span></div>
         <div class="stat"><b id="paid">–</b><span>unique households paid by ZK proof</span></div>
       </div>
-      <div class="trig"><span id="trigLabel">Forecast rainfall</span><span class="mono" id="trig">– / – mm</span></div>
+      <div class="trig"><span id="trigLabel">Flood probability (GloFAS)</span><span class="mono" id="trig">– / –%</span></div>
       <div class="zero-line"><span>Names, IDs or locations on-chain</span><span class="mono">0</span></div>
     </div>
   </section>
@@ -175,7 +175,7 @@
     <div class="steps">
       <div class="step"><h3>Private dedup</h3><p>Agencies compare lists with private set intersection. Each learns only “already served?” for its own records. Fatima and Fatimah still match.</p><span class="tag">DDH-PSI · ristretto255</span></div>
       <div class="step"><h3>Anonymous enrollment</h3><p>Each family holds its own credential. Agencies enroll only a cryptographic commitment into the program group.</p><span class="tag">Semaphore v4</span></div>
-      <div class="step"><h3>Anticipatory trigger</h3><p>A forecast oracle reports the hazard index. Crossing the threshold opens claims before the disaster peaks.</p><span class="tag">Oracle → smart contract</span></div>
+      <div class="step"><h3>Anticipatory trigger</h3><p>The oracle reads 51 GloFAS river forecasts and posts the share that exceed the 1-in-5-year flood, with its evidence. Crossing the trigger opens claims days before the peak.</p><span class="tag">GloFAS · Copernicus</span></div>
       <div class="step"><h3>Private claim</h3><p>A family proves “I’m enrolled and haven’t claimed” in zero knowledge. A relayer pays gas, yet can’t redirect the money.</p><span class="tag">Groth16 · nullifiers</span></div>
     </div>
   </div>
@@ -222,7 +222,7 @@
   <div class="wrap">
     <div class="eyebrow">Built, not just pitched</div>
     <h2>A working prototype you can verify yourself.</h2>
-    <p class="intro">Real Groth16 proofs verified on-chain, 11 automated tests covering replay, redirection, wrong scope, pool isolation and refunds.</p>
+    <p class="intro">Real Groth16 proofs generated on the phone and verified on-chain, a gas relayer, an authenticated agency dedup service, a GloFAS flood oracle and 22 automated tests.</p>
     <div class="built">
       <a class="card" href="dashboard.html"><h3>Live dashboard →</h3><p>Totals rebuilt from chain events only, refreshed every two seconds.</p></a>
       <a class="card" id="contractCard" target="_blank" rel="noopener"><h3>Contract on Basescan →</h3><p class="mono" id="contract">…</p></a>
@@ -258,15 +258,15 @@ const $ = (id) => document.getElementById(id)
     $("net").textContent = `Live on ${d.network}`
     const c = new ethers.Contract(d.naungan, [
       "function programCount() view returns (uint256)",
-      "function programs(uint256) view returns (address coordinator, address oracle, uint256 groupId, uint256 amountPerHousehold, uint256 triggerThreshold, uint256 claimWindow, uint256 claimDeadline, uint256 lastIndex, uint256 enrolled, uint256 funded, uint256 claims)"
+      "function programs(uint256) view returns (address coordinator, address oracle, uint256 groupId, uint256 amountPerHousehold, uint256 triggerThreshold, uint256 claimWindow, uint256 claimDeadline, uint256 lastIndex, uint256 enrolled, uint256 funded, uint256 claims, uint256 seasonEnd)"
     ], new ethers.JsonRpcProvider(d.rpc))
     const n = await c.programCount()
     if (n === 0n) return
     const p = await c.programs(n)
     $("enrolled").textContent = p.enrolled
     $("paid").textContent = p.claims
-    $("trig").textContent = `${p.lastIndex} / ${p.triggerThreshold} mm`
-    $("trigLabel").textContent = p.claimDeadline > 0n ? "Trigger fired · claims open" : "Forecast rainfall"
+    $("trig").textContent = `${p.lastIndex}% / ${p.triggerThreshold}%`
+    $("trigLabel").textContent = p.claimDeadline > 0n ? "Trigger fired · claims open" : "Flood probability (GloFAS)"
   } catch (e) {
     console.error(e)
     $("net").textContent = "Deployment unavailable"
