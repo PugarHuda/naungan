@@ -15,7 +15,7 @@ contract Naungan {
 
     struct Program {
         address coordinator;
-        address oracle;
+        uint256 quorum; // fresh above-threshold reports needed from distinct oracles to trigger
         uint256 groupId;
         uint256 amountPerHousehold;
         uint256 triggerThreshold;
@@ -28,6 +28,15 @@ contract Naungan {
         uint256 seasonEnd; // monitoring stops; if never triggered, the pool is refundable after this
     }
 
+    struct Report {
+        uint128 value;
+        uint64 at;
+    }
+
+    uint256 public constant MAX_ORACLES = 16;
+    /// A report counts toward the quorum for this long, so oracles must agree on the same forecast cycle.
+    uint256 public constant REPORT_TTL = 1 days;
+
     ISemaphore public immutable semaphore;
     IERC20 public immutable token;
 
@@ -38,6 +47,9 @@ contract Naungan {
     // Leaves of each program's Semaphore group, in insertion order, so a phone can rebuild the
     // Merkle tree with one eth_call instead of scanning months of logs on a rate-limited RPC.
     mapping(uint256 => uint256[]) internal _members;
+    mapping(uint256 => address[]) internal _oracles;
+    mapping(uint256 => mapping(address => bool)) public isOracle;
+    mapping(uint256 => mapping(address => Report)) public reports;
     // ponytail: own nullifier set instead of semaphore.validateProof, which anyone can call
     // with a leaked proof to burn the nullifier before the real claim lands.
     mapping(uint256 => mapping(uint256 => bool)) public nullifierUsed;
@@ -49,7 +61,8 @@ contract Naungan {
     event Enrolled(uint256 indexed programId, address indexed agency, uint256 households);
     event Funded(uint256 indexed programId, address indexed donor, uint256 amount);
     /// @param evidence how the value was computed (source, forecast run, inputs), recorded for audit.
-    event IndexReported(uint256 indexed programId, uint256 value, bool triggered, string evidence);
+    /// @param agreeing distinct oracles whose fresh report is at or above the threshold, this one included.
+    event IndexReported(uint256 indexed programId, address oracle, uint256 value, uint256 agreeing, bool triggered, string evidence);
     event Claimed(uint256 indexed programId, uint256 nullifier, address payout);
     event Refunded(uint256 indexed programId, uint256 amount);
 
@@ -74,26 +87,37 @@ contract Naungan {
         token = _token;
     }
 
+    /// @param oracles_ independent reporters (e.g. different operators or data pipelines)
+    /// @param quorum how many of them must report at/above the threshold within REPORT_TTL to trigger
     function createProgram(
-        address oracle,
+        address[] calldata oracles_,
+        uint256 quorum,
         uint256 amountPerHousehold,
         uint256 triggerThreshold,
         uint256 claimWindow,
         uint256 seasonEnd,
         string calldata metadata_
     ) external returns (uint256 programId) {
-        if (oracle == address(0) || amountPerHousehold == 0 || claimWindow == 0 || seasonEnd <= block.timestamp) revert BadParams();
+        if (
+            quorum == 0 || quorum > oracles_.length || oracles_.length > MAX_ORACLES || amountPerHousehold == 0 ||
+            triggerThreshold == 0 || claimWindow == 0 || seasonEnd <= block.timestamp
+        ) revert BadParams();
         programId = ++programCount;
+        for (uint256 i; i < oracles_.length; i++) {
+            if (oracles_[i] == address(0) || isOracle[programId][oracles_[i]]) revert BadParams(); // zero or duplicate
+            isOracle[programId][oracles_[i]] = true;
+        }
+        _oracles[programId] = oracles_;
         Program storage p = programs[programId];
         p.coordinator = msg.sender;
-        p.oracle = oracle;
-        p.groupId = semaphore.createGroup(address(this));
+        p.quorum = quorum;
         p.amountPerHousehold = amountPerHousehold;
         p.triggerThreshold = triggerThreshold;
         p.claimWindow = claimWindow;
         p.seasonEnd = seasonEnd;
         metadata[programId] = metadata_;
         emit ProgramCreated(programId, msg.sender, amountPerHousehold, triggerThreshold, metadata_);
+        p.groupId = semaphore.createGroup(address(this)); // external call last (checks-effects-interactions)
     }
 
     function addAgency(uint256 programId, address agency) external {
@@ -114,10 +138,10 @@ contract Naungan {
         if (!isAgency[programId][msg.sender]) revert NotAgency();
         Program storage p = programs[programId];
         if (p.claimDeadline != 0) revert AlreadyTriggered();
-        semaphore.addMembers(p.groupId, commitments);
         for (uint256 i; i < commitments.length; i++) _members[programId].push(commitments[i]);
         p.enrolled += commitments.length;
         emit Enrolled(programId, msg.sender, commitments.length);
+        semaphore.addMembers(p.groupId, commitments); // reverts the whole tx on a duplicate or invalid leaf
     }
 
     function members(uint256 programId) external view returns (uint256[] memory) {
@@ -131,19 +155,32 @@ contract Naungan {
         emit Funded(programId, msg.sender, amount);
     }
 
-    /// @notice Oracle posts a hazard index (scripts/oracle.js: GloFAS ensemble probability, in %,
-    /// that river discharge exceeds the program's return-period flood). Crossing the threshold
-    /// opens the claim window before the disaster peaks.
+    function oracles(uint256 programId) external view returns (address[] memory) {
+        return _oracles[programId];
+    }
+
+    /// @notice An oracle posts a hazard index (scripts/oracle.js: GloFAS ensemble probability, in %,
+    /// that river discharge exceeds the program's return-period flood). Claims open once `quorum`
+    /// distinct oracles hold a fresh report at or above the threshold, so no single key can trigger.
     function reportIndex(uint256 programId, uint256 value, string calldata evidence) external {
         Program storage p = programs[programId];
-        if (msg.sender != p.oracle) revert NotOracle();
+        if (!isOracle[programId][msg.sender]) revert NotOracle();
         if (p.claimDeadline != 0) revert AlreadyTriggered();
         if (block.timestamp > p.seasonEnd) revert SeasonOver();
+        if (value > type(uint128).max) revert BadParams();
+        reports[programId][msg.sender] = Report(uint128(value), uint64(block.timestamp));
         p.lastIndex = value;
-        bool triggered = value >= p.triggerThreshold;
+
+        uint256 agreeing = 0;
+        address[] storage os = _oracles[programId];
+        for (uint256 i; i < os.length; i++) {
+            Report memory r = reports[programId][os[i]];
+            if (r.at != 0 && block.timestamp - r.at <= REPORT_TTL && r.value >= p.triggerThreshold) agreeing++;
+        }
+        bool triggered = agreeing >= p.quorum;
         // Never block the trigger on funding: an early partial payout beats a late full one.
         if (triggered) p.claimDeadline = block.timestamp + p.claimWindow;
-        emit IndexReported(programId, value, triggered, evidence);
+        emit IndexReported(programId, msg.sender, value, agreeing, triggered, evidence);
     }
 
     /// @notice Anyone (e.g. a gas relayer) may submit; the payout address is bound inside

@@ -10,3 +10,17 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+  slither:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      # Static analysis gate: fail the build on any medium or high finding in Naungan.sol.
+      - uses: crytic/slither-action@v0.4.1
+        with:
+          target: contracts/Naungan.sol
+          solc-version: 0.8.28
+          slither-args: --filter-paths node_modules --exclude-dependencies --solc-remaps "@semaphore-protocol/=node_modules/@semaphore-protocol/ @openzeppelin/=node_modules/@openzeppelin/ @zk-kit/=node_modules/@zk-kit/ poseidon-solidity/=node_modules/poseidon-solidity/"
+          fail-on: medium

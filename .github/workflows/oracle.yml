@@ -1,0 +1,29 @@
+# Hosted flood oracle: every 6 hours (GloFAS updates daily), post the GloFAS trigger for each watched
+# program to the deployment in web/deployment.json. No server to keep alive.
+# Setup: repository secret ORACLE_KEY (an oracle address of the program, with a little gas) and
+# repository variable PROGRAMS (comma-separated program ids, e.g. "1").
+name: Oracle
+on:
+  schedule: [{ cron: "17 */6 * * *" }]
+  workflow_dispatch:
+    inputs:
+      program: { description: "Program id (defaults to vars.PROGRAMS)", required: false }
+concurrency: { group: oracle, cancel-in-progress: false } # never two reports racing on one nonce
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    if: ${{ vars.PROGRAMS != '' || inputs.program != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npx hardhat compile
+      - name: Post GloFAS reading
+        env:
+          PRIVATE_KEY: ${{ secrets.ORACLE_KEY }}
+          PROGRAMS: ${{ inputs.program || vars.PROGRAMS }}
+        run: |
+          for p in ${PROGRAMS//,/ }; do
+            node scripts/oracle.js --program "$p" || echo "::warning::program $p: oracle run failed"
+          done

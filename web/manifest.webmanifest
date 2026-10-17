@@ -1,0 +1,13 @@
+{
+  "name": "Naungan Claim",
+  "short_name": "Naungan",
+  "description": "Claim flood cash support privately with your Naungan card.",
+  "start_url": "claim.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f6f3ee",
+  "theme_color": "#1f6f5c",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

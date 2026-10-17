@@ -4,7 +4,7 @@ Privacy-preserving, anticipatory humanitarian cash. Agencies deduplicate their b
 
 ```bash
 npm install
-npm test        # 22 tests: contract (real Groth16 proofs), PSI, GloFAS trigger math, service input validation
+npm test        # 24 tests: contract (real Groth16 proofs), PSI, GloFAS trigger math, service input validation
 npm run demo    # Aceh scenario in-process: live GloFAS reading, then a replay of the real Nov 2025 flood
 ```
 
@@ -12,7 +12,7 @@ npm run demo    # Aceh scenario in-process: live GloFAS reading, then a replay o
 
 | Path | What it does |
 |---|---|
-| `contracts/Naungan.sol` | Programs with on-chain hazard metadata, agency allow-list (add/remove), anonymous enrollment, oracle trigger with evidence string, ZK claim with relayer-safe payout binding, per-program pools, season end + refunds |
+| `contracts/Naungan.sol` | Programs with on-chain hazard metadata, M-of-N oracle quorum (24 h freshness), agency allow-list (add/remove), anonymous enrollment, oracle trigger with evidence string, ZK claim with relayer-safe payout binding, per-program pools, season end + refunds |
 | `lib/psi.js` | DDH private set intersection over ristretto255 with name normalisation and phonetic keys |
 | `lib/hazard.js` | GloFAS v4 (via Open-Meteo): Gumbel 1-in-T-year flood from reanalysis, ensemble exceedance probability, replay of past events |
 | `scripts/coordinator.js` | Create a program, add/remove agencies, fund (USDC), refund, status |
@@ -20,8 +20,9 @@ npm run demo    # Aceh scenario in-process: live GloFAS reading, then a replay o
 | `scripts/oracle.js` | Post the GloFAS trigger for a program (`--watch` hours, `--replay` date, `--dry-run`) |
 | `scripts/relayer.js` | Gas relayer: validates proof shape, simulates the claim, then submits; nonce-safe queue, rate limit |
 | `web/index.html` | Landing page with live counters |
-| `web/dashboard.html` | Public dashboard rebuilt from chain events, oracle evidence, per-program view |
-| `web/claim.html` | Household claim app (EN / Bahasa Indonesia): reads the QR card, proves membership in the browser, claims via the relayer |
+| `web/dashboard.html` | Public dashboard rebuilt from chain events, oracle evidence, per-program view, CSV/JSON audit export |
+| `web/claim.html` + `web/sw.js` | Household claim app (EN / Bahasa Indonesia, installable PWA): reads the QR card, proves membership in the browser, works offline and sends the queued claim when signal returns |
+| `.github/workflows` | CI (tests, build, Slither gate), GitHub Pages, and the hosted oracle running every 6 hours |
 
 ## Run the whole system locally
 
@@ -60,6 +61,6 @@ Funding uses Circle's official testnet USDC (`0x036CbD53842c5426634e7929541eC231
 ## What is real, and its limits
 
 - **Trigger data** is live GloFAS v4 from Copernicus via Open-Meteo. A `--replay` report is labelled `REPLAY` in its on-chain evidence and never presented as a forecast.
-- **One oracle key per program.** Anyone can re-derive the value from the public API and the evidence string, but the contract trusts the oracle address the coordinator chose.
+- **Oracle trust** is an M-of-N quorum of keys chosen by the coordinator; each report is re-derivable from the public API and its on-chain evidence string.
 - **Dedup** is semi-honest DDH-PSI over exact and phonetic keys: Fatima/Fatimah and Muhammad/Mohammed match, typo-level variants beyond Soundex do not.
 - **The relayer** must be reachable from the household's phone; `deployment.json.relayer` points the claim app at it.

@@ -20,7 +20,7 @@ describe("Naungan", () => {
         usdc = await (await ethers.getContractFactory("MockUSDC")).deploy()
         naungan = await (await ethers.getContractFactory("Naungan")).deploy(semaphoreAddr, await usdc.getAddress())
 
-        await naungan.createProgram(oracle.address, USDC(50), 60, 7 * DAY, (await now()) + 90 * DAY, META)
+        await naungan.createProgram([oracle.address], 1, USDC(50), 60, 7 * DAY, (await now()) + 90 * DAY, META)
         programId = 1n
         await naungan.addAgency(programId, agencyA.address)
         await naungan.addAgency(programId, agencyB.address)
@@ -40,9 +40,15 @@ describe("Naungan", () => {
 
     it("validates program parameters", async () => {
         const end = (await now()) + DAY
-        await expect(naungan.createProgram(ethers.ZeroAddress, 1, 60, DAY, end, META)).to.be.revertedWithCustomError(naungan, "BadParams")
-        await expect(naungan.createProgram(oracle.address, 0, 60, DAY, end, META)).to.be.revertedWithCustomError(naungan, "BadParams")
-        await expect(naungan.createProgram(oracle.address, 1, 60, DAY, await now(), META)).to.be.revertedWithCustomError(naungan, "BadParams")
+        const bad = (...args) => expect(naungan.createProgram(...args)).to.be.revertedWithCustomError(naungan, "BadParams")
+        await bad([ethers.ZeroAddress], 1, 1, 60, DAY, end, META) // zero oracle
+        await bad([oracle.address, oracle.address], 2, 1, 60, DAY, end, META) // duplicate oracle
+        await bad([oracle.address], 2, 1, 60, DAY, end, META) // quorum above oracle count
+        await bad([oracle.address], 0, 1, 60, DAY, end, META) // zero quorum
+        await bad(Array.from({ length: 17 }, () => ethers.Wallet.createRandom().address), 1, 1, 60, DAY, end, META) // too many
+        await bad([oracle.address], 1, 0, 60, DAY, end, META) // zero amount
+        await bad([oracle.address], 1, 1, 0, DAY, end, META) // zero threshold would trigger on any report
+        await bad([oracle.address], 1, 1, 60, DAY, await now(), META) // season already over
     })
 
     it("stores hazard metadata and the group leaves on-chain", async () => {
@@ -58,6 +64,14 @@ describe("Naungan", () => {
         await expect(naungan.connect(outsider).enroll(programId, [1n])).to.be.revertedWithCustomError(naungan, "NotAgency")
     })
 
+    it("rejects re-enrolling a household and leaves the member list untouched", async () => {
+        const before = await naungan.members(programId)
+        const semaphore = await ethers.getContractAt("Semaphore", semaphoreAddr)
+        await expect(naungan.connect(agencyB).enroll(programId, [12345n, households[0].commitment])).to.be.revertedWithCustomError(semaphore, "LeafAlreadyExists")
+        expect(await naungan.members(programId)).to.deep.equal(before)
+        expect((await naungan.programs(programId)).enrolled).to.equal(BigInt(before.length))
+    })
+
     it("refuses to fund a program that does not exist", async () => {
         await expect(naungan.connect(donor).fund(999, USDC(1))).to.be.revertedWithCustomError(naungan, "UnknownProgram")
     })
@@ -70,7 +84,7 @@ describe("Naungan", () => {
     it("below-threshold report does not open claims; above-threshold does, with evidence logged", async () => {
         await expect(naungan.connect(outsider).reportIndex(programId, 90, "x")).to.be.revertedWithCustomError(naungan, "NotOracle")
         await expect(naungan.connect(oracle).reportIndex(programId, 12, "GloFAS run 2026-10-17 | 6/51 members"))
-            .to.emit(naungan, "IndexReported").withArgs(programId, 12, false, "GloFAS run 2026-10-17 | 6/51 members")
+            .to.emit(naungan, "IndexReported").withArgs(programId, oracle.address, 12, 0, false, "GloFAS run 2026-10-17 | 6/51 members")
         expect((await naungan.programs(programId)).claimDeadline).to.equal(0n)
         await naungan.connect(oracle).reportIndex(programId, 71, "GloFAS run 2026-10-18 | 36/51 members")
         expect((await naungan.programs(programId)).claimDeadline).to.be.gt(0n)
@@ -134,7 +148,7 @@ describe("Naungan", () => {
     })
 
     it("refunds a program whose season ended without a trigger, and stops reports after it", async () => {
-        await naungan.createProgram(oracle.address, USDC(10), 60, DAY, (await now()) + 30 * DAY, META)
+        await naungan.createProgram([oracle.address], 1, USDC(10), 60, DAY, (await now()) + 30 * DAY, META)
         const pid = await naungan.programCount()
         await naungan.connect(donor).fund(pid, USDC(40))
         await expect(naungan.refundUnclaimed(pid)).to.be.revertedWithCustomError(naungan, "ClaimWindowOpen")
@@ -143,5 +157,20 @@ describe("Naungan", () => {
         const before = await usdc.balanceOf(coordinator.address)
         await naungan.refundUnclaimed(pid)
         expect((await usdc.balanceOf(coordinator.address)) - before).to.equal(USDC(40))
+    })
+    it("needs a quorum of distinct, fresh oracle reports to trigger", async () => {
+        const [, o1, o2, o3] = await ethers.getSigners()
+        await naungan.createProgram([o1.address, o2.address, o3.address], 2, USDC(1), 60, DAY, (await now()) + 30 * DAY, META)
+        const pid = await naungan.programCount()
+        expect(await naungan.oracles(pid)).to.deep.equal([o1.address, o2.address, o3.address])
+        await expect(naungan.connect(o1).reportIndex(pid, 80, "o1")).to.emit(naungan, "IndexReported").withArgs(pid, o1.address, 80, 1, false, "o1")
+        await naungan.connect(o1).reportIndex(pid, 90, "o1 again") // the same oracle twice is still one vote
+        expect((await naungan.programs(pid)).claimDeadline).to.equal(0n)
+        await naungan.connect(o2).reportIndex(pid, 40, "o2 disagrees")
+        expect((await naungan.programs(pid)).claimDeadline).to.equal(0n)
+        await warp(DAY + 60) // o1's report goes stale
+        await expect(naungan.connect(o2).reportIndex(pid, 70, "o2 now agrees")).to.emit(naungan, "IndexReported").withArgs(pid, o2.address, 70, 1, false, "o2 now agrees")
+        await expect(naungan.connect(o3).reportIndex(pid, 65, "o3 agrees")).to.emit(naungan, "IndexReported").withArgs(pid, o3.address, 65, 2, true, "o3 agrees")
+        expect((await naungan.programs(pid)).claimDeadline).to.be.gt(0n)
     })
 })

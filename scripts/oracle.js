@@ -19,16 +19,16 @@ async function once({ naungan, wallet }, pid) {
     const p = await naungan.programs(pid)
     if (p.coordinator === ethers.ZeroAddress) throw new Error(`program ${pid} does not exist`)
     if (p.claimDeadline > 0n) return console.log(`program ${pid}: already triggered`), true
-    if (p.oracle !== wallet.address && !a["dry-run"]) throw new Error(`this key (${wallet.address}) is not program ${pid}'s oracle (${p.oracle})`)
+    if (!a["dry-run"] && !(await naungan.isOracle(pid, wallet.address))) throw new Error(`this key (${wallet.address}) is not an oracle of program ${pid}`)
     const m = await programMeta(naungan, pid)
     const r = a.replay ? await hazard.replay({ ...m, date: a.replay }) : await hazard.assess(m)
-    const fires = BigInt(r.probability) >= p.triggerThreshold
-    console.log(`${new Date().toISOString()} program ${pid} · ${m.name}\n  P(flood) = ${r.probability}% (trigger at ${p.triggerThreshold}%) → ${fires ? "TRIGGER" : "no trigger"}\n  ${r.evidence}`)
-    if (a["dry-run"]) return fires
-    const tx = await naungan.reportIndex(pid, r.probability, r.evidence)
-    await tx.wait()
-    console.log(`  posted: ${tx.hash}`)
-    return fires
+    const above = BigInt(r.probability) >= p.triggerThreshold
+    console.log(`${new Date().toISOString()} program ${pid} · ${m.name}\n  P(flood) = ${r.probability}% (trigger at ${p.triggerThreshold}%) → ${above ? "above trigger" : "below trigger"}\n  ${r.evidence}`)
+    if (a["dry-run"]) return false
+    const rcpt = await (await naungan.reportIndex(pid, r.probability, r.evidence)).wait()
+    const ev = rcpt.logs.map((l) => naungan.interface.parseLog(l)).find((x) => x?.name === "IndexReported")
+    console.log(`  posted: ${rcpt.hash} · ${ev.args.agreeing}/${p.quorum} oracles agree → ${ev.args.triggered ? "CLAIMS OPEN" : "waiting for quorum"}`)
+    return ev.args.triggered
 }
 
 ;(async () => {

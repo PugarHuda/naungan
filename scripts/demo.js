@@ -48,7 +48,7 @@ async function main() {
     await say(`Coordinator creates program: ${PER_HOUSEHOLD} USDC/household, triggers at ≥${TRIGGER}% GloFAS probability of a 1-in-5-year flood`)
     const startBlock = await ethers.provider.getBlockNumber()
     const now = (await ethers.provider.getBlock("latest")).timestamp
-    await send(naungan.createProgram(oracle.address, amount, TRIGGER, 14 * 86400, now + 180 * 86400, JSON.stringify(SITE)))
+    await send(naungan.createProgram([oracle.address], 1, amount, TRIGGER, 14 * 86400, now + 180 * 86400, JSON.stringify(SITE)))
     const pid = await naungan.programCount()
     await send(naungan.addAgency(pid, unhcrSigner.address))
     if (zakatSigner.address !== unhcrSigner.address) await send(naungan.addAgency(pid, zakatSigner.address))

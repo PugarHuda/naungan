@@ -4,10 +4,13 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="referrer" content="no-referrer" />
+<meta name="theme-color" content="#1f6f5c" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="apple-touch-icon" href="icon.svg" />
 <title>Naungan Claim</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M1 9 8 2l7 7v6H1z' fill='%231f6f5c'/></svg>" />
 <style>
-  :root { --bg: #f6f3ee; --surface: #fffdf9; --ink: #1d2a26; --muted: #66736e; --line: #e4ddd2; --accent: #1f6f5c; --accent-soft: #dcefe8; --warn: #b5541c; --warn-soft: #f8e4d6; }
+  :root { --bg: #f6f3ee; --surface: #fffdf9; --ink: #1d2a26; --muted: #5c6863; --line: #e4ddd2; --accent: #1f6f5c; --accent-soft: #dcefe8; --warn: #98440f; --warn-soft: #f8e4d6; }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) { --bg: #111715; --surface: #18201d; --ink: #e8efe9; --muted: #93a39c; --line: #26322e; --accent: #5cc4a6; --accent-soft: #173a31; --warn: #f0935a; --warn-soft: #3b2418; }
   }
@@ -39,6 +42,8 @@
   #txlink { word-break: break-all; font-size: 14px; }
   .privacy { color: var(--muted); font-size: 14px; }
   a { color: var(--accent); }
+  .offline { margin: 10px 0 0; font-size: 14px; color: var(--warn); }
+  #queued { background: var(--accent-soft); color: var(--accent); }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -64,6 +69,7 @@
       <dt>GloFAS</dt><dd id="pindex">–</dd>
     </dl>
     <p style="margin:14px 0 0"><span class="pill" id="pstatus">–</span></p>
+    <p class="offline" id="offline" hidden role="status"></p>
     <p class="note" id="cardmsg" aria-live="polite"></p>
   </section>
 
@@ -75,6 +81,8 @@
     <div class="backup" id="backup" hidden><span data-t="backup"></span><code id="backupKey"></code></div>
     <button class="primary" id="claim" type="button" data-t="claim">Claim now</button>
   </section>
+
+  <section class="card note" id="queued" hidden aria-live="polite" data-t="queued"></section>
 
   <section class="card row" id="progress" hidden aria-live="polite"><div class="spinner"></div><span id="step"></span></section>
 

@@ -18,6 +18,7 @@ const T = {
         backup: "Write down this backup key and keep it safe. Anyone with it controls the money.",
         claim: "Claim now", proving: "Creating your private proof on this phone…", sending: "Sending through the relayer…",
         done: "Paid", balance: "Wallet balance", tx: "View transaction", err: "Something went wrong", underfunded: "The program has no funds left right now. Try again later.",
+        offline: "No signal. Showing the program as saved on this phone at", queued: "Your claim is ready and saved on this phone. It will be sent automatically when you are back online.",
         privacy: "Your name, ID and location never leave this phone. The blockchain only learns that one enrolled household claimed."
     },
     id: {
@@ -32,6 +33,7 @@ const T = {
         backup: "Catat kunci cadangan ini dan simpan baik-baik. Siapa pun yang memilikinya menguasai uangnya.",
         claim: "Klaim sekarang", proving: "Membuat bukti privat di ponsel ini…", sending: "Mengirim lewat relayer…",
         done: "Terbayar", balance: "Saldo dompet", tx: "Lihat transaksi", err: "Terjadi kesalahan", underfunded: "Dana program sedang habis. Coba lagi nanti.",
+        offline: "Tidak ada sinyal. Menampilkan data program yang tersimpan di ponsel ini pada", queued: "Klaim Anda sudah siap dan tersimpan di ponsel ini. Akan dikirim otomatis saat sinyal kembali.",
         privacy: "Nama, NIK, dan lokasi Anda tidak pernah keluar dari ponsel ini. Blockchain hanya tahu bahwa satu keluarga terdaftar telah klaim."
     }
 }
@@ -42,7 +44,7 @@ const show = (id, on = true) => $(id).toggleAttribute("hidden", !on)
 const scopeHash = (pid) => BigInt(ethers.keccak256(ethers.toBeHex(pid, 32))) >> 8n
 
 const ABI = [
-    "function programs(uint256) view returns (address coordinator, address oracle, uint256 groupId, uint256 amountPerHousehold, uint256 triggerThreshold, uint256 claimWindow, uint256 claimDeadline, uint256 lastIndex, uint256 enrolled, uint256 funded, uint256 claims, uint256 seasonEnd)",
+    "function programs(uint256) view returns (address coordinator, uint256 quorum, uint256 groupId, uint256 amountPerHousehold, uint256 triggerThreshold, uint256 claimWindow, uint256 claimDeadline, uint256 lastIndex, uint256 enrolled, uint256 funded, uint256 claims, uint256 seasonEnd)",
     "function metadata(uint256) view returns (string)",
     "function members(uint256) view returns (uint256[])",
     "function nullifierUsed(uint256, uint256) view returns (bool)"
@@ -109,33 +111,98 @@ async function main() {
     await load()
 }
 
+const store = {
+    get: (k) => { try { return JSON.parse(localStorage.getItem(k)) } catch { return null } },
+    set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)) } catch {} },
+    del: (k) => { try { localStorage.removeItem(k) } catch {} }
+}
+const PENDING = "naungan-pending"
+const ARTIFACT = (depth, ext) => `https://snark-artifacts.pse.dev/semaphore/4.13.0/semaphore-${depth}.${ext}`
+const depthOf = (n) => Math.max(1, Math.ceil(Math.log2(Math.max(n, 2))))
+
+/** Live program state, saved on the phone so the card still works when the signal is gone. */
+async function snapshot(d) {
+    const key = `naungan-program-${d.naungan}-${state.pid}`
+    if (!navigator.onLine && store.get(key)) return { ...store.get(key), offline: true }
+    try {
+        const provider = new ethers.JsonRpcProvider(d.rpc, d.chainId, { staticNetwork: true })
+        const c = new ethers.Contract(d.naungan, ABI, provider)
+        const usdc = new ethers.Contract(d.usdc, ERC20, provider)
+        const nullifier = poseidon2([scopeHash(state.pid), state.identity.secretScalar])
+        const [p, metaRaw, members, dec, claimed] = await Promise.all([c.programs(state.pid), c.metadata(state.pid), c.members(state.pid), usdc.decimals(), c.nullifierUsed(state.pid, nullifier)])
+        if (!metaRaw) throw Object.assign(new Error("unknown program"), { fatal: true })
+        const snap = {
+            amount: p.amountPerHousehold.toString(), threshold: p.triggerThreshold.toString(), lastIndex: p.lastIndex.toString(),
+            deadline: p.claimDeadline.toString(), meta: JSON.parse(metaRaw), members: members.map(String), dec: Number(dec), claimed, at: Date.now()
+        }
+        store.set(key, snap)
+        // While there is signal, have the service worker keep the proving keys this group needs (and the next size up).
+        const depth = depthOf(members.length)
+        navigator.serviceWorker?.ready.then((r) => r.active?.postMessage({ type: "prefetch", urls: [depth, depth + 1].flatMap((x) => [ARTIFACT(x, "wasm"), ARTIFACT(x, "zkey")]) }))
+        return { ...snap, offline: false }
+    } catch (e) {
+        const cached = store.get(key)
+        if (e.fatal || !cached) throw e
+        return { ...cached, offline: true }
+    }
+}
+
+async function relay(relayer, job) {
+    const res = await fetch(new URL("/relay", relayer), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ programId: job.pid, proof: job.proof }) })
+    const body = await res.json()
+    if (!res.ok) throw Object.assign(new Error(body.error === "Underfunded" ? t("underfunded") : body.error === "AlreadyClaimed" ? t("claimed") : body.error), { business: true })
+    return body
+}
+
 async function load() {
     show("program")
-    const d = await (await fetch("deployment.json", { cache: "no-store" })).json()
-    const provider = new ethers.JsonRpcProvider(d.rpc, d.chainId, { staticNetwork: true })
-    const c = new ethers.Contract(d.naungan, ABI, provider)
-    const usdc = new ethers.Contract(d.usdc, ERC20, provider)
+    const d = await (await fetch("deployment.json")).json() // the service worker serves the last copy when offline
     const relayer = d.relayer ?? "http://localhost:8788"
-    const [p, metaRaw, members, dec] = await Promise.all([c.programs(state.pid), c.metadata(state.pid), c.members(state.pid), usdc.decimals()])
-    if (!metaRaw) throw new Error("unknown program")
-    const meta = JSON.parse(metaRaw)
-    const nullifier = poseidon2([scopeHash(state.pid), state.identity.secretScalar])
-    const claimed = await c.nullifierUsed(state.pid, nullifier)
+    const snap = await snapshot(d)
+    const amount = BigInt(snap.amount), deadline = BigInt(snap.deadline)
     const now = Math.floor(Date.now() / 1000)
-    const open = p.claimDeadline > 0n && now <= Number(p.claimDeadline)
+    const open = deadline > 0n && now <= Number(deadline)
 
-    $("pname").textContent = meta.name
-    $("pamount").textContent = `${ethers.formatUnits(p.amountPerHousehold, dec)} USDC`
-    $("pstatus").textContent = p.claimDeadline === 0n ? t("watching") : open ? `${t("open_")} · ${t("until")} ${new Date(Number(p.claimDeadline) * 1000).toLocaleString(lang)}` : t("closed")
+    $("pname").textContent = snap.meta.name
+    $("pamount").textContent = `${ethers.formatUnits(amount, snap.dec)} USDC`
+    $("pstatus").textContent = deadline === 0n ? t("watching") : open ? `${t("open_")} · ${t("until")} ${new Date(Number(deadline) * 1000).toLocaleString(lang)}` : t("closed")
     $("pstatus").className = open ? "pill on" : "pill"
-    $("pindex").textContent = `${p.lastIndex}% / ${p.triggerThreshold}%`
+    $("pindex").textContent = `${snap.lastIndex}% / ${snap.threshold}%`
+    if (snap.offline) ($("offline").textContent = `${t("offline")} ${new Date(snap.at).toLocaleString(lang)}`), show("offline")
 
-    const enrolled = members.some((m) => m === state.identity.commitment)
-    const msg = !enrolled ? "notEnrolled" : claimed ? "claimed" : "enrolled"
+    const showPaid = (body) => {
+        show("progress", false), show("pay", false), show("queued", false), show("done")
+        $("txlink").href = d.explorer ? `${d.explorer}/tx/${body.txHash}` : "#"
+        $("txlink").textContent = d.explorer ? t("tx") : body.txHash
+        $("bal").textContent = `${ethers.formatUnits(amount, snap.dec)} USDC`
+        $("to").textContent = `${t("balance")} ${body.payout}`
+    }
+
+    // A proof made while offline waits here and is sent the moment the phone is back online.
+    const flush = async () => {
+        const job = store.get(PENDING)
+        if (!job || job.pid !== state.pid.toString() || !navigator.onLine) return
+        try {
+            const body = await relay(relayer, job)
+            store.del(PENDING)
+            showPaid(body)
+        } catch (e) {
+            if (e.business) store.del(PENDING), ($("error").textContent = `${t("err")}: ${e.message}`), show("error"), show("queued", false)
+        }
+    }
+    window.addEventListener("online", flush)
+    if (store.get(PENDING)?.pid === state.pid.toString()) {
+        show("queued")
+        await flush()
+        return
+    }
+
+    const enrolled = snap.members.includes(state.identity.commitment.toString())
+    const msg = !enrolled ? "notEnrolled" : snap.claimed ? "claimed" : "enrolled"
     $("cardmsg").dataset.t = msg
-    $("cardmsg").className = enrolled && !claimed ? "note ok" : "note bad"
+    $("cardmsg").className = enrolled && !snap.claimed ? "note ok" : "note bad"
     render()
-    if (!enrolled || claimed || !open) return
+    if (!enrolled || snap.claimed || !open) return
 
     show("pay")
     const w = wallet()
@@ -159,28 +226,33 @@ async function load() {
         }
         $("addr").setCustomValidity("")
         $("claim").disabled = true
+        show("error", false)
         show("progress")
+        let job
         try {
             $("step").dataset.t = "proving", render()
-            const fresh = await c.members(state.pid) // the group may have grown since the page loaded
-            const proof = await generateProof(state.identity, new Group(fresh), BigInt(payout), state.pid)
+            // Re-read the group when online (it may have grown); offline, the saved group is still valid
+            // because enrollment freezes when the trigger fires.
+            const members = navigator.onLine ? (await snapshot(d)).members : snap.members
+            const proof = await generateProof(state.identity, new Group(members.map(BigInt)), BigInt(payout), state.pid)
+            job = { pid: state.pid.toString(), proof, payout }
             $("step").dataset.t = "sending", render()
-            const res = await fetch(new URL("/relay", relayer), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ programId: state.pid.toString(), proof }) })
-            const body = await res.json()
-            if (!res.ok) throw new Error(body.error === "Underfunded" ? t("underfunded") : body.error === "AlreadyClaimed" ? t("claimed") : body.error)
-            show("progress", false), show("pay", false), show("done")
-            $("txlink").href = d.explorer ? `${d.explorer}/tx/${body.txHash}` : "#"
-            $("txlink").textContent = d.explorer ? t("tx") : body.txHash
-            $("bal").textContent = `${ethers.formatUnits(await usdc.balanceOf(payout), dec)} USDC`
-            $("to").textContent = `${t("balance")} ${payout}`
+            showPaid(await relay(relayer, job))
         } catch (e) {
             show("progress", false)
+            if (job && !e.business) {
+                store.set(PENDING, job) // no signal: keep the proof, send it automatically later
+                show("pay", false), show("queued")
+                return
+            }
             $("error").textContent = `${t("err")}: ${e.message}`
             show("error")
             $("claim").disabled = false
         }
     }
 }
+
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {})
 
 main().catch((e) => {
     $("error").textContent = `${t("err")}: ${e.message}`

@@ -20,6 +20,7 @@
     "@semaphore-protocol/contracts": "^4.14.4",
     "@semaphore-protocol/core": "^4.14.4",
     "@semaphore-protocol/hardhat": "^4.14.4",
+    "axe-core": "^4.10.2",
     "esbuild": "^0.24.2",
     "ethers": "^6.17.0",
     "hardhat": "^2.29.1",

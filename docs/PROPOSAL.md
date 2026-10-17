@@ -45,8 +45,8 @@ Cash assistance is now a core part of humanitarian response (about 21% of intern
 
 1. **L1 – Private cross-agency dedup.** Agencies run DDH private set intersection over normalised biographic keys with phonetic matching, so *Fatima/Fatimah* and *Muhammad/Mohammed* still match while two different men named Abdul Karim stay separate. Agency A learns only which of *its* households B already serves; B learns only set sizes. The dedup service answers **only agencies registered on-chain for the program**: every query is signed, time-boxed and checked against `isAgency()`, which closes the membership-probing attack an open PSI endpoint would allow.
 2. **L2 – Anonymous enrollment.** Each surviving household gets a Semaphore identity printed as a QR claim card (with a typed fallback code). Agencies enroll only the identity commitment. A coordinator can revoke a compromised agency at any time.
-3. **L3 – Anticipatory trigger on the Red Cross's own data.** The oracle reads the GloFAS v4 river-discharge forecast (Copernicus, via Open-Meteo), fits a Gumbel distribution to 29 years of reanalysis to get the 1-in-5-year flood level for that river cell, and posts the share of the 51 ensemble members that exceed it. This mirrors IFRC Early Action Protocols such as Uganda Red Cross (act at ≥60–70% probability of a 5-year flood). The full computation is written on-chain as an evidence string that anyone can re-derive. Real check: for Krueng Aceh, GloFAS reanalysis peaks at **1,116 m³/s on 23 Nov 2025**, above the 963 m³/s 5-year level, in the floods that left 904,000 people displaced in Aceh.
-4. **L4 – Private claim, public accountability.** The household's phone generates the Groth16 proof locally (the secret never leaves the device and is stripped from the URL). The proof binds the payout address, so the relayer pays gas but cannot redirect funds, and a per-program nullifier enforces one claim per household. The chain records only commitments, nullifiers and totals. Unclaimed funds return after the claim window, or after the season ends without a flood, so donor money is never locked.
+3. **L3 – Anticipatory trigger on the Red Cross's own data.** The oracle reads the GloFAS v4 river-discharge forecast (Copernicus, via Open-Meteo), fits a Gumbel distribution to 29 years of reanalysis to get the 1-in-5-year flood level for that river cell, and posts the share of the ensemble members that exceed it. Claims open only when an M-of-N quorum of independent oracle operators agree within 24 hours, and the oracle runs unattended every 6 hours on GitHub Actions. This mirrors IFRC Early Action Protocols such as Uganda Red Cross (act at ≥60–70% probability of a 5-year flood). The full computation is written on-chain as an evidence string that anyone can re-derive. Real check: for Krueng Aceh, GloFAS reanalysis peaks at **1,116 m³/s on 23 Nov 2025**, above the 963 m³/s 5-year level, in the floods that left 904,000 people displaced in Aceh.
+4. **L4 – Private claim, public accountability.** The household's phone generates the Groth16 proof locally, even with no signal (the app, proving keys and group are cached, and the claim is sent automatically when signal returns), (the secret never leaves the device and is stripped from the URL). The proof binds the payout address, so the relayer pays gas but cannot redirect funds, and a per-program nullifier enforces one claim per household. The chain records only commitments, nullifiers and totals. Unclaimed funds return after the claim window, or after the season ends without a flood, so donor money is never locked.
 
 **Design principles:** no host organisation, no raw data sharing, no crypto skills needed by households, never block a trigger on paperwork, each program's pool isolated from every other's, and the claim app in the household's language (English and Bahasa Indonesia).
 
@@ -62,13 +62,13 @@ Cash assistance is now a core part of humanitarian response (about 21% of intern
 
 | Component | What it does | Status |
 |---|---|---|
-| `contracts/Naungan.sol` | Programs with on-chain hazard metadata, agency add/remove, anonymous enrollment, oracle trigger with evidence, ZK claim with relayer-safe payout, own nullifier set (front-running safe), per-program pools, season end and refunds | ✅ 14 contract tests |
+| `contracts/Naungan.sol` | Programs with on-chain hazard metadata, M-of-N oracle quorum, agency add/remove, anonymous enrollment, oracle trigger with evidence, ZK claim with relayer-safe payout, own nullifier set (front-running safe), per-program pools, season end and refunds | ✅ 15 contract tests; Slither: 0 medium/high |
 | `lib/psi.js` + `scripts/agency.js` | DDH-PSI over ristretto255, served over HTTP to signed, on-chain-registered agencies only; enrollment and QR claim cards | ✅ Tested, attack-tested (unsigned, non-agency, replayed queries rejected) |
 | `lib/hazard.js` + `scripts/oracle.js` | Live GloFAS ensemble probability, Gumbel return levels, labelled replay of past events | ✅ Live data, tested |
 | `scripts/relayer.js` | Validates and simulates each claim before paying gas; nonce-safe queue; rate limit | ✅ Tested end-to-end |
-| `web/claim.html` | Household app: in-browser Groth16 proof, EN/ID, own or new wallet | ✅ Browser-tested: claim, double claim, underfunded, unenrolled card |
-| `web/dashboard.html`, `web/index.html` | Public totals and oracle evidence from chain events only | ✅ XSS-tested with hostile program names and evidence |
-| CI + GitHub Pages | Tests and build on every push; the web apps hosted against the live deployment | ✅ |
+| `web/claim.html` | Household app (installable PWA): in-browser Groth16 proof, works offline and sends the claim when signal returns, EN/ID | ✅ Browser-tested: claim, offline claim, double claim, underfunded, unenrolled card; axe-core WCAG 2.1 AA: 0 violations |
+| `web/dashboard.html`, `web/index.html` | Public totals, oracle evidence and CSV/JSON audit export from chain events only | ✅ XSS- and CSV-injection-tested; WCAG 2.1 AA: 0 violations |
+| CI, Pages, hosted oracle | Tests, build and a Slither gate on every push; web apps on GitHub Pages; the GloFAS oracle runs every 6 hours on GitHub Actions | ✅ |
 
 ## 6. Feasibility & long-term sustainability (15%)
 
@@ -76,16 +76,17 @@ Cash assistance is now a core part of humanitarian response (about 21% of intern
 
 **Pilot:** one Aceh district on the Krueng Aceh cell, an NGO plus a zakat institution, around 200 households. Measured on duplicates avoided, cost per dollar delivered, time from trigger to cash, and enrollment hesitancy.
 
-**Sustainability:** open source (MIT) so any agency can self-host every service. A small per-program coordination fee inside the program budget, never on top of a donation, covers relayer gas (cents per claim on Base) and oracle runs. Governance is a consortium of the participating agencies.
+**Sustainability:** open source (MIT) so any agency can self-host every service. A small per-program coordination fee inside the program budget, never on top of a donation, covers relayer gas and oracle runs. Measured with the Hardhat gas reporter: a ZK claim costs ~337k gas, enrolling a household ~100k, an oracle report ~83k. At Base mainnet gas of 0.006 gwei and ETH at $2,431 (17 Oct 2026) that is about **$0.005 of execution per claim**, so delivering $50 costs under 0.1% in gas, versus 5–15% fees for legacy transfers. Governance is a consortium of the participating agencies.
 
 **Risks and mitigations**
 | Risk | Mitigation in the code today |
 |---|---|
 | Phonetic matching misses variants or over-merges | Two independent keys with birth year as a guard; agencies review flagged matches before enrolling |
 | Small groups weaken anonymity | One group per program across all agencies; the relayer decouples who submits from who is paid |
-| Oracle manipulation | The evidence string makes every report re-derivable from the public GloFAS API; the oracle can be any address, including a Safe multisig; it can only release *pre-committed* funds to *pre-enrolled* households |
+| Oracle manipulation | M-of-N quorum of independent oracle keys with a 24-hour freshness window, so no single key can trigger; every report carries an evidence string re-derivable from the public GloFAS API; it can only release *pre-committed* funds to *pre-enrolled* households |
 | Compromised agency | `removeAgency`, and the dedup service rejects it immediately |
 | Funds stuck if no flood | `seasonEnd`: the pool is refundable after the season |
+| No signal during the flood | The claim app works offline: proving keys and the group are cached, and the proof is queued and sent when signal returns |
 | Off-ramp / liquidity | Circle USDC, the same asset UNHCR distributes and MoneyGram cashes out |
 
 ## 7. Team & ask

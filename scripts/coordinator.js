@@ -2,7 +2,7 @@
 // Program coordinator: create a flood program, manage agencies, fund, refund, inspect.
 //
 //   node scripts/coordinator.js create --name "Krueng Aceh flood · Banda Aceh" --lat 5.55 --lon 95.32 \
-//        --return-period 5 --lead-days 10 --trigger 60 --amount 2 --claim-days 14 --season-days 180 [--oracle 0x..]
+//        --return-period 5 --lead-days 10 --trigger 60 --amount 2 --claim-days 14 --season-days 180 [--oracles 0xA,0xB,0xC --quorum 2]
 //   node scripts/coordinator.js add-agency    --program 1 --agency 0x..
 //   node scripts/coordinator.js remove-agency --program 1 --agency 0x..
 //   node scripts/coordinator.js fund          --program 1 --amount 10        (USDC, approves first)
@@ -15,7 +15,7 @@ const { connect, abi, explain } = require("../lib/chain")
 const { values: a, positionals: [cmd] } = parseArgs({
     allowPositionals: true,
     options: Object.fromEntries(
-        ["program", "agency", "amount", "name", "lat", "lon", "return-period", "lead-days", "trigger", "claim-days", "season-days", "oracle"].map((k) => [k, { type: "string" }])
+        ["program", "agency", "amount", "name", "lat", "lon", "return-period", "lead-days", "trigger", "claim-days", "season-days", "oracles", "quorum"].map((k) => [k, { type: "string" }])
     )
 })
 const need = (...k) => k.forEach((x) => { if (a[x] === undefined) throw new Error(`--${x} is required`) })
@@ -47,9 +47,12 @@ const wait = async (txp) => {
             leadDays: num("lead-days", 1, 30),
             unit: "% of ensemble members above the return-period flood"
         }
+        const oracleList = (a.oracles ?? wallet.address).split(",").map((x) => ethers.getAddress(x.trim()))
+        const quorum = a.quorum ? num("quorum", 1, oracleList.length) : 1
         const now = (await wallet.provider.getBlock("latest")).timestamp
         const hash = await wait(naungan.createProgram(
-            a.oracle ?? wallet.address,
+            oracleList,
+            quorum,
             ethers.parseUnits(a.amount, dec),
             num("trigger", 1, 100),
             Math.round(num("claim-days", 0.01, 365) * 86400),
