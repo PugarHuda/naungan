@@ -2,7 +2,7 @@
 
 Privacy-preserving, anticipatory humanitarian cash. Agencies deduplicate their beneficiary lists without sharing them (private set intersection), enroll households as anonymous Semaphore commitments, a flood oracle opens claims when the **GloFAS** river forecast (the same model IFRC Early Action Protocols trigger on) crosses a return-period threshold, and households claim once from their phone with a zero-knowledge proof. Donors verify every total on-chain, with zero personal data there. Full pitch: [docs/PROPOSAL.md](docs/PROPOSAL.md).
 
-**Try it live (Base Sepolia, Circle testnet USDC):** [landing](https://pugarhuda.github.io/naungan/) · [public dashboard](https://pugarhuda.github.io/naungan/dashboard.html?program=2) · gas relayer [naungan.vercel.app/health](https://naungan.vercel.app/health). One enrolled household card is left unclaimed for reviewers: [open the demo card](https://pugarhuda.github.io/naungan/claim.html#p=2&id=sG0DdcsCNBfd7i%2FIGGuxLmkPFbIN2ydmlblYsEm3rK8%3D) on a phone, tap Claim, and 1 USDC lands in a wallet created on the phone, about 12 s end to end. First come, first served: a second claim is rejected by design.
+**Try it live (Base Sepolia, Circle testnet USDC):** [landing](https://naungan.vercel.app/) · [public dashboard](https://naungan.vercel.app/dashboard.html?program=2) · gas relayer [naungan.vercel.app/health](https://naungan.vercel.app/health). One enrolled household card is left unclaimed for reviewers: [open the demo card](https://naungan.vercel.app/claim.html#p=2&id=sG0DdcsCNBfd7i%2FIGGuxLmkPFbIN2ydmlblYsEm3rK8%3D) on a phone, tap Claim, and 1 USDC lands in a wallet created on the phone, about 12 s end to end. First come, first served: a second claim is rejected by design.
 
 ```bash
 npm install

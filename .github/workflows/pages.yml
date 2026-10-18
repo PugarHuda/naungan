@@ -1,8 +1,8 @@
-# Publishes web/ (landing, dashboard, claim app) to GitHub Pages. The pages read the live
-# deployment from web/deployment.json, so the hosted dashboard shows real chain data.
+# The app is hosted on Vercel (naungan.vercel.app, deployed on every push to main). GitHub Pages
+# only forwards old links there, including printed claim cards with a #p=…&id=… hash.
 name: Pages
 on:
-  push: { branches: [main] }
+  push: { branches: [main], paths: [pages/**, .github/workflows/pages.yml] }
   workflow_dispatch:
 permissions: { contents: read, pages: write, id-token: write }
 concurrency: { group: pages, cancel-in-progress: true }
@@ -12,13 +12,8 @@ jobs:
     environment: { name: github-pages, url: "${{ steps.deployment.outputs.page_url }}" }
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: npm }
-      - run: npm ci
-      - run: npm run build
-      - run: rm -rf web/src
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
-        with: { path: web }
+        with: { path: pages }
       - id: deployment
         uses: actions/deploy-pages@v4

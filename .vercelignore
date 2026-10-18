@@ -6,3 +6,4 @@ cards
 .playwright-mcp
 artifacts/build-info
 coverage
+pages
