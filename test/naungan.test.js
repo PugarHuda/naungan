@@ -2,6 +2,7 @@ const { expect } = require("chai")
 const { ethers, run, network } = require("hardhat")
 const { Identity, Group, generateProof } = require("@semaphore-protocol/core")
 const { poseidon2 } = require("poseidon-lite")
+const { auditClaims } = require("../lib/audit")
 
 const USDC = (n) => BigInt(n) * 10n ** 6n
 const DAY = 24 * 3600
@@ -101,6 +102,23 @@ describe("Naungan", () => {
         // A fresh proof (new randomness, other payout) from the same household is still a double claim
         const again = await proofFor(households[0], outsider.address)
         await expect(naungan.connect(relayer).claim(programId, again)).to.be.revertedWithCustomError(naungan, "AlreadyClaimed")
+    })
+
+    it("anyone can re-verify every payout's proof from the raw transactions", async () => {
+        const events = await naungan.queryFilter(naungan.filters.Claimed(programId))
+        const claims = await Promise.all(events.map(async (e) => ({ nullifier: e.args.nullifier, payout: e.args.payout, tx: await e.getTransaction() })))
+        const args = { programId, members: (await naungan.members(programId)).map(String), claims, contract: await naungan.getAddress() }
+        const [good] = await auditClaims(args)
+        expect(good.ok, JSON.stringify(good.checks)).to.equal(true)
+        // An event claiming another payout, a different group, or another contract's tx must all fail.
+        const [moved] = await auditClaims({ ...args, claims: [{ ...claims[0], payout: outsider.address }] })
+        expect(moved.checks.payout).to.equal(false)
+        const [other] = await auditClaims({ ...args, members: args.members.slice(1) })
+        expect(other.checks.root).to.equal(false)
+        const [elsewhere] = await auditClaims({ ...args, contract: outsider.address })
+        expect([elsewhere.ok, elsewhere.checks.direct]).to.deep.equal([false, false])
+        const [twice] = await auditClaims({ ...args, claims: [claims[0], claims[0]] })
+        expect(twice.checks.unique).to.equal(false)
     })
 
     it("the claim page's nullifier formula matches the circuit", async () => {

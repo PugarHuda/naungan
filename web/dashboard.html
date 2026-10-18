@@ -67,6 +67,7 @@
   .record ol { display: flex; flex-wrap: wrap; gap: 8px; padding: 0; margin: 10px 0 0; }
   .record li { list-style: none; background: var(--bg); border-radius: 10px; padding: 6px 10px; font-size: 13px; }
   .record li.rain { color: var(--muted); }
+  .record li.bad { color: var(--warn); }
   .record b.big { font-size: 22px; }
   .verdict.ok { color: var(--accent); } .verdict.bad { color: var(--warn); }
   .row.IndexReported .meta { word-break: break-word; }
@@ -123,6 +124,13 @@
     <p class="sub" id="recordIntro">Replay this program’s exact trigger over every day of the public reanalysis (GloFAS since 1997, ERA5 rainfall), with the oracles’ own code, in your browser.</p>
     <button class="recheck" id="recordGo" type="button">Replay 30 years</button>
     <div id="recordOut" role="status"></div>
+  </section>
+
+  <section class="card record" aria-labelledby="auditH">
+    <h2 id="auditH">Payout audit</h2>
+    <p class="sub">Don’t trust the contract or this page: re-verify every payout’s zero-knowledge proof from its raw transaction, in your browser. Each must prove a member of the enrolled group, for this program, paid to the address inside the proof, with a nullifier used once. Nobody learns which household claimed.</p>
+    <button class="recheck" id="auditGo" type="button">Verify every payout</button>
+    <div id="auditOut" role="status"></div>
   </section>
 
   <section class="two">
@@ -320,12 +328,14 @@ function select(id) {
   $("hazardLabel").textContent = `Flood probability · ${m.rain ? "GloFAS + GEFS rain" : m.source ? "GloFAS" : "oracle"}${m.returnPeriod ? ` · 1-in-${m.returnPeriod}-year flood · ${m.leadDays}-day lead` : ""}`
   history.replaceState(null, "", `?program=${id}`)
   $("recordOut").replaceChildren()
+  $("auditOut").replaceChildren()
   $("recordGo").hidden = !m.lat // programs without a hazard location have nothing to replay
 }
 
 // Track record: when this program's trigger would have fired over the reanalysis (lib/hazard.js via verify.js).
 async function trackRecord() {
   const id = pid, m = metas[id], out = $("recordOut")
+  if (!m) return out.replaceChildren(el("div", "verdict", "Still connecting to the chain. Try again in a few seconds."))
   $("recordGo").disabled = true
   out.replaceChildren(el("div", "verdict", "Fetching ~30 years of river discharge and rainfall from Open-Meteo…"))
   try {
@@ -346,6 +356,49 @@ async function trackRecord() {
     if (id === pid) out.replaceChildren(el("div", "verdict bad", `Could not load the record (${e.message}). Try again in a minute.`))
   } finally {
     $("recordGo").disabled = false
+  }
+}
+
+// Payout audit: each Claimed event's transaction is fetched and its Groth16 proof verified here
+// (snarkjs + Semaphore's verification keys in audit.js), against the group rebuilt from members().
+async function auditPayouts() {
+  const id = pid, out = $("auditOut")
+  if (id === undefined) return out.replaceChildren(el("div", "verdict", "Still connecting to the chain. Try again in a few seconds."))
+  // `current` can still hold the previous program's events right after a switch.
+  const claimed = current.filter((e) => e.fragment.name === "Claimed" && e.args.programId === id)
+  $("auditGo").disabled = true
+  out.replaceChildren(el("div", "verdict", `Fetching ${claimed.length} transactions and verifying their proofs…`))
+  try {
+    // The contract's own counter says how many Claimed events the ledger must hold for a complete audit.
+    const total = Number((await c.programs(id)).claims)
+    if (id !== pid) return
+    if (!total) return out.replaceChildren(el("div", "verdict", "No payouts in this program yet: nothing to verify."))
+    if (claimed.length < total) return out.replaceChildren(el("div", "verdict", `The ledger is still loading (${claimed.length} of ${total} payouts found). Try again in a few seconds.`))
+    const [{ auditClaims }, members, claims] = await Promise.all([
+      import("./audit.js"),
+      new ethers.Contract(d.naungan, ["function members(uint256) view returns (uint256[])"], c.runner).members(id),
+      Promise.all(claimed.map(async (e) => ({ nullifier: e.args.nullifier, payout: e.args.payout, tx: (await c.runner.getTransaction(e.transactionHash)) ?? { hash: e.transactionHash, to: null, data: "0x" } })))
+    ])
+    const res = await auditClaims({ programId: id, members: members.map(String), claims, contract: d.naungan })
+    if (id !== pid) return
+    const good = res.filter((r) => r.ok).length
+    const head = el("div", `verdict ${good === res.length ? "ok" : "bad"}`)
+    head.append(el("b", "big", `${good} / ${res.length}`), ` payouts verified · group of ${members.length} rebuilt from members(), ${new Set(claims.map((x) => String(x.nullifier))).size} distinct nullifiers`)
+    const NAMES = { direct: "direct claim() call", scope: "this program", payout: "paid to the proof’s address", nullifier: "event matches proof", root: "enrolled group", proof: "Groth16 proof valid", unique: "nullifier used once" }
+    const list = el("ol")
+    for (const r of res) {
+      const failed = Object.entries(r.checks).filter(([, v]) => v !== true).map(([k]) => NAMES[k])
+      const li = el("li", r.ok ? "" : "bad")
+      const a = el(d.explorer ? "a" : "span", null, `${r.ok ? "✓" : "✗"} ${short(r.hash)}`)
+      if (d.explorer) Object.assign(a, { href: `${d.explorer}/tx/${r.hash}`, target: "_blank", rel: "noopener" })
+      li.append(a, r.ok ? "" : ` · failed: ${failed.join(", ")}`)
+      list.append(li)
+    }
+    out.replaceChildren(head, list, el("div", "evidence", "Checks per payout: " + Object.values(NAMES).join(" · ") + "."))
+  } catch (e) {
+    if (id === pid) out.replaceChildren(el("div", "verdict bad", `Could not run the audit (${e.message}). Try again in a minute.`))
+  } finally {
+    $("auditGo").disabled = false
   }
 }
 
@@ -470,6 +523,7 @@ async function tick() {
     c = new ethers.Contract(d.naungan, ABI, new ethers.JsonRpcProvider(d.rpc, d.chainId, { staticNetwork: true }))
     $("prog").onchange = () => select(BigInt($("prog").value))
     $("recordGo").onclick = trackRecord
+    $("auditGo").onclick = auditPayouts
     $("csv").onclick = exportCsv
     $("donate").onsubmit = donate
     $("json").onclick = exportJson

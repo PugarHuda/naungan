@@ -8,6 +8,7 @@ typechain-types/
 cards/
 web/claim.js
 web/verify.js
+web/audit.js
 
 .vercel
 .env*

@@ -207,7 +207,7 @@
         <div class="s-note" id="chartNote">GloFAS 30-day river forecast</div>
       </div>
       <div class="s-tiles">
-        <div class="s-tile"><b id="enrolled">–</b><span>households, no names</span></div>
+        <div class="s-tile"><b id="enrolled">–</b><span>households in <span id="nprog">all</span> programs, no names</span></div>
         <div class="s-tile"><b id="paid">–</b><span>paid · <span id="usd">–</span> USDC</span></div>
       </div>
     </div>
@@ -308,9 +308,9 @@
   <div class="wrap">
     <div class="eyebrow">Built, not just pitched</div>
     <h2 class="big">A working prototype you can verify yourself.</h2>
-    <p class="intro">Real Groth16 proofs generated on the phone and verified on-chain, a hosted gas relayer, an authenticated agency dedup service, two independent flood oracles (GloFAS river discharge and NOAA GEFS rainfall, 2-of-2 quorum) running every 6 hours and 34 automated tests. Anyone can re-run an oracle's computation from the dashboard, in their own browser.</p>
+    <p class="intro">Real Groth16 proofs generated on the phone and verified on-chain, a hosted gas relayer, an authenticated agency dedup service, two independent flood oracles (GloFAS river discharge and NOAA GEFS rainfall, 2-of-2 quorum) running every 6 hours and 35 automated tests. From the dashboard anyone can re-run an oracle's computation, or re-verify every payout's zero-knowledge proof from its raw transaction, in their own browser.</p>
     <div class="built">
-      <a class="panel card" href="dashboard.html"><h3>Live dashboard →</h3><p>Totals rebuilt from chain events only, refreshed every two seconds.</p></a>
+      <a class="panel card" href="dashboard.html"><h3>Live dashboard →</h3><p>Totals rebuilt from chain events only, refreshed every two seconds, with a one-click audit of every payout’s proof.</p></a>
       <a class="panel card" id="contractCard" target="_blank" rel="noopener"><h3>Contract on Basescan →</h3><p class="mono" id="contract">…</p></a>
       <a class="panel card" href="https://github.com/PugarHuda/naungan" target="_blank" rel="noopener"><h3>Source on GitHub →</h3><p>Contracts, PSI library, tests and the full Aceh demo. MIT licensed.</p></a>
     </div>
@@ -415,6 +415,7 @@ function drawRecord(meta, r) {
     const n = Number(await c.programCount())
     if (n === 0) return ($("pname").textContent = "No program yet")
     const [ps, meta] = await Promise.all([Promise.all(Array.from({ length: n }, (_, i) => c.programs(i + 1))), c.metadata(n).then(JSON.parse)])
+    $("nprog").textContent = ps.length // totals span every program, the chart above is the newest one
     $("enrolled").textContent = ps.reduce((s, p) => s + p.enrolled, 0n)
     $("paid").textContent = ps.reduce((s, p) => s + p.claims, 0n)
     $("usd").textContent = Number(ethers.formatUnits(ps.reduce((s, p) => s + p.claims * p.amountPerHousehold, 0n), 6)).toLocaleString("en", { maximumFractionDigits: 2 })
