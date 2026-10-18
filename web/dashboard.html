@@ -691,10 +691,13 @@ async function tick() {
   }
   // Each tick re-reads the last 10 blocks: a load-balanced RPC can report a head that the node serving
   // eth_getLogs has not reached yet, and a plain cursor would skip those events forever. `have` dedups.
+  // Without the indexer that is hundreds of windows: read 5 at a time instead of one after another.
   for (next = Math.max(d.fromBlock, (next ?? d.fromBlock) - 10); next <= head; ) {
-    const to = Math.min(next + 199, head)
-    for (const e of await c.queryFilter("*", next, to)) if (!have.has(e.transactionHash + e.index)) have.add(e.transactionHash + e.index), events.push(e)
-    next = to + 1
+    const spans = []
+    for (let b = next; b <= head && spans.length < 5; b += 200) spans.push([b, Math.min(b + 199, head)])
+    for (const got of await Promise.all(spans.map(([f, t]) => c.queryFilter("*", f, t))))
+      for (const e of got) if (!have.has(e.transactionHash + e.index)) have.add(e.transactionHash + e.index), events.push(e)
+    next = spans.at(-1)[1] + 1
   }
   if (id !== pid) return
   const mine = events.filter((e) => e.args?.programId === pid && e.fragment).sort((x, y) => x.blockNumber - y.blockNumber || x.index - y.index)
