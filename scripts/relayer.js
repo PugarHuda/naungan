@@ -152,7 +152,7 @@ async function createRelayer({ pins = pinCounter() } = {}) {
             } catch (e) {
                 return [400, { error: e.message }]
             }
-            const n = await pins.incr(`pin:${q.programId}:${q.card}`)
+            const n = await pins.incr(`naungan:pin:${q.programId}:${q.card}`) // prefixed: the store may be shared with other apps
             if (n > MAX_TRIES) return [429, { error: "this card is locked after too many PIN attempts: ask your agency for a new card", left: 0 }]
             return [200, { evaluated, left: MAX_TRIES - n }]
         }
