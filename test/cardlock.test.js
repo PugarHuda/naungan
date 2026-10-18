@@ -24,8 +24,8 @@ describe("PIN cards v2: server-checked PIN (OPRF)", () => {
     const secret = "mtVmjtzdGv7EMx4T2Z0D8SYEnZbCdUr4+tLEXGL7/LA="
 
     it("opens only with the right PIN, the right program and the server's key", async () => {
-        const key = await oprfKey("relayer-seed"), seen = []
-        const ask = async (q) => (seen.push(q), evaluate(key, q.point))
+        const seen = [], server = (seed) => async (q) => evaluate(await oprfKey(seed, q.programId, q.card), q.point)
+        const ask = async (q) => (seen.push(q), server("relayer-seed")(q))
         const pin = newPin()
         const blob = await lockV2(secret, pin, 2n, ask)
         expect(blob).to.not.include(secret.slice(0, 8))
@@ -37,12 +37,14 @@ describe("PIN cards v2: server-checked PIN (OPRF)", () => {
         await expect(unlockV2(blob, pin === "000000" ? "000001" : "000000", 2n, ask)).to.be.rejected
         await expect(unlockV2(blob, pin, 3n, ask)).to.be.rejected // another program's card
         // Without the server's key the right PIN is useless: no offline search is possible.
-        const other = await oprfKey("another-seed")
-        await expect(unlockV2(blob, pin, 2n, async (q) => evaluate(other, q.point))).to.be.rejected
+        await expect(unlockV2(blob, pin, 2n, server("another-seed"))).to.be.rejected
+        // Naming a made-up card id to get a fresh try counter yields a key for that id: useless here.
+        await expect(unlockV2(blob, pin, 2n, async (q) => server("relayer-seed")({ ...q, card: "ab".repeat(16) }))).to.be.rejected
+        await expect(unlockV2(blob, pin, 2n, async (q) => server("relayer-seed")({ ...q, programId: "3" }))).to.be.rejected
     })
 
     it("the server rejects bad points and requests, and counts tries per card", async () => {
-        const key = await oprfKey("relayer-seed")
+        const key = await oprfKey("relayer-seed", "2", "ab".repeat(16))
         expect(() => evaluate(key, "00".repeat(32))).to.throw("identity")
         expect(() => evaluate(key, "ff".repeat(32))).to.throw()
         expect(() => evaluate(key, "zz")).to.throw("32 bytes hex")

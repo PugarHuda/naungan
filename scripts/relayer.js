@@ -18,6 +18,7 @@ const { oprfKey, evaluate, MAX_TRIES } = require("../lib/cardlock")
 
 const PORT = Number(process.env.PORT || 8788)
 const PER_MINUTE = Number(process.env.RATE_LIMIT || 10)
+const PIN_PER_MINUTE = 600
 const MAX_BODY = 16e3
 const uint = (v) => typeof v === "string" || typeof v === "number" || typeof v === "bigint" ? BigInt(v) : NaN
 
@@ -90,7 +91,7 @@ function parsePin(body) {
  */
 async function createRelayer({ pins = pinCounter() } = {}) {
     const { naungan, wallet, signer, provider, d } = await connect()
-    const pinKey = await oprfKey(wallet.privateKey) // rotating the relayer key invalidates v2 cards
+    const pinSeed = wallet.privateKey // rotating the relayer key invalidates v2 cards
     const usdc = new ethers.Contract(d.usdc, ["function transferWithAuthorization(address,address,uint256,uint256,uint256,bytes32,uint8,bytes32,bytes32)"], signer)
     const payees = new Set()
     let scanned = (d.fromBlock ?? 0) - 1
@@ -104,11 +105,11 @@ async function createRelayer({ pins = pinCounter() } = {}) {
     const hits = new Map()
     let queue = Promise.resolve() // serialise sends: concurrent claims would otherwise reuse a nonce
 
-    const limited = (ip) => {
-        const now = Date.now(), recent = (hits.get(ip) ?? []).filter((t) => now - t < 60e3)
+    const limited = (key, max = PER_MINUTE) => {
+        const now = Date.now(), recent = (hits.get(key) ?? []).filter((t) => now - t < 60e3)
         recent.push(now)
-        hits.set(ip, recent)
-        return recent.length > PER_MINUTE
+        hits.set(key, recent)
+        return recent.length > max
     }
     // The same proof (or authorization) sent twice before the first is mined passes simulation both
     // times, and the second reverts on-chain at the relayer's expense. One in flight per key.
@@ -140,13 +141,14 @@ async function createRelayer({ pins = pinCounter() } = {}) {
         if (method === "OPTIONS") return [204, {}]
         if (method === "GET" && url === "/health")
             return [200, { relayer: wallet.address, balance: ethers.formatEther(await provider.getBalance(wallet.address)), chainId: d.chainId, naungan: d.naungan, pinStore: pins.store, pinTries: MAX_TRIES }]
-        // Not under the per-IP limit: an agency issues hundreds of cards at once, and the per-card cap is the real bound.
+        // A loose per-IP limit (an agency issues hundreds of cards at once); the per-card cap is the real bound.
         if (method === "POST" && url === "/pin") {
+            if (limited(`pin:${ip}`, PIN_PER_MINUTE)) return [429, { error: "too many requests, try again in a minute" }]
             if (raw.length > 1e3) return [413, { error: "body too large" }]
             let q, evaluated
             try {
                 q = parsePin(JSON.parse(raw))
-                evaluated = evaluate(pinKey, q.point)
+                evaluated = evaluate(await oprfKey(pinSeed, q.programId, q.card), q.point) // key bound to the counted card
             } catch (e) {
                 return [400, { error: e.message }]
             }
