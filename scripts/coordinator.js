@@ -101,7 +101,14 @@ const wait = async (txp) => {
         const amt = ethers.parseUnits(a.amount, dec)
         const bal = await usdc.balanceOf(wallet.address)
         if (bal < amt) throw new Error(`need ${a.amount} USDC, have ${ethers.formatUnits(bal, dec)} (Base Sepolia: faucet.circle.com)`)
-        if ((await usdc.allowance(wallet.address, d.naungan)) < amt) await wait(usdc.approve(d.naungan, amt))
+        if ((await usdc.allowance(wallet.address, d.naungan)) < amt) {
+            await wait(usdc.approve(d.naungan, amt))
+            // A load-balanced public RPC can estimate fund() on a node that has not seen the approval yet.
+            for (let i = 0; (await usdc.allowance(wallet.address, d.naungan)) < amt; i++) {
+                if (i === 20) throw new Error("approval mined but the RPC still reports no allowance; retry in a minute")
+                await new Promise((r) => setTimeout(r, 1000))
+            }
+        }
         return console.log(`funded ${a.amount} USDC · ${await wait(naungan.fund(pid, amt))}`)
     }
     if (cmd === "refund") return console.log(`refunded · ${await wait(naungan.refundUnclaimed(pid))}`)

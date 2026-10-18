@@ -6,7 +6,7 @@ Privacy-preserving, anticipatory humanitarian cash. Agencies deduplicate their b
 
 ```bash
 npm install
-npm test        # 29 tests: contract (real Groth16 proofs), PSI, GloFAS and rainfall trigger math, gasless EIP-3009 spend, PIN-locked cards, service input validation
+npm test        # 30 tests: contract (real Groth16 proofs), PSI, GloFAS and rainfall trigger math, gasless EIP-3009 spend, PIN-locked cards, service input validation
 npm run demo    # Aceh scenario in-process: live GloFAS reading, then a replay of the real Nov 2025 flood
 ```
 
@@ -23,7 +23,7 @@ npm run demo    # Aceh scenario in-process: live GloFAS reading, then a replay o
 | `scripts/oracle.js` | Post the trigger for a program; each oracle runs the pipeline its address is assigned in the program metadata (`--watch` hours, `--replay` date, `--dry-run`, `--source`) |
 | `scripts/relayer.js` | Gas relayer: validates proof shape, simulates the claim, then submits; also sponsors EIP-3009 `transferWithAuthorization` so a paid household can send USDC to a cash-out agent without ever holding ETH (only for Naungan payout wallets); nonce-safe queue, rate limit |
 | `web/index.html` | Landing page with live counters |
-| `web/dashboard.html` | Public dashboard rebuilt from chain events, oracle evidence, per-program view, CSV/JSON audit export |
+| `web/dashboard.html` | Public dashboard rebuilt from chain events, each oracle's reading and evidence, **Re-check in my browser** (re-runs the oracle's own `lib/hazard.js` against Open-Meteo and compares value and full evidence with the chain), per-program view, CSV/JSON audit export |
 | `web/claim.html` + `web/sw.js` | Household claim app (EN / Bahasa Indonesia, installable PWA): reads the QR card, proves membership in the browser, works offline and sends the queued claim when signal returns |
 | `.github/workflows` | CI (tests, build, Slither gate), GitHub Pages, and the hosted oracle running every 6 hours |
 

@@ -5,7 +5,7 @@
   "scripts": {
     "test": "hardhat test",
     "demo": "hardhat run scripts/demo.js",
-    "build": "esbuild web/src/claim.js --bundle --format=esm --platform=browser --target=es2022 --minify --outfile=web/claim.js",
+    "build": "esbuild web/src/claim.js web/src/verify.mjs --bundle --format=esm --platform=browser --target=es2022 --minify --outdir=web",
     "serve": "npm run build && node scripts/serve.js"
   },
   "keywords": [],
