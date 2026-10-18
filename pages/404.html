@@ -2,6 +2,11 @@
 <meta charset="utf-8">
 <title>Naungan has moved</title>
 <meta name="robots" content="noindex">
-<!-- GitHub Pages now only forwards to the Vercel deployment; path, query and hash (claim cards) are kept. -->
-<script>location.replace("https://naungan.vercel.app" + location.pathname.replace(/^\/naungan/, "") + location.search + location.hash)</script>
+<!-- GitHub Pages now only forwards to the Vercel deployment; path, query and hash (claim cards) are kept.
+     The path is resolved against the fixed origin, so a crafted path can never change the host. -->
+<script>
+var p = "/" + location.pathname.replace(/^\/naungan(?=\/|$)/, "").replace(/^\/+/, "")
+var u = new URL(p + location.search + location.hash, "https://naungan.vercel.app/")
+location.replace(u.origin === "https://naungan.vercel.app" ? u.href : "https://naungan.vercel.app/")
+</script>
 <p>Naungan has moved to <a href="https://naungan.vercel.app/">naungan.vercel.app</a>.</p>
