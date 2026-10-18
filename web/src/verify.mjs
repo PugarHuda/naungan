@@ -17,6 +17,24 @@ export function parseEvidence(evidence) {
 }
 
 /** Recompute one report. Returns { value, evidence, comparable, why } where comparable means same inputs. */
+/** Same climatology code the oracles run, for the landing page's live forecast chart. */
+export const { floodThreshold } = hazard
+
+/**
+ * A program's track record over the reanalysis: when each oracle's hazard was above its trigger level
+ * and, for a 2-of-2 program, when both were within the lead time of each other (what the quorum pays on).
+ * Rain episodes are clipped to the GloFAS period so the two counts cover the same years.
+ */
+export async function trackRecord(meta) {
+    const flood = await hazard.floodHistory(meta)
+    if (!meta.rain) return { flood, rain: null, paid: flood.episodes, rainOnly: [] }
+    const rain = await hazard.rainHistory(meta)
+    const inPeriod = rain.episodes.filter((e) => e.end >= flood.from)
+    const paid = hazard.agree(flood.episodes, inPeriod, meta.leadDays)
+    const rainOnly = inPeriod.filter((r) => !hazard.agree([r], flood.episodes, meta.leadDays).length)
+    return { flood, rain: { ...rain, episodes: inPeriod }, paid, rainOnly }
+}
+
 export async function recheck(meta, report) {
     const e = parseEvidence(report.evidence)
     if (!e) throw new Error("this report's evidence names no known pipeline")

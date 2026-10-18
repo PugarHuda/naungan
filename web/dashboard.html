@@ -4,27 +4,27 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Naungan Dashboard</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M1 9 8 2l7 7v6H1z' fill='%23ff3d8b'/></svg>" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M1 9 8 2l7 7v6H1z' fill='%233DD27B'/></svg>" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
-<link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet" />
 <style>
   :root {
-    /* Same dark, neon-lit theme as the landing page. */
-    --bg: #070912; --surface: #111629; --ink: #f3f5ff; --muted: #a3abcc; --line: #232b4a;
-    --accent: #5cc8ff; --accent-soft: #10284a; --warn: #ffb36b; --warn-soft: #3a2414; --private: #c8b6ff; --private-soft: #251f45; --cta: #d9126a;
+    /* Same light theme as the landing page: cool grey, white cards, green for action. */
+    --bg: #F2F3F5; --surface: #FFFFFF; --ink: #0A0B0F; --muted: #5C6268; --line: #DDE1E4;
+    --accent: #157A43; --accent-soft: #E2F2E8; --warn: #A94F0B; --warn-soft: #FBEADB; --private: #5546B8; --private-soft: #ECE9FA; --cta: #3DD27B;
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 Inter, system-ui, sans-serif; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 "Plus Jakarta Sans", system-ui, sans-serif; }
   .wrap { max-width: 1100px; margin: 0 auto; padding: 28px 16px 60px; }
   header { display: flex; flex-wrap: wrap; gap: 12px; align-items: baseline; justify-content: space-between; }
-  h1 { font: 600 34px/1.1 Comfortaa, Inter, sans-serif; margin: 0; letter-spacing: -0.01em; }
-  h1 small { display: block; font: 400 14px Inter, sans-serif; color: var(--muted); margin-top: 6px; letter-spacing: 0; }
+  h1 { font: 600 34px/1.1 "Plus Jakarta Sans", sans-serif; margin: 0; letter-spacing: -0.01em; }
+  h1 small { display: block; font: 400 14px "Plus Jakarta Sans", sans-serif; color: var(--muted); margin-top: 6px; letter-spacing: 0; }
   .badge { font: 12px "JetBrains Mono", monospace; color: var(--muted); border: 1px solid var(--line); padding: 4px 10px; border-radius: 99px; }
   .badge a { color: inherit; }
   .grid { display: grid; gap: 14px; grid-template-columns: repeat(4, 1fr); margin-top: 24px; }
   .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }
   .kpi .label { color: var(--muted); font-size: 13px; }
-  .kpi .value { font: 600 34px/1.1 Comfortaa, Inter, sans-serif; margin-top: 6px; font-variant-numeric: tabular-nums; }
+  .kpi .value { font: 600 34px/1.1 "Plus Jakarta Sans", sans-serif; margin-top: 6px; font-variant-numeric: tabular-nums; }
   .kpi .sub { color: var(--muted); font-size: 12px; margin-top: 4px; }
   .bar { height: 8px; background: var(--line); border-radius: 99px; overflow: hidden; margin-top: 10px; }
   .bar > i { display: block; height: 100%; background: var(--accent); width: 0; transition: width .6s; }
@@ -35,7 +35,7 @@
   .status { display: inline-block; font-weight: 600; font-size: 12px; padding: 3px 9px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); }
   .hazard.on .status { background: var(--warn); color: var(--surface); }
   .two { display: grid; gap: 14px; grid-template-columns: 1fr 1.4fr; margin-top: 14px; }
-  h2 { font: 600 18px Comfortaa, Inter, sans-serif; margin: 0 0 12px; }
+  h2 { font: 600 18px "Plus Jakarta Sans", sans-serif; margin: 0 0 12px; }
   .priv li { list-style: none; display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px dashed var(--line); }
   .priv ul { padding: 0; margin: 0; }
   .priv .zero { font: 600 13px "JetBrains Mono", monospace; color: var(--private); background: var(--private-soft); padding: 1px 8px; border-radius: 6px; }
@@ -59,15 +59,21 @@
   .oracle .who { font-size: 12px; font-weight: 600; }
   .oracle .who .stale { color: var(--muted); font-weight: 400; }
   .oracle .evidence { margin-top: 4px; }
-  .recheck { margin-top: 6px; background: none; border: 1px solid var(--line); color: var(--ink); border-radius: 999px; padding: 4px 12px; font: 600 12px Inter, sans-serif; cursor: pointer; }
+  .recheck { margin-top: 6px; background: none; border: 1px solid var(--line); color: var(--ink); border-radius: 999px; padding: 4px 12px; font: 600 12px "Plus Jakarta Sans", sans-serif; cursor: pointer; }
   .recheck:hover { border-color: var(--accent); }
   .verdict { font-size: 12px; margin-top: 6px; }
-  .verdict.ok { color: #5ee6a8; } .verdict.bad { color: #ff7a8a; }
+  .record { margin-top: 14px; }
+  .record .sub { color: var(--muted); font-size: 13px; margin: 0 0 8px; }
+  .record ol { display: flex; flex-wrap: wrap; gap: 8px; padding: 0; margin: 10px 0 0; }
+  .record li { list-style: none; background: var(--bg); border-radius: 10px; padding: 6px 10px; font-size: 13px; }
+  .record li.rain { color: var(--muted); }
+  .record b.big { font-size: 22px; }
+  .verdict.ok { color: var(--accent); } .verdict.bad { color: var(--warn); }
   .row.IndexReported .meta { word-break: break-word; }
   .donate { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 14px; }
   .donate label { font-size: 13px; color: var(--muted); }
   .donate input { width: 110px; font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
-  .donate button { font: 600 14px Inter, sans-serif; color: #fff; background: var(--cta); border: 0; border-radius: 999px; padding: 8px 18px; cursor: pointer; }
+  .donate button { font: 600 14px "Plus Jakarta Sans", sans-serif; color: var(--ink); background: var(--cta); border: 0; border-radius: 999px; padding: 8px 18px; cursor: pointer; }
   .donate button:disabled { opacity: .6; cursor: wait; }
   #donateMsg { font-size: 13px; color: var(--muted); flex-basis: 100%; word-break: break-word; }
   #donateMsg a { color: var(--accent); }
@@ -110,6 +116,13 @@
         <div id="donateMsg" role="status"></div>
       </form>
     </div>
+  </section>
+
+  <section class="card record" aria-labelledby="recordH">
+    <h2 id="recordH">Track record</h2>
+    <p class="sub" id="recordIntro">Replay this program’s exact trigger over every day of the public reanalysis (GloFAS since 1997, ERA5 rainfall), with the oracles’ own code, in your browser.</p>
+    <button class="recheck" id="recordGo" type="button">Replay 30 years</button>
+    <div id="recordOut" role="status"></div>
   </section>
 
   <section class="two">
@@ -306,6 +319,34 @@ function select(id) {
   const m = metas[id] ?? {}
   $("hazardLabel").textContent = `Flood probability · ${m.rain ? "GloFAS + GEFS rain" : m.source ? "GloFAS" : "oracle"}${m.returnPeriod ? ` · 1-in-${m.returnPeriod}-year flood · ${m.leadDays}-day lead` : ""}`
   history.replaceState(null, "", `?program=${id}`)
+  $("recordOut").replaceChildren()
+  $("recordGo").hidden = !m.lat // programs without a hazard location have nothing to replay
+}
+
+// Track record: when this program's trigger would have fired over the reanalysis (lib/hazard.js via verify.js).
+async function trackRecord() {
+  const id = pid, m = metas[id], out = $("recordOut")
+  $("recordGo").disabled = true
+  out.replaceChildren(el("div", "verdict", "Fetching ~30 years of river discharge and rainfall from Open-Meteo…"))
+  try {
+    const r = await (await import("./verify.js")).trackRecord(m)
+    if (id !== pid) return
+    const years = Math.round((Date.parse(r.flood.to) - Date.parse(r.flood.from)) / 3.156e10)
+    const head = el("div", "verdict")
+    head.append(el("b", "big", String(r.paid.length)), ` payouts in ${years} years (${r.flood.from} to ${r.flood.to})` +
+      (r.rain ? `, both oracles agreeing · ${r.rainOnly.length} rain-only alarms held back by the 2-of-2 quorum` : ""))
+    const list = el("ol")
+    for (const e of [...r.paid.map((e) => [e, ""]), ...r.rainOnly.map((e) => [e, "rain"])].sort((a, b) => a[0].peakDate.localeCompare(b[0].peakDate)))
+      list.append(el("li", e[1], e[1] ? `${e[0].peakDate} · rain only, ${Math.round(e[0].peak)} mm` : `${e[0].peakDate} · pays, river ${Math.round(e[0].peak)} m³/s`))
+    const note = el("div", "evidence", `River above the 1-in-${m.returnPeriod}-year flood (${Math.round(r.flood.threshold)} m³/s)` +
+      (r.rain ? ` and catchment rain above its 1-in-${m.rain.returnPeriod}-year ${m.leadDays}-day total (${Math.round(r.rain.threshold)} mm) within ${m.leadDays} days.` : ".") +
+      " What a perfect forecast would have triggered: how often the program pays, not how skilful forecasts are.")
+    out.replaceChildren(head, list, note)
+  } catch (e) {
+    if (id === pid) out.replaceChildren(el("div", "verdict bad", `Could not load the record (${e.message}). Try again in a minute.`))
+  } finally {
+    $("recordGo").disabled = false
+  }
 }
 
 /**
@@ -428,6 +469,7 @@ async function tick() {
     d = await (await fetch("deployment.json", { cache: "no-store" })).json()
     c = new ethers.Contract(d.naungan, ABI, new ethers.JsonRpcProvider(d.rpc, d.chainId, { staticNetwork: true }))
     $("prog").onchange = () => select(BigInt($("prog").value))
+    $("recordGo").onclick = trackRecord
     $("csv").onclick = exportCsv
     $("donate").onsubmit = donate
     $("json").onclick = exportJson

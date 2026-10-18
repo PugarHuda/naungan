@@ -1,4 +1,4 @@
-// Static server for the web apps: node scripts/serve.js  →  http://localhost:5173
+// Static server for the web apps: node scripts/serve.js  →  http://localhost:5173 (PORT=… to change)
 const http = require("http")
 const fs = require("fs")
 const path = require("path")
@@ -23,4 +23,4 @@ http.createServer((req, res) => {
         res.writeHead(200, { "Content-Type": types[path.extname(file)] || "application/octet-stream", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" })
         res.end(data)
     })
-}).listen(5173, () => console.log("Naungan web → http://localhost:5173"))
+}).listen(process.env.PORT || 5173, function () { console.log(`Naungan web → http://localhost:${this.address().port}`) })

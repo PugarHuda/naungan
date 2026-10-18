@@ -1,5 +1,5 @@
 const { expect } = require("chai")
-const { annualMaxima, returnLevel, exceedance, rolling, assessRain } = require("../lib/hazard")
+const { annualMaxima, returnLevel, exceedance, rolling, assessRain, episodes, agree } = require("../lib/hazard")
 
 describe("hazard (GloFAS trigger math)", () => {
     it("takes yearly peaks from complete years only", () => {
@@ -69,5 +69,18 @@ describe("hazard (GloFAS trigger math)", () => {
         expect(parseEvidence("REPLAY of GloFAS v4 reanalysis via Open-Meteo (not a live forecast) | cell 1,2 | window 2025-11-20..2025-11-29")).to.include({ pipeline: "glofas", replay: "2025-11-20" })
         expect(parseEvidence("REPLAY of ERA5 observed rainfall via Open-Meteo (not a live forecast) | window 2025-11-20..2025-11-29")).to.include({ pipeline: "rain", replay: "2025-11-20" })
         expect(parseEvidence("trust me, 99%")).to.equal(null)
+    })
+
+    it("track record: merges a flood's days into one episode and finds where two oracles agree", () => {
+        const time = ["2000-01-01", "2000-01-02", "2000-01-05", "2000-01-20", "2000-03-01", "2000-03-02"]
+        const river = [500, 1200, 1100, 1300, null, 990]
+        const ep = episodes(time, river, 1000)
+        // 1-2 and 1-5 are 3 days apart (one flood), 1-20 is 15 days later (a second one); null never counts
+        expect(ep).to.deep.equal([
+            { start: "2000-01-02", end: "2000-01-05", peak: 1200, peakDate: "2000-01-02" },
+            { start: "2000-01-20", end: "2000-01-20", peak: 1300, peakDate: "2000-01-20" }
+        ])
+        const rain = [{ start: "2000-01-08", end: "2000-01-09" }, { start: "2000-06-01", end: "2000-06-02" }]
+        expect(agree(ep, rain, 10).map((e) => e.start)).to.deep.equal(["2000-01-02"]) // rain on 1-08 is within 10 days of the first flood, 11 days before the second
     })
 })
