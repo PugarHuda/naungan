@@ -1,7 +1,7 @@
 // Vercel serverless entry for the gas relayer (same core as `node scripts/relayer.js`).
 // vercel.json rewrites /relay, /transfer and /health here; PRIVATE_KEY is a Vercel env var.
-// ponytail: in-flight/settled sets and the rate limit live per warm instance, not globally;
-// Vercel keeps one warm instance at this traffic. PIN try counts (/pin) use Upstash Redis when its env is set.
+// In-flight/settled claims, the rate limit and PIN tries live in Upstash Redis when its env is set
+// (scripts/relayer.js sharedStore), so every instance sees the same state.
 const { createRelayer, HEADERS, MAX_BODY } = require("../scripts/relayer")
 
 let relayer

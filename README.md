@@ -6,7 +6,7 @@ Privacy-preserving, anticipatory humanitarian cash. Agencies deduplicate their b
 
 ```bash
 npm install
-npm test        # 38 tests: contract (real Groth16 proofs), independent payout audit, PSI, GloFAS and rainfall trigger math, gasless EIP-3009 spend, PIN-locked cards with a server-checked OPRF, service input validation
+npm test        # 39 tests: contract (real Groth16 proofs), independent payout audit, PSI, GloFAS and rainfall trigger math, gasless EIP-3009 spend, PIN-locked cards with a server-checked OPRF, service input validation
 npm run demo    # Aceh scenario in-process: live GloFAS reading, then a replay of the real Nov 2025 flood
 ```
 

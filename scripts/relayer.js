@@ -58,24 +58,44 @@ function parseTransfer(body) {
 const revertName = explain
 
 /**
- * Per-card PIN check counter. Upstash Redis (Vercel Marketplace) when its REST env is set, so the limit
- * holds across serverless instances and restarts; otherwise per process, which is what `/health` reports.
+ * State every relayer instance must share: PIN tries per card, per-IP request counts, and which claims
+ * and transfers are in flight or done. Upstash Redis over its REST API when the env is set, so it holds
+ * across serverless instances and restarts; otherwise one process's memory, which `/health` reports.
+ * Keys carry a TTL (seconds) so the store never fills with old entries.
  */
-function pinCounter(env = process.env) {
+function sharedStore(env = process.env) {
     const url = env.KV_REST_API_URL ?? env.UPSTASH_REDIS_REST_URL, token = env.KV_REST_API_TOKEN ?? env.UPSTASH_REDIS_REST_TOKEN
-    if (url && token)
+    if (url && token) {
+        const run = async (...cmds) => {
+            const res = await fetch(`${url}/pipeline`, { method: "POST", headers: { authorization: `Bearer ${token}` }, body: JSON.stringify(cmds) })
+            if (!res.ok) throw new Error(`shared store answered ${res.status}`)
+            const out = await res.json()
+            const bad = out.find((x) => x.error)
+            if (bad) throw new Error(`shared store: ${bad.error}`)
+            return out.map((x) => x.result)
+        }
         return {
             store: "upstash-redis",
-            incr: async (k) => {
-                // A year-long TTL keeps abandoned cards from filling the store; a season is shorter.
-                const res = await fetch(`${url}/pipeline`, { method: "POST", headers: { authorization: `Bearer ${token}` }, body: JSON.stringify([["INCR", k], ["EXPIRE", k, "31536000"]]) })
-                if (!res.ok) throw new Error(`PIN counter store answered ${res.status}`)
-                return Number((await res.json())[0].result)
-            }
+            incr: async (k, ttl) => Number((await run(["INCR", k], ["EXPIRE", k, String(ttl)]))[0]),
+            claim: async (k, v, ttl) => (await run(["SET", k, v, "NX", "EX", String(ttl)]))[0] === "OK", // true only for the first caller
+            set: async (k, v, ttl) => void (await run(["SET", k, v, "EX", String(ttl)])),
+            get: async (k) => (await run(["GET", k]))[0],
+            del: async (k) => void (await run(["DEL", k]))
         }
-    const seen = new Map() // ponytail: one entry per card checked since this process started
-    return { store: "memory", incr: async (k) => (seen.set(k, (seen.get(k) ?? 0) + 1), seen.get(k)) }
+    }
+    const m = new Map() // ponytail: one process's memory; expired entries are dropped when read
+    const live = (k) => { const e = m.get(k); if (e && e.until < Date.now()) m.delete(k); return m.get(k) }
+    const put = (k, v, ttl) => m.set(k, { v, until: Date.now() + ttl * 1e3 })
+    return {
+        store: "memory",
+        incr: async (k, ttl) => { const n = (live(k)?.v ?? 0) + 1; put(k, n, ttl); return n },
+        claim: async (k, v, ttl) => (live(k) ? false : (put(k, v, ttl), true)),
+        set: async (k, v, ttl) => void put(k, v, ttl),
+        get: async (k) => live(k)?.v ?? null,
+        del: async (k) => void m.delete(k)
+    }
 }
+const YEAR = 31536000, MONTH = 2592000
 
 /** /pin request: validated before anything is counted, so garbage never burns a household's tries. */
 function parsePin(body) {
@@ -89,7 +109,7 @@ function parsePin(body) {
  * The relayer core, independent of the transport: `handle(method, path, ip, raw)` → [status, body].
  * Served by the Node http server below and by the Vercel function in api/relayer.js.
  */
-async function createRelayer({ pins = pinCounter() } = {}) {
+async function createRelayer({ store = sharedStore() } = {}) {
     const { naungan, wallet, signer, provider, d } = await connect()
     const pinSeed = wallet.privateKey // rotating the relayer key invalidates v2 cards
     const usdc = new ethers.Contract(d.usdc, ["function transferWithAuthorization(address,address,uint256,uint256,uint256,bytes32,uint8,bytes32,bytes32)"], signer)
@@ -105,20 +125,32 @@ async function createRelayer({ pins = pinCounter() } = {}) {
     const hits = new Map()
     let queue = Promise.resolve() // serialise sends: concurrent claims would otherwise reuse a nonce
 
-    const limited = (key, max = PER_MINUTE) => {
-        const now = Date.now(), recent = (hits.get(key) ?? []).filter((t) => now - t < 60e3)
-        recent.push(now)
-        hits.set(key, recent)
-        return recent.length > max
+    // Per-minute window in the shared store, so a client cannot multiply its quota by landing on more
+    // instances; if the store is unreachable, this instance's own sliding window still applies.
+    const limited = async (key, max = PER_MINUTE) => {
+        try {
+            return (await store.incr(`naungan:rl:${key}:${Math.floor(Date.now() / 60e3)}`, 120)) > max
+        } catch {
+            const now = Date.now(), recent = (hits.get(key) ?? []).filter((t) => now - t < 60e3)
+            recent.push(now)
+            hits.set(key, recent)
+            return recent.length > max
+        }
     }
     // The same proof (or authorization) sent twice before the first is mined passes simulation both
     // times, and the second reverts on-chain at the relayer's expense. One in flight per key.
     // Settled keys are remembered too: a load-balanced public RPC can answer the simulation from a node
     // that has not seen our last claim yet, which would let a replayed proof through to revert on-chain.
+    // Both sets live in the shared store too: another instance may hold the same proof right now.
     const inFlight = new Set(), settled = new Map()
-    const send = (key, submit, spentError) => {
-        if (settled.has(key)) return Promise.reject(Object.assign(new Error(spentError), { status: 422 }))
-        if (inFlight.has(key)) return Promise.reject(Object.assign(new Error("already being submitted"), { status: 409 }))
+    const send = async (key, submit, spentError) => {
+        if (settled.has(key)) throw Object.assign(new Error(spentError), { status: 422 })
+        if (inFlight.has(key)) throw Object.assign(new Error("already being submitted"), { status: 409 })
+        const lock = `naungan:relay:${key}`
+        if (!(await store.claim(lock, "pending", 300))) {
+            const v = await store.get(lock)
+            throw /^0x/.test(v ?? "") ? Object.assign(new Error(spentError), { status: 422 }) : Object.assign(new Error("already being submitted"), { status: 409 })
+        }
         inFlight.add(key)
         const job = queue.then(async () => {
             let tx
@@ -135,15 +167,25 @@ async function createRelayer({ pins = pinCounter() } = {}) {
             return tx.hash
         })
         queue = job.catch(() => signer.reset()) // a failed send leaves the local nonce ahead of the chain
-        return job.then((h) => (settled.set(key, h), h)).finally(() => inFlight.delete(key)) // ponytail: in-memory, grows by one entry per payout
+        try {
+            const h = await job
+            settled.set(key, h) // ponytail: in-memory copy, grows by one entry per payout
+            await store.set(lock, h, MONTH).catch(() => {}) // the chain itself rejects a replay after this anyway
+            return h
+        } catch (e) {
+            await store.del(lock).catch(() => {}) // failed: let the household retry
+            throw e
+        } finally {
+            inFlight.delete(key)
+        }
     }
     const handle = async (method, url, ip, raw) => {
         if (method === "OPTIONS") return [204, {}]
         if (method === "GET" && url === "/health")
-            return [200, { relayer: wallet.address, balance: ethers.formatEther(await provider.getBalance(wallet.address)), chainId: d.chainId, naungan: d.naungan, pinStore: pins.store, pinTries: MAX_TRIES }]
+            return [200, { relayer: wallet.address, balance: ethers.formatEther(await provider.getBalance(wallet.address)), chainId: d.chainId, naungan: d.naungan, pinStore: store.store, pinTries: MAX_TRIES }]
         // A loose per-IP limit (an agency issues hundreds of cards at once); the per-card cap is the real bound.
         if (method === "POST" && url === "/pin") {
-            if (limited(`pin:${ip}`, PIN_PER_MINUTE)) return [429, { error: "too many requests, try again in a minute" }]
+            if (await limited(`pin:${ip}`, PIN_PER_MINUTE)) return [429, { error: "too many requests, try again in a minute" }]
             if (raw.length > 1e3) return [413, { error: "body too large" }]
             let q, evaluated
             try {
@@ -152,12 +194,12 @@ async function createRelayer({ pins = pinCounter() } = {}) {
             } catch (e) {
                 return [400, { error: e.message }]
             }
-            const n = await pins.incr(`naungan:pin:${q.programId}:${q.card}`) // prefixed: the store may be shared with other apps
+            const n = await store.incr(`naungan:pin:${q.programId}:${q.card}`, YEAR) // prefixed: the store may be shared with other apps
             if (n > MAX_TRIES) return [429, { error: "this card is locked after too many PIN attempts: ask your agency for a new card", left: 0 }]
             return [200, { evaluated, left: MAX_TRIES - n }]
         }
         if (method !== "POST" || !["/relay", "/transfer"].includes(url)) return [404, { error: "not found" }]
-        if (limited(ip)) return [429, { error: "too many requests, try again in a minute" }]
+        if (await limited(ip)) return [429, { error: "too many requests, try again in a minute" }]
         if (raw.length > MAX_BODY) return [413, { error: "body too large" }]
         if (url === "/transfer") {
             let a
@@ -221,4 +263,4 @@ async function main() {
 }
 
 if (require.main === module) main().catch((e) => (console.error(e.message), process.exit(1)))
-module.exports = { parseProof, parseTransfer, parsePin, pinCounter, createRelayer, HEADERS, MAX_BODY }
+module.exports = { parseProof, parseTransfer, parsePin, sharedStore, createRelayer, HEADERS, MAX_BODY }

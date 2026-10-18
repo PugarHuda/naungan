@@ -20,7 +20,7 @@ describe("PIN-locked claim cards", () => {
 
 describe("PIN cards v2: server-checked PIN (OPRF)", () => {
     const { lockV2, unlockV2, oprfKey, evaluate, MAX_TRIES } = require("../lib/cardlock")
-    const { parsePin, pinCounter } = require("../scripts/relayer")
+    const { parsePin, sharedStore } = require("../scripts/relayer")
     const secret = "mtVmjtzdGv7EMx4T2Z0D8SYEnZbCdUr4+tLEXGL7/LA="
 
     it("opens only with the right PIN, the right program and the server's key", async () => {
@@ -50,9 +50,21 @@ describe("PIN cards v2: server-checked PIN (OPRF)", () => {
         expect(() => evaluate(key, "zz")).to.throw("32 bytes hex")
         expect(() => parsePin({ programId: 2, card: "ab".repeat(16) })).to.throw("decimal string")
         expect(() => parsePin({ programId: "2", card: "AB".repeat(16) })).to.throw("16 bytes hex")
-        const pins = pinCounter({})
+        const pins = sharedStore({})
         expect(pins.store).to.equal("memory")
-        for (let i = 1; i <= MAX_TRIES + 1; i++) expect(await pins.incr("pin:2:a")).to.equal(i)
-        expect(await pins.incr("pin:2:b")).to.equal(1) // another card has its own count
+        for (let i = 1; i <= MAX_TRIES + 1; i++) expect(await pins.incr("pin:2:a", 60)).to.equal(i)
+        expect(await pins.incr("pin:2:b", 60)).to.equal(1) // another card has its own count
+    })
+
+    it("the shared store lets exactly one relayer instance submit a given claim", async () => {
+        const store = sharedStore({})
+        const tries = await Promise.all([1, 2, 3].map(() => store.claim("naungan:relay:claim:4:99", "pending", 300)))
+        expect(tries.filter(Boolean)).to.have.length(1) // the rest answer "already being submitted"
+        await store.set("naungan:relay:claim:4:99", "0xabc", 60)
+        expect(await store.get("naungan:relay:claim:4:99")).to.equal("0xabc") // later copies are told it is spent
+        await store.del("naungan:relay:claim:4:99")
+        expect(await store.claim("naungan:relay:claim:4:99", "pending", 300)).to.equal(true) // a failed send frees it
+        expect(await store.claim("naungan:relay:x", "pending", -1)).to.equal(true)
+        expect(await store.claim("naungan:relay:x", "pending", 300)).to.equal(true) // expired entries do not block
     })
 })
