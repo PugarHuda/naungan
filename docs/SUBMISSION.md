@@ -12,6 +12,7 @@ Paste-ready fields for https://dorahacks.io/hackathon/web3-social-good-2026 (dea
 
 **Links**
 - Live app: https://naungan.vercel.app
+- Demo video (2 min, captioned): https://naungan.vercel.app/demo.mp4
 - Public dashboard: https://naungan.vercel.app/dashboard.html?program=2
 - Demo claim card (one household left unclaimed for judges): https://naungan.vercel.app/claim.html#p=2&id=sG0DdcsCNBfd7i%2FIGGuxLmkPFbIN2ydmlblYsEm3rK8%3D
 - Source: https://github.com/PugarHuda/naungan
@@ -30,10 +31,12 @@ Naungan fixes all three in one working system on Base Sepolia with Circle USDC:
 4. **Zero-knowledge claim.** The phone builds a Groth16 proof, even offline; a nullifier blocks double claims; a relayer pays gas but cannot redirect funds. Paid wallets spend USDC at a shop by scanning its QR, with no gas token (EIP-3009).
 5. **Accountability without exposure.** The dashboard is rebuilt from chain events only, and "Verify every payout" re-checks every claim's proof from its raw transaction in the visitor's browser.
 
+**Not only Aceh:** GloFAS and NOAA GEFS are global and the contract takes any coordinates. On the landing page anyone can check any river: Piura, Peru, comes out paying in the 1998 and 2017 El Niño floods. Name matching for dedup has regional profiles (Indonesian/Malay, or basic elsewhere).
+
 **What makes it different:** other aid-transparency builds make donations visible. Naungan also keeps recipients invisible, deduplicates across agencies without sharing lists, and pays before the disaster on an objective, auditable trigger.
 
 **Why Singapore:** Singapore's OHAS pilot (2025–2028) gives a 100% tax deduction for overseas emergency cash through designated charities with strong controls on fund flows; Naungan gives those charities a public ledger and a proof check per payout. Mercy Relief already raised OHAS-deductible funds for the 2025 Sumatra floods.
 
-**Built and tested:** 39 automated tests (contract with real Groth16 proofs, payout audit, PSI, trigger math, PIN lockout, gasless spend), Slither in CI, live oracles on GitHub Actions, relayer on Vercel with Upstash Redis.
+**Built and tested:** 40 automated tests (contract with real Groth16 proofs, payout audit, PSI, trigger math, PIN lockout, gasless spend), Slither in CI, live oracles on GitHub Actions, relayer on Vercel with Upstash Redis.
 
 **Team:** Pugar Huda Mantoro (solo).

@@ -5,9 +5,14 @@
   "start_url": "claim.html",
   "scope": "./",
   "display": "standalone",
+  "lang": "id",
   "background_color": "#F2F3F5",
   "theme_color": "#DCDFE2",
   "icons": [
     { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Kartu saya / My card", "short_name": "Kartu", "description": "Open the card saved on this phone", "url": "claim.html", "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }] },
+    { "name": "Status program / Program status", "short_name": "Status", "description": "Public dashboard: river forecast, oracles and payouts", "url": "dashboard.html", "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }] }
   ]
 }
