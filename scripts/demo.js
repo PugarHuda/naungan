@@ -67,7 +67,7 @@ async function main() {
     await say("Private dedup (PSI): zakat agency checks its list against UNHCR's without either seeing the other")
     const dups = privateDedup(new Agency(zakatList), new Agency(unhcrList))
     console.log(`  zakat agency learns: ${dups.size} of its ${zakatList.length} households already served → skip them`)
-    console.log(`  ${dups.near.size} possible match (same name and village, birth year one off) → held back for a person to check`)
+    console.log(`  ${dups.near.size} possible match (same village, birth year one off or a one-letter typo) → held back for a person to check`)
     const zakatFresh = zakatList.filter((_, i) => !dups.has(i) && !dups.near.has(i))
 
     const wallets = [...unhcrList, ...zakatFresh].map((r) => ({ label: r.name, id: new Identity() }))

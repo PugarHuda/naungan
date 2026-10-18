@@ -4,7 +4,7 @@
 // Agency B answers dedup queries (only from agencies registered on-chain for the program):
 //   node scripts/agency.js serve  --program 1 --list data/unhcr.csv --port 7001
 // Agency A dedups against B, enrolls the households B does not already serve, prints QR claim cards
-// (possible matches, birth year one off, go to <list>.review.csv instead of being enrolled):
+// (possible matches, birth year one off or a one-letter typo, go to <list>.review.csv instead of being enrolled):
 //   node scripts/agency.js enroll --program 1 --list data/zakat.csv --peer http://localhost:7001 \
 //        --claim-url http://localhost:5173/claim.html --cards cards/zakat.html [--pin]
 //   --pin locks each card with a 6-digit PIN printed on a separate slip (cards/zakat.pins.html).
@@ -22,7 +22,7 @@ const { Agency, DST } = require("../lib/psi")
 const { connect, explain } = require("../lib/chain")
 const { readHouseholds: readCsv } = require("../lib/csv")
 
-const MAX_POINTS = 40000 // 10k households × 4 keys; bounds the work an authorised peer can demand
+const MAX_POINTS = 300000 // 10k households × ~30 keys (exact, phonetic, year ±1, typo); bounds the work an authorised peer can demand
 const FRESH_MS = 5 * 60e3
 
 // The signed payload binds the program, a timestamp and the exact points, so it can't be replayed elsewhere.
@@ -35,7 +35,7 @@ async function serve({ program, list, port }) {
         const reply = (code, body) => (res.writeHead(code, { "content-type": "application/json" }), res.end(JSON.stringify(body)))
         if (req.method !== "POST" || req.url !== "/psi") return reply(404, { error: "not found" })
         let raw = ""
-        for await (const c of req) if ((raw += c).length > 4e6) return reply(413, { error: "too large" })
+        for await (const c of req) if ((raw += c).length > 24e6) return reply(413, { error: "too large" })
         try {
             const { points, ts, signature, v } = JSON.parse(raw)
             if (v !== DST) throw new Error(`peer runs dedup ${v ?? "naungan-psi-v1"}, this agency runs ${DST}: update both to the same release`)
@@ -43,7 +43,7 @@ async function serve({ program, list, port }) {
             if (Math.abs(Date.now() - Number(ts)) > FRESH_MS) throw new Error("stale request")
             const from = ethers.verifyMessage(ethers.getBytes(digest(program, ts, points)), signature)
             if (!(await naungan.isAgency(program, from))) return reply(403, { error: `${from} is not an agency of program ${program}` })
-            console.log(`${new Date().toISOString()} dedup query from ${from}: ${points.length / 4} records`)
+            console.log(`${new Date().toISOString()} dedup query from ${from}: ${points.length} blinded keys`)
             reply(200, me.respond(points))
         } catch (e) {
             reply(400, { error: e.message })
@@ -67,7 +67,7 @@ async function enroll({ program, list, peer = [], "claim-url": claimUrl, cards, 
         const found = me.intersect(body)
         found.forEach((i) => dup.add(i))
         found.near.forEach((i) => near.add(i))
-        console.log(`dedup vs ${url}: ${found.size} of ${records.length} already served there, ${found.near.size} possible (birth year one off)`)
+        console.log(`dedup vs ${url}: ${found.size} of ${records.length} already served there, ${found.near.size} possible (birth year one off, or a one-letter typo)`)
     }
     for (const i of dup) near.delete(i)
     // Possible matches are not enrolled: a person checks them with the other agency, then enrolls this file.

@@ -38,6 +38,25 @@ describe("private cross-agency dedup (PSI)", () => {
         expect(nameTokens("Hj. Siti binti Abdullah")).to.deep.equal(["abdullah", "siti"])
     })
 
+    it("holds one-letter typos for review, never two-letter ones or another village", () => {
+        const a = new Agency([
+            { name: "Devi Sartika", birthYear: 1990, village: "Gampong Lambaro" }, // w→v changes Soundex
+            { name: "Muryadi Ali", birthYear: 1985, village: "Gampong Lambaro" }, // l→r changes Soundex
+            { name: "Jusuf Hasan", birthYear: 1970, village: "Gampong Lambaro" }, // old spelling: a full match
+            { name: "Devi Sartika", birthYear: 1991, village: "Gampong Pango" }, // other village
+            { name: "Ratni Devi", birthYear: 2000, village: "Gampong Lambaro" } // two edits from "Ratna Dewi"
+        ])
+        const b = new Agency([
+            { name: "Dewi Sartika", birthYear: 1990, village: "Gampong Lambaro" },
+            { name: "Mulyadi Ali", birthYear: 1985, village: "Gampong Lambaro" },
+            { name: "Yusuf Hasan", birthYear: 1970, village: "Gampong Lambaro" },
+            { name: "Ratna Dewi", birthYear: 2000, village: "Gampong Lambaro" }
+        ])
+        const found = privateDedup(a, b)
+        expect([...found]).to.deep.equal([2])
+        expect([...found.near].sort()).to.deep.equal([0, 1])
+    })
+
     it("rejects a reply that does not line up with the request", () => {
         const a = new Agency([{ name: "Nur", birthYear: 1990, village: "X" }])
         const reply = new Agency([{ name: "Nur", birthYear: 1990, village: "X" }]).respond(a.request())
