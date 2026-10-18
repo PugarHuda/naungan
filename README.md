@@ -6,7 +6,7 @@ Privacy-preserving, anticipatory humanitarian cash. Agencies deduplicate their b
 
 ```bash
 npm install
-npm test        # 27 tests: contract (real Groth16 proofs), PSI, GloFAS trigger math, gasless EIP-3009 spend, PIN-locked cards, service input validation
+npm test        # 29 tests: contract (real Groth16 proofs), PSI, GloFAS and rainfall trigger math, gasless EIP-3009 spend, PIN-locked cards, service input validation
 npm run demo    # Aceh scenario in-process: live GloFAS reading, then a replay of the real Nov 2025 flood
 ```
 
@@ -16,11 +16,11 @@ npm run demo    # Aceh scenario in-process: live GloFAS reading, then a replay o
 |---|---|
 | `contracts/Naungan.sol` | Programs with on-chain hazard metadata, M-of-N oracle quorum (24 h freshness), agency allow-list (add/remove), anonymous enrollment, oracle trigger with evidence string, ZK claim with relayer-safe payout binding, per-program pools, season end + refunds |
 | `lib/psi.js` | DDH private set intersection over ristretto255 with name normalisation and phonetic keys |
-| `lib/hazard.js` | GloFAS v4 (via Open-Meteo): Gumbel 1-in-T-year flood from reanalysis, ensemble exceedance probability, replay of past events |
+| `lib/hazard.js` | Two independent trigger pipelines via Open-Meteo: GloFAS v4 river discharge (Gumbel 1-in-T-year flood from reanalysis, ensemble exceedance) and NOAA GEFS rainfall averaged over the catchment against an ERA5 rainfall climatology; replay of past events for both |
 | `scripts/verify.js` | Source verification on Sourcify (API v2) |
 | `scripts/coordinator.js` | Create a program, add/remove agencies, fund (USDC), refund, status |
 | `scripts/agency.js` | `serve`: answer dedup queries, only from agencies registered on-chain (signed, fresh requests). `enroll`: dedup against peers over HTTP, enroll the rest, print QR claim cards; `--pin` locks each card with a 6-digit PIN on a separate slip (AES-256-GCM under PBKDF2-SHA256, 600k iterations, `lib/cardlock.js`), so a lost or photographed card cannot be claimed |
-| `scripts/oracle.js` | Post the GloFAS trigger for a program (`--watch` hours, `--replay` date, `--dry-run`) |
+| `scripts/oracle.js` | Post the trigger for a program; each oracle runs the pipeline its address is assigned in the program metadata (`--watch` hours, `--replay` date, `--dry-run`, `--source`) |
 | `scripts/relayer.js` | Gas relayer: validates proof shape, simulates the claim, then submits; also sponsors EIP-3009 `transferWithAuthorization` so a paid household can send USDC to a cash-out agent without ever holding ETH (only for Naungan payout wallets); nonce-safe queue, rate limit |
 | `web/index.html` | Landing page with live counters |
 | `web/dashboard.html` | Public dashboard rebuilt from chain events, oracle evidence, per-program view, CSV/JSON audit export |
@@ -47,6 +47,7 @@ node scripts/agency.js enroll --program 1 --list data/zakat.csv --peer http://lo
 
 node scripts/oracle.js --program 1                       # today's real GloFAS forecast
 node scripts/oracle.js --program 1 --replay 2025-11-20   # replay the real 23 Nov 2025 Krueng Aceh flood
+node scripts/oracle.js --program 4 --source rain --replay 2025-11-20 --dry-run   # the rain pipeline on the same event
 ```
 
 Open a card's QR (or paste its code at `/claim.html`) and claim. The services read `PRIVATE_KEY` from `.env` (gitignored, never committed); on a local node that wallet is given dev ETH automatically.
@@ -66,7 +67,8 @@ Funding uses Circle's official testnet USDC (`0x036CbD53842c5426634e7929541eC231
 ## What is real, and its limits
 
 - **Trigger data** is live GloFAS v4 from Copernicus via Open-Meteo. A `--replay` report is labelled `REPLAY` in its on-chain evidence and never presented as a forecast.
-- **Oracle trust** is an M-of-N quorum of keys chosen by the coordinator; each report is re-derivable from the public API and its on-chain evidence string.
+- **Oracle trust** is an M-of-N quorum of keys chosen by the coordinator; each report is re-derivable from the public API and its on-chain evidence string. Program 4 runs live as **2-of-2 with two independent forecasts**: one key posts GloFAS (Copernicus/ECMWF river model), another posts NOAA GEFS rainfall averaged over five cells of the Krueng Aceh catchment. Both post from the hosted workflow every 6 hours, and the dashboard shows each oracle's reading, age and evidence.
+- **Why the rain oracle uses a 1-in-2-year threshold and a catchment average:** replaying the real Nov 2025 flood, rainfall at the river-mouth cell was 240 mm against a 318 mm 1-in-5-year 10-day total, so a point gauge at 1-in-5 would have blocked the trigger while the river flooded. The catchment mean was 262 mm against a 229 mm 1-in-2-year total: the rain signal confirms GloFAS instead of vetoing it. ERA5 underestimates convective tropical rain, so a stricter rain threshold would miss real events.
 - **Dedup** is semi-honest DDH-PSI over exact and phonetic keys: Fatima/Fatimah and Muhammad/Mohammed match, typo-level variants beyond Soundex do not.
 - **PIN cards** stop casual theft, photo copies and guessing on the phone (each try costs ~3 s). They do not stop an attacker who has the card and a GPU: a 6-digit PIN falls to an offline search in about a minute. Attempt-limited PIN checks would need a server-side OPRF, which this build does not have.
 - **Event history** for the dashboard and relayer comes from the Blockscout indexer (`deployment.json.indexer`), falling back to 200-block RPC windows when it is unreachable.

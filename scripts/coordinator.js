@@ -3,6 +3,7 @@
 //
 //   node scripts/coordinator.js create --name "Krueng Aceh flood · Banda Aceh" --lat 5.55 --lon 95.32 \
 //        --return-period 5 --lead-days 10 --trigger 60 --amount 2 --claim-days 14 --season-days 180 [--oracles 0xA,0xB,0xC --quorum 2]
+//        [--pipelines glofas,rain --rain-cells "5.5,95.5;5.25,95.5" --rain-return-period 2]   one pipeline per oracle
 //   node scripts/coordinator.js add-agency    --program 1 --agency 0x..
 //   node scripts/coordinator.js remove-agency --program 1 --agency 0x..
 //   node scripts/coordinator.js fund          --program 1 --amount 10        (USDC, approves first)
@@ -15,7 +16,7 @@ const { connect, abi, explain } = require("../lib/chain")
 const { values: a, positionals: [cmd] } = parseArgs({
     allowPositionals: true,
     options: Object.fromEntries(
-        ["program", "agency", "amount", "name", "lat", "lon", "return-period", "lead-days", "trigger", "claim-days", "season-days", "oracles", "quorum"].map((k) => [k, { type: "string" }])
+        ["program", "agency", "amount", "name", "lat", "lon", "return-period", "lead-days", "trigger", "claim-days", "season-days", "oracles", "quorum", "pipelines", "rain-cells", "rain-return-period"].map((k) => [k, { type: "string" }])
     )
 })
 const need = (...k) => k.forEach((x) => { if (a[x] === undefined) throw new Error(`--${x} is required`) })
@@ -48,6 +49,23 @@ const wait = async (txp) => {
             unit: "% of ensemble members above the return-period flood"
         }
         const oracleList = (a.oracles ?? wallet.address).split(",").map((x) => ethers.getAddress(x.trim()))
+        if (a.pipelines) {
+            // Which forecast each oracle runs, on-chain so anyone can audit that a quorum mixes independent sources.
+            const ps = a.pipelines.split(",").map((x) => x.trim())
+            if (ps.length !== oracleList.length || ps.some((x) => x !== "glofas" && x !== "rain")) throw new Error("--pipelines needs one of glofas|rain per oracle")
+            meta.pipelines = Object.fromEntries(oracleList.map((o, i) => [o, ps[i]]))
+            if (ps.includes("rain")) {
+                meta.source += " + NOAA GEFS catchment rainfall vs ERA5"
+                meta.rain = {
+                    returnPeriod: a["rain-return-period"] ? num("rain-return-period", 1.1, 100) : meta.returnPeriod,
+                    cells: (a["rain-cells"] ?? `${meta.lat},${meta.lon}`).split(";").map((c) => {
+                        const [lat, lon] = c.split(",").map(Number)
+                        if (!(Math.abs(lat) <= 90 && Math.abs(lon) <= 180)) throw new Error(`bad --rain-cells entry "${c}"`)
+                        return [lat, lon]
+                    })
+                }
+            }
+        }
         const quorum = a.quorum ? num("quorum", 1, oracleList.length) : 1
         const now = (await wallet.provider.getBlock("latest")).timestamp
         // Read the id from the receipt: a load-balanced public RPC can answer programCount() from a stale node.

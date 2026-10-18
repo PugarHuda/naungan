@@ -1,7 +1,8 @@
 # Hosted flood oracle: every 6 hours (GloFAS updates daily), post the GloFAS trigger for each watched
 # program to the deployment in web/deployment.json. No server to keep alive.
 # Setup: repository secret ORACLE_KEY (an oracle address of the program, with a little gas) and
-# repository variable PROGRAMS (comma-separated program ids, e.g. "1").
+# repository variable PROGRAMS (comma-separated program ids, e.g. "1"). For 2-of-2 programs, also
+# RAIN_ORACLE_KEY (the oracle whose metadata pipeline is "rain") and RAIN_PROGRAMS.
 name: Oracle
 on:
   schedule: [{ cron: "17 */6 * * *" }]
@@ -26,4 +27,14 @@ jobs:
         run: |
           for p in ${PROGRAMS//,/ }; do
             node scripts/oracle.js --program "$p" || echo "::warning::program $p: oracle run failed"
+          done
+      # Second, independent key and forecast (NOAA GEFS rainfall); each oracle picks its pipeline from the program metadata.
+      - name: Post GEFS rainfall reading
+        if: ${{ vars.RAIN_PROGRAMS != '' }}
+        env:
+          PRIVATE_KEY: ${{ secrets.RAIN_ORACLE_KEY }}
+          PROGRAMS: ${{ vars.RAIN_PROGRAMS }}
+        run: |
+          for p in ${PROGRAMS//,/ }; do
+            node scripts/oracle.js --program "$p" || echo "::warning::program $p: rain oracle run failed"
           done

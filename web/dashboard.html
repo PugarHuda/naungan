@@ -54,6 +54,10 @@
   .claim-link { margin-left: auto; color: var(--accent); font-weight: 600; text-decoration: none; }
   .export { font: inherit; font-size: 13px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; cursor: pointer; }
   .evidence { font: 11px/1.5 "JetBrains Mono", monospace; color: var(--muted); margin-top: 10px; word-break: break-word; }
+  .oracle { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); }
+  .oracle .who { font-size: 12px; font-weight: 600; }
+  .oracle .who .stale { color: var(--muted); font-weight: 400; }
+  .oracle .evidence { margin-top: 4px; }
   .row.IndexReported .meta { word-break: break-word; }
   @media (max-width: 820px) { .grid { grid-template-columns: 1fr 1fr; } .two { grid-template-columns: 1fr; } }
   @media (max-width: 480px) { .grid { grid-template-columns: 1fr; } .hazard { grid-column: auto; } }
@@ -81,7 +85,7 @@
       <div class="value"><span id="index">–</span>% <span style="font-size:16px;color:var(--muted)">/ trigger <span id="threshold">–</span>% · quorum <span id="quorum">–</span></span></div>
       <div class="bar"><i id="hazardBar"></i></div>
       <div class="sub"><span class="status" id="status">Watching</span> <span id="deadline"></span></div>
-      <div class="evidence" id="evidence"></div>
+      <div id="oracleList"><div class="evidence">No oracle report yet</div></div>
     </div>
     <div class="card kpi" style="grid-column: span 4">
       <div class="label">Disbursed vs funded</div>
@@ -114,6 +118,8 @@
 const ABI = [
   "function programCount() view returns (uint256)",
   "function metadata(uint256) view returns (string)",
+  "function oracles(uint256) view returns (address[])",
+  "function reports(uint256, address) view returns (uint128 value, uint64 ts)",
   "function programs(uint256) view returns (address coordinator,uint256 quorum,uint256 groupId,uint256 amountPerHousehold,uint256 triggerThreshold,uint256 claimWindow,uint256 claimDeadline,uint256 lastIndex,uint256 enrolled,uint256 funded,uint256 claims,uint256 seasonEnd)",
   "event AgencyAdded(uint256 indexed programId, address agency)",
   "event AgencyRemoved(uint256 indexed programId, address agency)",
@@ -192,7 +198,7 @@ function select(id) {
   seen.clear()
   $("feed").replaceChildren(el("div", "empty", "Waiting for events…"))
   const m = metas[id] ?? {}
-  $("hazardLabel").textContent = `Flood probability · ${m.source ? "GloFAS" : "oracle"}${m.returnPeriod ? ` · 1-in-${m.returnPeriod}-year flood · ${m.leadDays}-day lead` : ""}`
+  $("hazardLabel").textContent = `Flood probability · ${m.rain ? "GloFAS + GEFS rain" : m.source ? "GloFAS" : "oracle"}${m.returnPeriod ? ` · 1-in-${m.returnPeriod}-year flood · ${m.leadDays}-day lead` : ""}`
   history.replaceState(null, "", `?program=${id}`)
 }
 
@@ -221,7 +227,8 @@ async function indexed(indexer, contract, fromBlock, toBlock) {
 async function tick() {
   await programs()
   if (count === 0n) return
-  const p = await c.programs(pid)
+  const [p, os] = await Promise.all([c.programs(pid), c.oracles(pid)])
+  const reps = await Promise.all(os.map((o) => c.reports(pid, o)))
   // Public RPCs cap eth_getLogs at 200 blocks: history comes from the Blockscout indexer in one request,
   // the newest 200 blocks (its lag margin) and every later tick from the RPC; RPC windows if it is down.
   const head = await c.runner.getBlockNumber()
@@ -235,7 +242,7 @@ async function tick() {
     }
   }
   for (next ??= d.fromBlock; next <= head; next += 200) events.push(...(await c.queryFilter("*", next, Math.min(next + 199, head))))
-  const mine = events.filter((e) => e.args?.programId === pid && e.fragment)
+  const mine = events.filter((e) => e.args?.programId === pid && e.fragment).sort((x, y) => x.blockNumber - y.blockNumber || x.index - y.index)
   current = mine
   const agencies = new Set()
   mine.forEach((e) => e.fragment.name === "AgencyAdded" ? agencies.add(e.args.agency) : e.fragment.name === "AgencyRemoved" && agencies.delete(e.args.agency))
@@ -243,23 +250,40 @@ async function tick() {
   $("enrolled").textContent = p.enrolled
   $("agencies").textContent = `across ${agencies.size} active ${agencies.size === 1 ? "agency" : "agencies"}, no shared lists`
   $("paid").textContent = p.claims
-  $("index").textContent = p.lastIndex
-  $("threshold").textContent = p.triggerThreshold
-  $("quorum").textContent = `${p.quorum} oracle${p.quorum === 1n ? "" : "s"}`
-  $("hazardBar").style.width = Math.min(100, Number(p.lastIndex) / Number(p.triggerThreshold) * 100) + "%"
-  const on = p.claimDeadline > 0n
+  // The trigger needs `quorum` fresh reports at/above the threshold, so the headline is the quorum-th
+  // strongest fresh reading (the latest single report would overstate a 2-of-2 program).
   const now = Date.now() / 1000
+  const fresh = (r) => r.ts > 0n && now - Number(r.ts) <= 86400 // REPORT_TTL
+  const level = reps.filter(fresh).map((r) => Number(r.value)).sort((x, y) => y - x)[Number(p.quorum) - 1] ?? 0
+  const shown = p.claimDeadline > 0n ? Number(p.lastIndex) : level
+  $("index").textContent = shown
+  $("threshold").textContent = p.triggerThreshold
+  $("quorum").textContent = `${p.quorum} of ${os.length} oracle${os.length === 1 ? "" : "s"}`
+  $("hazardBar").style.width = Math.min(100, shown / Number(p.triggerThreshold) * 100) + "%"
+  const on = p.claimDeadline > 0n
   $("hazardCard").classList.toggle("on", on)
   $("status").textContent = on ? (now <= Number(p.claimDeadline) ? "TRIGGERED · claims open" : "TRIGGERED · window closed") : now > Number(p.seasonEnd) ? "Season ended" : "Watching"
   $("deadline").textContent = on ? "until " + new Date(Number(p.claimDeadline) * 1000).toLocaleString() : "season ends " + new Date(Number(p.seasonEnd) * 1000).toLocaleDateString()
   const reports = mine.filter((e) => e.fragment.name === "IndexReported")
-  $("evidence").textContent = reports.length ? reports.at(-1).args.evidence : "No oracle report yet"
+  const pipes = Object.fromEntries(Object.entries(metas[pid]?.pipelines ?? {}).map(([k, v]) => [k.toLowerCase(), v]))
+  const ago = (t) => { const h = (now - t) / 3600; return h < 1 ? `${Math.round(h * 60)} min ago` : h < 48 ? `${Math.round(h)} h ago` : `${Math.round(h / 24)} days ago` }
+  const list = os.map((o, i) => {
+    const last = reports.findLast((e) => e.args.oracle === o)
+    const box = el("div", "oracle")
+    const who = el("div", "who", `${{ glofas: "GloFAS river discharge", rain: "NOAA GEFS rainfall" }[pipes[o.toLowerCase()] ?? (metas[pid]?.source ? "glofas" : "")] ?? "Oracle"} · ${short(o)} · `)
+    who.append(reps[i].ts > 0n ? `${reps[i].value}% · ${ago(Number(reps[i].ts))}` : "no report yet")
+    if (reps[i].ts > 0n && !fresh(reps[i])) who.append(el("span", "stale", " · expired, not counted"))
+    box.append(who)
+    if (last) box.append(el("div", "evidence", last.args.evidence))
+    return box
+  })
+  $("oracleList").replaceChildren(...list)
   $("disbursed").textContent = usd(disbursed)
   $("funded").textContent = usd(p.funded)
   $("fundBar").style.width = (p.funded > 0n ? Number(disbursed * 100n / p.funded) : 0) + "%"
 
   const feed = $("feed")
-  for (const e of mine.sort((x, y) => x.blockNumber - y.blockNumber || x.index - y.index)) {
+  for (const e of mine) {
     const key = e.transactionHash + e.index
     if (seen.has(key)) continue
     if (seen.size === 0) feed.replaceChildren()
