@@ -4,153 +4,261 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Naungan Dashboard</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M1 9 8 2l7 7v6H1z' fill='%233DD27B'/></svg>" />
+<meta name="description" content="Live public ledger of a Naungan anticipatory cash program: the river forecast against its flood trigger, both oracles, the money, and a proof check for every payout." />
+<link rel="icon" href="icon.svg" type="image/svg+xml" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet" />
 <style>
   :root {
-    /* Same light theme as the landing page: cool grey, white cards, green for action. */
-    --bg: #F2F3F5; --surface: #FFFFFF; --ink: #0A0B0F; --muted: #5C6268; --line: #DDE1E4;
-    --accent: #157A43; --accent-soft: #E2F2E8; --warn: #A94F0B; --warn-soft: #FBEADB; --private: #5546B8; --private-soft: #ECE9FA; --cta: #3DD27B;
+    /* Same light theme as the landing page: cool grey page, one rounded frame, ink type, green for money and go. */
+    --page: #DCDFE2; --frame: #F2F3F5; --surface: #FFFFFF; --line: #DDE1E4; --ink: #0A0B0F; --muted: #5C6268;
+    --green: #3DD27B; --accent: #157A43; --accent-soft: #E2F2E8; --warn: #A94F0B; --warn-soft: #FBEADB;
+    --screen: #15171D; --screen2: #20232B; --screen-line: #2E323C; --screen-muted: #A3A9B3;
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 "Plus Jakarta Sans", system-ui, sans-serif; }
-  .wrap { max-width: 1100px; margin: 0 auto; padding: 28px 16px 60px; }
-  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: baseline; justify-content: space-between; }
-  h1 { font: 600 34px/1.1 "Plus Jakarta Sans", sans-serif; margin: 0; letter-spacing: -0.01em; }
-  h1 small { display: block; font: 400 14px "Plus Jakarta Sans", sans-serif; color: var(--muted); margin-top: 6px; letter-spacing: 0; }
-  .badge { font: 12px "JetBrains Mono", monospace; color: var(--muted); border: 1px solid var(--line); padding: 4px 10px; border-radius: 99px; }
-  .badge a { color: inherit; }
-  .grid { display: grid; gap: 14px; grid-template-columns: repeat(4, 1fr); margin-top: 24px; }
-  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }
-  .kpi .label { color: var(--muted); font-size: 13px; }
-  .kpi .value { font: 600 34px/1.1 "Plus Jakarta Sans", sans-serif; margin-top: 6px; font-variant-numeric: tabular-nums; }
-  .kpi .sub { color: var(--muted); font-size: 12px; margin-top: 4px; }
-  .bar { height: 8px; background: var(--line); border-radius: 99px; overflow: hidden; margin-top: 10px; }
-  .bar > i { display: block; height: 100%; background: var(--accent); width: 0; transition: width .6s; }
-  .hazard { grid-column: span 2; }
-  .wide { grid-column: 1 / -1; }
-  .hazard.on { border-color: var(--warn); background: var(--warn-soft); }
-  .hazard .bar > i { background: var(--warn); }
-  .status { display: inline-block; font-weight: 600; font-size: 12px; padding: 3px 9px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); }
-  .hazard.on .status { background: var(--warn); color: var(--surface); }
-  .two { display: grid; gap: 14px; grid-template-columns: 1fr 1.4fr; margin-top: 14px; }
-  h2 { font: 600 18px "Plus Jakarta Sans", sans-serif; margin: 0 0 12px; }
-  .priv li { list-style: none; display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px dashed var(--line); }
-  .priv ul { padding: 0; margin: 0; }
-  .priv .zero { font: 600 13px "JetBrains Mono", monospace; color: var(--private); background: var(--private-soft); padding: 1px 8px; border-radius: 6px; }
-  .feed { max-height: 420px; overflow-y: auto; }
-  .row { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); align-items: start; }
-  .row .dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 6px; background: var(--muted); }
-  .row.Claimed .dot { background: var(--accent); } .row.IndexReported.on .dot { background: var(--warn); }
-  .row.Enrolled .dot, .row.AgencyAdded .dot { background: var(--private); }
-  .row .meta { font: 12px "JetBrains Mono", monospace; color: var(--muted); word-break: break-all; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { animation: none !important; transition: none !important; } }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 15px/1.55 "Plus Jakarta Sans", system-ui, sans-serif; }
+  a { color: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  button { font: inherit; }
+  .frame { max-width: 1320px; margin: 20px auto; background: var(--frame); border-radius: 36px; padding: 0 40px 40px; box-shadow: 0 40px 80px -60px rgba(10, 11, 15, .35); }
+
+  /* Top bar: brand, the program being looked at, and the two things a visitor can do. */
+  nav { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: center; padding: 26px 0 8px; }
+  .brand { font-weight: 800; letter-spacing: .08em; text-decoration: none; font-size: 15px; }
+  .picker { position: relative; }
+  .picker select { appearance: none; font: 600 14px "Plus Jakarta Sans", sans-serif; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 9px 38px 9px 16px; max-width: min(460px, 70vw); cursor: pointer; text-overflow: ellipsis; }
+  .picker::after { content: ""; position: absolute; right: 16px; top: 50%; width: 7px; height: 7px; border: solid var(--ink); border-width: 0 2px 2px 0; transform: translateY(-70%) rotate(45deg); pointer-events: none; }
+  .navlinks { margin-left: auto; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .net { font: 12px "JetBrains Mono", monospace; color: var(--muted); }
+  .net a { color: inherit; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; border-radius: 999px; padding: 10px 18px; font-weight: 600; font-size: 14px; text-decoration: none; border: 1px solid transparent; cursor: pointer; }
+  .btn.dark { background: var(--ink); color: #fff; }
+  .btn.ghost { border-color: var(--line); background: var(--surface); color: var(--ink); }
+  .btn.go { background: var(--green); color: var(--ink); }
+  .btn:disabled { opacity: .6; cursor: wait; }
+
+  /* Hero: the river itself. Program and verdict on the left above the hydrograph, the trigger on a dark screen. */
+  .hero { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 28px; padding-top: 22px; align-items: start; }
+  .verdictline { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .chip { display: inline-flex; align-items: center; gap: 7px; font-weight: 700; font-size: 13px; padding: 5px 12px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+  .chip i { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+  .on .chip, .chip.on { background: var(--warn); color: #fff; }
+  h1 { font-size: clamp(34px, 4.4vw, 58px); line-height: 1.02; letter-spacing: -0.035em; margin: 14px 0 10px; font-weight: 800; }
+  .say { font-size: 19px; line-height: 1.45; max-width: 620px; margin: 0; }
+  .say small { display: block; color: var(--muted); font-size: 14px; margin-top: 4px; }
+  .hydro { margin: 26px 0 0; background: var(--surface); border-radius: 26px; padding: 18px 18px 12px; }
+  .hydro svg { display: block; width: 100%; height: auto; }
+  .hydro figcaption { color: var(--muted); font-size: 13px; padding: 6px 4px 0; }
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--muted); padding: 0 4px 8px; }
+  .legend span::before { content: ""; display: inline-block; width: 14px; height: 4px; border-radius: 2px; margin-right: 6px; vertical-align: middle; background: var(--ink); }
+  .legend .l-band::before { height: 10px; background: rgba(61, 210, 123, .25); }
+  .legend .l-flood::before { background: repeating-linear-gradient(90deg, var(--warn) 0 4px, transparent 4px 7px); }
+  .legend .l-lead::before { height: 10px; background: #E6E9EC; }
+
+  .screen { background: var(--screen); color: #fff; border-radius: 30px; padding: 26px; }
+  .screen h2 { font-size: 15px; font-weight: 600; color: var(--screen-muted); margin: 0; }
+  .meter { display: flex; align-items: baseline; gap: 10px; margin: 6px 0 4px; }
+  .meter b { font-size: 76px; line-height: 1; letter-spacing: -0.04em; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .meter > span { color: var(--screen-muted); font-size: 15px; }
+  .plabel { color: var(--muted); font-size: 13.5px; }
+  .track { height: 10px; border-radius: 99px; background: var(--screen2); position: relative; overflow: hidden; margin: 14px 0 6px; }
+  .track > i { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--green); border-radius: 99px; transition: width .6s; }
+  .screen.on .track > i { background: #FF9D5C; }
+  .quorum { color: var(--screen-muted); font-size: 14px; margin: 0 0 6px; }
+  .oracle { border-top: 1px solid var(--screen-line); padding: 16px 0 2px; margin-top: 14px; }
+  .oracle .top { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+  .oracle .name { font-weight: 700; font-size: 15px; }
+  .oracle .val { font-weight: 800; font-size: 22px; font-variant-numeric: tabular-nums; }
+  .oracle .val.hot { color: #FF9D5C; }
+  .oracle .sub { color: var(--screen-muted); font-size: 13px; }
+  .oracle .stale { color: #FF9D5C; }
+  .oracle details { margin-top: 8px; }
+  .oracle summary { cursor: pointer; color: var(--screen-muted); font-size: 13px; }
+  .evidence { font: 11.5px/1.55 "JetBrains Mono", monospace; color: var(--muted); word-break: break-word; margin-top: 8px; }
+  .screen .evidence { color: var(--screen-muted); }
+  .recheck { margin-top: 10px; background: none; border: 1px solid var(--line); color: var(--ink); border-radius: 999px; padding: 6px 14px; font-weight: 600; font-size: 13px; cursor: pointer; }
+  .recheck:hover { border-color: var(--accent); }
+  .screen .recheck { border-color: var(--screen-line); color: #fff; }
+  .screen .recheck:hover { border-color: var(--green); }
+  .verdict { font-size: 13.5px; margin-top: 10px; }
+  .verdict.ok { color: var(--accent); } .verdict.bad { color: var(--warn); }
+  .screen .verdict.ok { color: var(--green); } .screen .verdict.bad { color: #FF9D5C; }
+
+  /* Money and people: one white band, three columns. */
+  .band { margin-top: 28px; background: var(--surface); border-radius: 30px; padding: 30px; display: grid; grid-template-columns: 1.1fr 1fr 1fr; gap: 34px; }
+  .band h2, .panel h2 { font-size: 22px; letter-spacing: -0.02em; margin: 0 0 4px; }
+  .lead-in { color: var(--muted); margin: 0 0 16px; font-size: 14px; }
+  .big { font-size: 44px; font-weight: 800; letter-spacing: -0.035em; line-height: 1; font-variant-numeric: tabular-nums; }
+  .big small { font-size: 16px; font-weight: 600; color: var(--muted); letter-spacing: 0; }
+  .pool { height: 16px; border-radius: 99px; background: #EEF0F2; display: flex; overflow: hidden; margin: 16px 0 10px; }
+  .pool i { display: block; height: 100%; transition: width .6s; }
+  .pool .paid { background: var(--green); } .pool .held { background: #A9DDBE; }
+  .keys { display: grid; gap: 4px; font-size: 14px; color: var(--muted); }
+  .keys b { color: var(--ink); font-variant-numeric: tabular-nums; }
+  .keys span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 8px; vertical-align: -1px; }
+  .keys .k-paid::before { background: var(--green); } .keys .k-held::before { background: #A9DDBE; } .keys .k-free::before { background: #EEF0F2; }
+  .dots { display: flex; flex-wrap: wrap; gap: 5px; margin: 16px 0 10px; max-width: 360px; }
+  .dots i { width: 14px; height: 14px; border-radius: 50%; border: 2px solid #C9CED3; }
+  .dots i.paid { background: var(--green); border-color: var(--green); }
+  .donate { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .amount { display: flex; align-items: center; background: var(--frame); border-radius: 14px; padding: 4px 14px 4px 4px; }
+  .amount input { flex: 1; width: 100%; min-width: 0; font: 700 22px "Plus Jakarta Sans", sans-serif; color: var(--ink); background: none; border: 0; padding: 10px 12px; }
+  .amount span { font-weight: 600; color: var(--muted); }
+  #donateMsg { font-size: 13px; color: var(--muted); word-break: break-word; }
+  #donateMsg a { color: var(--accent); }
+
+  /* Proof: two things anyone can run in their own browser. */
+  .proofs { margin-top: 28px; display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+  .panel { background: var(--surface); border-radius: 30px; padding: 30px; }
+  .panel .lead-in { max-width: 560px; }
+  .result ol { display: flex; flex-wrap: wrap; gap: 8px; padding: 0; margin: 12px 0 0; }
+  .result li { list-style: none; background: var(--frame); border-radius: 10px; padding: 6px 11px; font-size: 13px; }
+  .result li a { text-decoration: none; font: 12.5px "JetBrains Mono", monospace; }
+  .result li.rain { color: var(--muted); }
+  .result li.bad { color: var(--warn); background: var(--warn-soft); }
+  .result .head { display: flex; align-items: baseline; gap: 12px; margin-top: 16px; }
+  .result .head b { white-space: nowrap; font-size: 40px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; }
+  .result svg { display: block; width: 100%; height: auto; margin-top: 14px; }
+  .checks { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; margin: 14px 0 0; padding: 0; font-size: 13px; color: var(--muted); }
+  .checks li { list-style: none; }
+  .checks li::before { content: "✓"; color: var(--accent); font-weight: 700; margin-right: 6px; }
+
+  /* Ledger and the privacy promise. */
+  .bottom { margin-top: 28px; display: grid; grid-template-columns: 1.5fr 1fr; gap: 28px; }
+  .ledgerhead { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+  .ledgerhead div { display: flex; gap: 8px; }
+  .feed { max-height: 460px; overflow-y: auto; margin-top: 8px; }
+  .row { display: grid; grid-template-columns: 14px 1fr auto; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); align-items: start; }
+  .row .dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 7px; background: #C9CED3; }
+  .row.Claimed .dot { background: var(--green); } .row.IndexReported.on .dot { background: var(--warn); }
+  .row.Funded .dot { background: var(--ink); }
+  .row .title { font-weight: 600; }
+  .row .meta { font: 12px/1.5 "JetBrains Mono", monospace; color: var(--muted); word-break: break-word; }
   .row .blk { font: 12px "JetBrains Mono", monospace; color: var(--muted); }
   .new { animation: flash 1.2s ease-out; }
   @keyframes flash { from { background: var(--accent-soft); } to { background: transparent; } }
-  .empty { color: var(--muted); padding: 24px 0; text-align: center; }
-  footer { color: var(--muted); font-size: 12px; margin-top: 18px; }
-  .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 20px; font-size: 14px; color: var(--muted); }
-  .toolbar select { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; max-width: 100%; }
-  .claim-link { margin-left: auto; color: var(--accent); font-weight: 600; text-decoration: none; }
-  .export { font: inherit; font-size: 13px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; cursor: pointer; }
-  .evidence { font: 11px/1.5 "JetBrains Mono", monospace; color: var(--muted); margin-top: 10px; word-break: break-word; }
-  .oracle { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); }
-  .oracle .who { font-size: 12px; font-weight: 600; }
-  .oracle .who .stale { color: var(--muted); font-weight: 400; }
-  .oracle .evidence { margin-top: 4px; }
-  .recheck { margin-top: 6px; background: none; border: 1px solid var(--line); color: var(--ink); border-radius: 999px; padding: 4px 12px; font: 600 12px "Plus Jakarta Sans", sans-serif; cursor: pointer; }
-  .recheck:hover { border-color: var(--accent); }
-  .verdict { font-size: 12px; margin-top: 6px; }
-  .record { margin-top: 14px; }
-  .record .sub { color: var(--muted); font-size: 13px; margin: 0 0 8px; }
-  .record ol { display: flex; flex-wrap: wrap; gap: 8px; padding: 0; margin: 10px 0 0; }
-  .record li { list-style: none; background: var(--bg); border-radius: 10px; padding: 6px 10px; font-size: 13px; }
-  .record li.rain { color: var(--muted); }
-  .record li.bad { color: var(--warn); }
-  .record b.big { font-size: 22px; }
-  .verdict.ok { color: var(--accent); } .verdict.bad { color: var(--warn); }
-  .row.IndexReported .meta { word-break: break-word; }
-  .donate { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 14px; }
-  .donate label { font-size: 13px; color: var(--muted); }
-  .donate input { width: 110px; font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
-  .donate button { font: 600 14px "Plus Jakarta Sans", sans-serif; color: var(--ink); background: var(--cta); border: 0; border-radius: 999px; padding: 8px 18px; cursor: pointer; }
-  .donate button:disabled { opacity: .6; cursor: wait; }
-  #donateMsg { font-size: 13px; color: var(--muted); flex-basis: 100%; word-break: break-word; }
-  #donateMsg a { color: var(--accent); }
-  @media (max-width: 820px) { .grid { grid-template-columns: 1fr 1fr; } .two { grid-template-columns: 1fr; } }
-  @media (max-width: 480px) { .grid { grid-template-columns: 1fr; } .hazard { grid-column: auto; } }
+  .empty { color: var(--muted); padding: 28px 0; }
+  .never { padding: 0; margin: 10px 0 0; }
+  .never li { list-style: none; display: flex; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .never b { font-size: 18px; font-variant-numeric: tabular-nums; }
+  .fine { color: var(--muted); font-size: 13px; margin: 14px 0 0; }
+  footer { color: var(--muted); font-size: 12px; margin: 26px 4px 0; word-break: break-all; }
+
+  @media (max-width: 1040px) { .hero, .proofs, .bottom { grid-template-columns: minmax(0, 1fr); } .band { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .band .give { grid-column: 1 / -1; } }
+  @media (max-width: 640px) {
+    .frame { margin: 0; border-radius: 0; padding: 0 16px 28px; }
+    .band { grid-template-columns: minmax(0, 1fr); padding: 22px; } .panel, .screen { padding: 22px; } .hydro { padding: 12px 8px 8px; }
+    .navlinks { margin-left: 0; } .checks { grid-template-columns: 1fr; } .meter b { font-size: 60px; }
+  }
 </style>
 </head>
 <body>
-<main class="wrap">
-  <header>
-    <h1><a href="./" style="color:inherit;text-decoration:none">Naungan</a><small>Public accountability for humanitarian cash, with zero personal data on-chain</small></h1>
-    <span class="badge" id="net">connecting…</span>
-  </header>
-
-  <div class="toolbar">
-    <label for="prog">Program</label>
-    <select id="prog"><option>loading…</option></select>
-    <button class="export" id="csv" type="button">Audit log CSV</button><button class="export" id="json" type="button">JSON</button>
-    <a class="claim-link" href="claim.html">Household? Claim here →</a>
-  </div>
-
-  <section class="grid">
-    <div class="card kpi"><div class="label">Households enrolled</div><div class="value" id="enrolled">–</div><div class="sub" id="agencies">–</div></div>
-    <div class="card kpi"><div class="label">Unique households paid</div><div class="value" id="paid">–</div><div class="sub">one ZK claim each, enforced by nullifier</div></div>
-    <div class="card kpi hazard" id="hazardCard">
-      <div class="label" id="hazardLabel">Flood probability · GloFAS</div>
-      <div class="value"><span id="index">–</span>% <span style="font-size:16px;color:var(--muted)">/ trigger <span id="threshold">–</span>% · quorum <span id="quorum">–</span></span></div>
-      <div class="bar"><i id="hazardBar"></i></div>
-      <div class="sub"><span class="status" id="status">Watching</span> <span id="deadline"></span></div>
-      <div id="oracleList"><div class="evidence">No oracle report yet</div></div>
+<div class="frame">
+  <nav aria-label="Dashboard">
+    <a class="brand" href="./">NAUNGAN</a>
+    <div class="picker"><label for="prog" class="sr" style="position:absolute;left:-9999px">Program</label><select id="prog"><option>Loading programs…</option></select></div>
+    <div class="navlinks">
+      <span class="net" id="net">connecting…</span>
+      <a class="btn ghost" href="claim.html">Claim with a card</a>
+      <a class="btn dark" href="#fund">Fund this program</a>
     </div>
-    <div class="card kpi wide">
-      <div class="label">Disbursed vs funded</div>
-      <div class="value"><span id="disbursed">–</span> <span style="font-size:16px;color:var(--muted)">/ <span id="funded">–</span> USDC</span></div>
-      <div class="bar"><i id="fundBar"></i></div>
-      <form class="donate" id="donate">
-        <label for="donateAmt">Fund this program with your own wallet</label>
-        <input id="donateAmt" type="number" inputmode="decimal" min="0.01" step="0.01" value="1" required /> <span>USDC</span>
-        <button type="submit" id="donateBtn">Connect wallet &amp; fund</button>
+  </nav>
+
+  <main>
+    <section class="hero" aria-labelledby="pname">
+      <div id="hazardCard">
+        <div class="verdictline"><span class="chip" id="status"><i></i>Connecting</span><span class="plabel" id="hazardLabel"></span></div>
+        <h1 id="pname">Loading the program…</h1>
+        <p class="say" id="statusLine">Reading the contract on Base.<small id="deadline"></small></p>
+        <figure class="hydro" id="hydroBox">
+          <div class="legend" aria-hidden="true"><span>Median forecast</span><span class="l-band">Wettest ensemble member</span><span class="l-flood">Flood level</span><span class="l-lead">Trigger window</span></div>
+          <svg id="hydro" viewBox="0 0 760 300" role="img" aria-label="River discharge forecast for the next 30 days against the program's flood level"></svg>
+          <figcaption id="hydroNote">Fetching the GloFAS river forecast…</figcaption>
+        </figure>
+      </div>
+
+      <section class="screen" id="trigger" aria-labelledby="triggerH">
+        <h2 id="triggerH">Flood probability now</h2>
+        <div class="meter"><b><span id="index">–</span>%</b><span>of <span id="threshold">–</span>% needed</span></div>
+        <div class="track" aria-hidden="true"><i id="hazardBar"></i></div>
+        <p class="quorum" id="quorum">Waiting for the oracles…</p>
+        <div id="oracleList"></div>
+      </section>
+    </section>
+
+    <section class="band" id="fund" aria-label="Money and households">
+      <div>
+        <h2>The pool</h2>
+        <p class="lead-in">USDC held by the contract for this program only.</p>
+        <div class="big"><span id="funded">–</span> <small>USDC funded</small></div>
+        <div class="pool" aria-hidden="true"><i class="paid" id="fundBar"></i><i class="held" id="heldBar"></i></div>
+        <div class="keys">
+          <span class="k-paid">Paid out <b id="disbursed">–</b> USDC</span>
+          <span class="k-held">Reserved for enrolled households <b id="held">–</b> USDC</span>
+          <span class="k-free" id="gap">–</span>
+        </div>
+      </div>
+      <div>
+        <h2>Households</h2>
+        <p class="lead-in" id="agencies">Enrolled by agencies that never share their lists.</p>
+        <div class="big"><span id="paid">–</span> <small>of <span id="enrolled">–</span> paid</small></div>
+        <div class="dots" id="dots" role="img" aria-label="Households paid out of enrolled"></div>
+        <p class="fine" id="dotsNote">One dot per household, in no particular order: the chain cannot tell which one was paid.</p>
+      </div>
+      <form class="give donate" id="donate">
+        <h2>Add to the pool</h2>
+        <p class="lead-in" style="margin:0">From any browser wallet on Base Sepolia. Test USDC is free at faucet.circle.com.</p>
+        <label class="amount" for="donateAmt"><input id="donateAmt" type="number" inputmode="decimal" min="0.01" step="0.01" value="1" required aria-label="Amount in USDC" /><span>USDC</span></label>
+        <button class="btn go" type="submit" id="donateBtn">Connect wallet and fund</button>
         <div id="donateMsg" role="status"></div>
       </form>
-    </div>
-  </section>
+    </section>
 
-  <section class="card record" aria-labelledby="recordH">
-    <h2 id="recordH">Track record</h2>
-    <p class="sub" id="recordIntro">Replay this program’s exact trigger over every day of the public reanalysis (GloFAS since 1997, ERA5 rainfall), with the oracles’ own code, in your browser.</p>
-    <button class="recheck" id="recordGo" type="button">Replay 30 years</button>
-    <div id="recordOut" role="status"></div>
-  </section>
+    <section class="proofs" aria-label="Checks you can run">
+      <article class="panel" aria-labelledby="auditH">
+        <h2 id="auditH">Check every payout yourself</h2>
+        <p class="lead-in">Your browser fetches each claim transaction and verifies its zero-knowledge proof again, without trusting the contract or this page. Nobody learns which household claimed.</p>
+        <button class="btn dark" id="auditGo" type="button">Verify every payout</button>
+        <ul class="checks">
+          <li>Proof is mathematically valid</li><li>Prover is in the enrolled group</li>
+          <li>Proof is for this program</li><li>Paid to the address in the proof</li>
+          <li>Each household claimed once</li><li>Event matches the transaction</li>
+        </ul>
+        <div class="result" id="auditOut" role="status"></div>
+      </article>
+      <article class="panel" aria-labelledby="recordH">
+        <h2 id="recordH">Would it have paid before?</h2>
+        <p class="lead-in" id="recordIntro">Replay this program’s exact trigger over every day of the public reanalysis since 1997, with the oracles’ own code.</p>
+        <button class="btn dark" id="recordGo" type="button">Replay 30 years</button>
+        <div class="result" id="recordOut" role="status"></div>
+      </article>
+    </section>
 
-  <section class="card record" aria-labelledby="auditH">
-    <h2 id="auditH">Payout audit</h2>
-    <p class="sub">Don’t trust the contract or this page: re-verify every payout’s zero-knowledge proof from its raw transaction, in your browser. Each must prove a member of the enrolled group, for this program, paid to the address inside the proof, with a nullifier used once. Nobody learns which household claimed.</p>
-    <button class="recheck" id="auditGo" type="button">Verify every payout</button>
-    <div id="auditOut" role="status"></div>
-  </section>
-
-  <section class="two">
-    <div class="card priv">
-      <h2>Never touches the chain</h2>
-      <ul>
-        <li>Names, ID numbers, locations <span class="zero">0</span></li>
-        <li>Which agency serves which household <span class="zero">0</span></li>
-        <li>Link between a household and its payout <span class="zero">0</span></li>
-        <li>Agencies' beneficiary lists (dedup via PSI) <span class="zero">0</span></li>
-      </ul>
-      <p style="color:var(--muted);font-size:13px;margin:14px 0 0">Everything on this page comes from public chain events only. Anyone can rebuild these numbers. Nobody can learn who was helped.</p>
-    </div>
-    <div class="card">
-      <h2>Live ledger</h2>
-      <div class="feed" id="feed" tabindex="0" role="log" aria-label="Live ledger of program events"><div class="empty">Waiting for events…</div></div>
-    </div>
-  </section>
+    <section class="bottom">
+      <article class="panel" aria-labelledby="ledgerH">
+        <div class="ledgerhead">
+          <h2 id="ledgerH">Ledger</h2>
+          <div><button class="btn ghost" id="csv" type="button">Download CSV</button><button class="btn ghost" id="json" type="button">JSON</button></div>
+        </div>
+        <p class="lead-in" style="margin:0">Every event of this program, newest first, each linked to its transaction.</p>
+        <div class="feed" id="feed" tabindex="0" role="log" aria-label="Ledger of program events"><div class="empty">Reading the history from the indexer…</div></div>
+      </article>
+      <article class="panel" aria-labelledby="neverH">
+        <h2 id="neverH">What the chain never sees</h2>
+        <ul class="never">
+          <li>Names, ID numbers, villages <b>0</b></li>
+          <li>Which agency serves which household <b>0</b></li>
+          <li>Which household received which payment <b>0</b></li>
+          <li>Any agency’s beneficiary list <b>0</b></li>
+        </ul>
+        <p class="fine">Every number on this page is rebuilt from public chain events, so anyone can check it. Agencies find shared households with private set intersection, and families claim with a zero-knowledge proof.</p>
+      </article>
+    </section>
+  </main>
   <footer id="foot"></footer>
-</main>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js" integrity="sha384-6Zl0Pc8zjSz8KvmNeXRvUQgY4ryFb+BwDvKCmLYcBME0joAaru491tQgi9B7zsMM" crossorigin="anonymous"></script>
 <script>
@@ -171,10 +279,11 @@ const ABI = [
   "event Refunded(uint256 indexed programId, uint256 amount)"
 ]
 const $ = (id) => document.getElementById(id)
-const usd = (v) => (Number(v) / 1e6).toLocaleString()
+const usd = (v) => (Number(v) / 1e6).toLocaleString("en", { maximumFractionDigits: 2 })
 const short = (h) => h.slice(0, 8) + "…" + h.slice(-4)
+const day = (d) => new Date(d + "T00:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" })
 const seen = new Set()
-let d, c, pid, next, events = [], count = 0n, metas = {}, current = [], checks = {}, have = new Set()
+let d, c, pid, next, events = [], count = 0n, metas = {}, current = [], checks = {}, have = new Set(), hydroFor = {}
 
 // Donations from any EIP-1193 wallet. EIP-6963 lists every installed wallet (MetaMask, Coinbase, Rabby…)
 // without them fighting over window.ethereum; the first one announced is used, window.ethereum otherwise.
@@ -266,12 +375,12 @@ function describe(e) {
   const a = e.args
   switch (e.fragment.name) {
     case "AgencyAdded": return ["Agency joined the program", short(a.agency)]
-    case "AgencyRemoved": return ["Agency removed by coordinator", short(a.agency)]
-    case "Enrolled": return [`${a.households} households enrolled anonymously`, `by agency ${short(a.agency)} · commitments only`]
-    case "Funded": return [`${usd(a.amount)} USDC funded`, `donor ${short(a.donor)}`]
-    case "IndexReported": return [`Flood probability ${a.value}% from oracle ${short(a.oracle)} · ${a.agreeing} agreeing${a.triggered ? ": TRIGGER, claims open" : ""}`, a.evidence]
-    case "Claimed": return ["A household was paid", `nullifier ${short(ethers.toBeHex(a.nullifier))} → ${short(a.payout)}`]
-    case "Refunded": return [`${usd(a.amount)} USDC unclaimed returned`, "after claim window or season end"]
+    case "AgencyRemoved": return ["Agency removed by the coordinator", short(a.agency)]
+    case "Enrolled": return [`${a.households} households enrolled anonymously`, `agency ${short(a.agency)}, commitments only`]
+    case "Funded": return [`${usd(a.amount)} USDC added to the pool`, `donor ${short(a.donor)}`]
+    case "IndexReported": return [`Oracle reported ${a.value}% flood probability${a.triggered ? ": trigger reached, claims open" : ""}`, a.evidence]
+    case "Claimed": return ["A household was paid", `nullifier ${short(ethers.toBeHex(a.nullifier))} to ${short(a.payout)}`]
+    case "Refunded": return [`${usd(a.amount)} USDC unclaimed returned`, "after the claim window or season end"]
   }
 }
 
@@ -282,6 +391,8 @@ function el(tag, cls, text) {
   if (text != null) x.textContent = text
   return x
 }
+const NS = "http://www.w3.org/2000/svg"
+const svgEl = (tag, attrs, text) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (text != null) e.textContent = text; return e }
 
 // Audit export: every event of the selected program exactly as on-chain, re-checkable via the tx hash.
 function auditRows() {
@@ -311,7 +422,7 @@ async function programs() {
   if (n === count) return
   for (let i = count + 1n; i <= n; i++) {
     try { metas[i] = JSON.parse(await c.metadata(i)) } catch { metas[i] = { name: `Program ${i}` } }
-    $("prog").append(new Option(`#${i} · ${metas[i].name}`, i))
+    $("prog").append(new Option(`#${i}  ${metas[i].name}`, i))
   }
   if (count === 0n) $("prog").querySelector("option").remove()
   count = n
@@ -323,13 +434,52 @@ function select(id) {
   pid = id
   $("prog").value = String(id)
   seen.clear()
-  $("feed").replaceChildren(el("div", "empty", "Waiting for events…"))
+  $("feed").replaceChildren(el("div", "empty", "Reading the history from the indexer…"))
   const m = metas[id] ?? {}
-  $("hazardLabel").textContent = `Flood probability · ${m.rain ? "GloFAS + GEFS rain" : m.source ? "GloFAS" : "oracle"}${m.returnPeriod ? ` · 1-in-${m.returnPeriod}-year flood · ${m.leadDays}-day lead` : ""}`
+  // "Krueng Aceh flood · 2-of-2 watch 2026/27": the place is the headline, the rest goes in the label.
+  const [place, ...rest] = (m.name ?? `Program ${id}`).split(" · ")
+  $("pname").textContent = place
+  $("hazardLabel").textContent = [`Program #${id}`, ...rest].join(", ")
+  document.title = `${m.name ?? "Program " + id} | Naungan`
   history.replaceState(null, "", `?program=${id}`)
   $("recordOut").replaceChildren()
   $("auditOut").replaceChildren()
   $("recordGo").hidden = !m.lat // programs without a hazard location have nothing to replay
+  $("hydroBox").hidden = !m.lat
+  if (m.lat) (hydroFor[id] ??= hydrograph(m)).then((draw) => id === pid && draw()).catch((e) => id === pid && ($("hydroNote").textContent = `The river forecast is unavailable right now (${e.message}). The trigger panel still shows what the oracles posted.`))
+}
+
+// The hero: GloFAS's 30-day river forecast for the program's cell against the flood level its trigger uses
+// (lib/hazard.js floodThreshold, the oracle's own climatology), with the trigger's lead window shaded.
+async function hydrograph(meta) {
+  const r = await fetch(`https://flood-api.open-meteo.com/v1/flood?latitude=${meta.lat}&longitude=${meta.lon}&daily=river_discharge_median,river_discharge_max&forecast_days=30`)
+  if (!r.ok) throw new Error(`GloFAS ${r.status}`)
+  const j = await r.json()
+  const { threshold } = await (await import("./verify.js")).floodThreshold(meta)
+  return () => {
+    const W = 760, H = 300, L = 52, R = 12, T = 14, B = 34, n = j.daily.time.length
+    const med = j.daily.river_discharge_median, max = j.daily.river_discharge_max
+    const top = Math.max(threshold * 1.18, ...max.filter((v) => v != null))
+    const x = (i) => L + (i / (n - 1)) * (W - L - R), y = (v) => T + (1 - v / top) * (H - T - B)
+    const line = (vals) => vals.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(v ?? 0).toFixed(1)}`).join("")
+    const kids = [svgEl("rect", { x: L, y: T, width: x(Math.min(meta.leadDays, n - 1)) - L, height: H - T - B, fill: "#F0F2F4", rx: 6 })]
+    for (let k = 0; k <= 4; k++) {
+      const v = (top / 4) * k
+      kids.push(svgEl("line", { x1: L, x2: W - R, y1: y(v), y2: y(v), stroke: "#E6E9EC" }), svgEl("text", { x: L - 8, y: y(v) + 4, "font-size": 12, fill: "#5C6268", "text-anchor": "end" }, Math.round(v)))
+    }
+    kids.push(
+      svgEl("path", { d: `${line(max)}L${x(n - 1)},${y(0)}L${L},${y(0)}Z`, fill: "rgba(61,210,123,.25)" }),
+      svgEl("path", { d: line(med), fill: "none", stroke: "#0A0B0F", "stroke-width": 3, "stroke-linejoin": "round", "stroke-linecap": "round" }),
+      svgEl("line", { x1: L, x2: W - R, y1: y(threshold), y2: y(threshold), stroke: "#A94F0B", "stroke-width": 2, "stroke-dasharray": "7 5" }),
+      svgEl("text", { x: W - R, y: y(threshold) - 8, fill: "#A94F0B", "font-size": 13, "font-weight": 700, "text-anchor": "end" }, `Flood level ${Math.round(threshold)} m³/s`),
+      svgEl("text", { x: L + 8, y: T + 18, fill: "#5C6268", "font-size": 12 }, `Next ${meta.leadDays} days: what the trigger looks at`),
+      svgEl("text", { x: 14, y: T + (H - T - B) / 2, fill: "#5C6268", "font-size": 12, transform: `rotate(-90 14 ${T + (H - T - B) / 2})`, "text-anchor": "middle" }, "m³/s")
+    )
+    for (const i of [0, 7, 14, 21, 29]) kids.push(svgEl("text", { x: x(i), y: H - 10, "font-size": 12, fill: "#5C6268", "text-anchor": i === 0 ? "start" : i === 29 ? "end" : "middle" }, i === 0 ? "Today" : new Date(j.daily.time[i] + "T00:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" })))
+    $("hydro").replaceChildren(...kids)
+    const peak = Math.max(...med.slice(0, meta.leadDays + 1).filter((v) => v != null))
+    $("hydroNote").textContent = `GloFAS forecast run ${day(j.daily.time[0])} for ${meta.name.split(" · ")[0]}. The median peaks at ${Math.round(peak)} m³/s in the next ${meta.leadDays} days, ${peak >= threshold ? "above" : `${Math.round((1 - peak / threshold) * 100)}% below`} the flood level.`
+  }
 }
 
 // Track record: when this program's trigger would have fired over the reanalysis (lib/hazard.js via verify.js).
@@ -337,21 +487,28 @@ async function trackRecord() {
   const id = pid, m = metas[id], out = $("recordOut")
   if (!m) return out.replaceChildren(el("div", "verdict", "Still connecting to the chain. Try again in a few seconds."))
   $("recordGo").disabled = true
-  out.replaceChildren(el("div", "verdict", "Fetching ~30 years of river discharge and rainfall from Open-Meteo…"))
+  out.replaceChildren(el("div", "verdict", "Fetching about 30 years of river discharge and rainfall from Open-Meteo…"))
   try {
     const r = await (await import("./verify.js")).trackRecord(m)
     if (id !== pid) return
     const years = Math.round((Date.parse(r.flood.to) - Date.parse(r.flood.from)) / 3.156e10)
-    const head = el("div", "verdict")
-    head.append(el("b", "big", String(r.paid.length)), ` payouts in ${years} years (${r.flood.from} to ${r.flood.to})` +
-      (r.rain ? `, both oracles agreeing · ${r.rainOnly.length} rain-only alarms held back by the 2-of-2 quorum` : ""))
+    const head = el("div", "head")
+    head.append(el("b", null, String(r.paid.length)), el("span", null, `payouts in ${years} years` + (r.rain ? `, with ${r.rainOnly.length} rain-only alarms held back by the quorum` : "")))
+    // Timeline: tall green bars where the program pays, short grey ones where only the rain oracle fired.
+    const from = Date.parse(r.flood.from), to = Date.parse(r.flood.to), W = 600
+    const x = (dt) => 12 + ((Date.parse(dt) - from) / (to - from)) * (W - 24)
+    const tl = svgEl("svg", { viewBox: `0 0 ${W} 120`, role: "img", "aria-label": `Timeline from ${r.flood.from} to ${r.flood.to}: ${r.paid.length} payouts, ${r.rainOnly.length} rain-only alarms` })
+    tl.append(svgEl("line", { x1: 12, x2: W - 12, y1: 92, y2: 92, stroke: "#C9CED3", "stroke-width": 2 }))
+    for (let yr = new Date(from).getUTCFullYear() + 1; yr <= new Date(to).getUTCFullYear(); yr++)
+      if (yr % 5 === 0) tl.append(svgEl("text", { x: x(`${yr}-01-01`), y: 114, "font-size": 12, fill: "#5C6268", "text-anchor": "middle" }, yr))
+    for (const e of r.rainOnly) tl.append(svgEl("rect", { x: x(e.peakDate) - 2.5, y: 68, width: 5, height: 24, rx: 2.5, fill: "#B8BEC4" }))
+    for (const e of r.paid) tl.append(svgEl("rect", { x: x(e.peakDate) - 3.5, y: 14, width: 7, height: 78, rx: 3.5, fill: "#3DD27B" }))
     const list = el("ol")
-    for (const e of [...r.paid.map((e) => [e, ""]), ...r.rainOnly.map((e) => [e, "rain"])].sort((a, b) => a[0].peakDate.localeCompare(b[0].peakDate)))
-      list.append(el("li", e[1], e[1] ? `${e[0].peakDate} · rain only, ${Math.round(e[0].peak)} mm` : `${e[0].peakDate} · pays, river ${Math.round(e[0].peak)} m³/s`))
-    const note = el("div", "evidence", `River above the 1-in-${m.returnPeriod}-year flood (${Math.round(r.flood.threshold)} m³/s)` +
-      (r.rain ? ` and catchment rain above its 1-in-${m.rain.returnPeriod}-year ${m.leadDays}-day total (${Math.round(r.rain.threshold)} mm) within ${m.leadDays} days.` : ".") +
-      " What a perfect forecast would have triggered: how often the program pays, not how skilful forecasts are.")
-    out.replaceChildren(head, list, note)
+    for (const e of r.paid.slice().reverse()) list.append(el("li", null, `${day(e.peakDate)}, river ${Math.round(e.peak)} m³/s`))
+    const note = el("p", "fine", `Pays when the river passes the 1-in-${m.returnPeriod}-year flood (${Math.round(r.flood.threshold)} m³/s)` +
+      (r.rain ? ` and catchment rain passes its 1-in-${m.rain.returnPeriod}-year ${m.leadDays}-day total (${Math.round(r.rain.threshold)} mm) within ${m.leadDays} days.` : ".") +
+      " This replays a perfect forecast: it shows how often the program pays, not how skilful forecasts are.")
+    out.replaceChildren(head, tl, list, note)
   } catch (e) {
     if (id === pid) out.replaceChildren(el("div", "verdict bad", `Could not load the record (${e.message}). Try again in a minute.`))
   } finally {
@@ -382,8 +539,8 @@ async function auditPayouts() {
     const res = await auditClaims({ programId: id, members: members.map(String), claims, contract: d.naungan })
     if (id !== pid) return
     const good = res.filter((r) => r.ok).length
-    const head = el("div", `verdict ${good === res.length ? "ok" : "bad"}`)
-    head.append(el("b", "big", `${good} / ${res.length}`), ` payouts verified · group of ${members.length} rebuilt from members(), ${new Set(claims.map((x) => String(x.nullifier))).size} distinct nullifier${new Set(claims.map((x) => String(x.nullifier))).size === 1 ? "" : "s"}`)
+    const head = el("div", `head verdict ${good === res.length ? "ok" : "bad"}`)
+    head.append(el("b", null, `${good} of ${res.length}`), el("span", null, `payouts verified against a group of ${members.length} households rebuilt from the contract`))
     const NAMES = { direct: "direct claim() call", scope: "this program", payout: "paid to the proof’s address", nullifier: "event matches proof", root: "enrolled group", proof: "Groth16 proof valid", unique: "nullifier used once" }
     const list = el("ol")
     for (const r of res) {
@@ -391,10 +548,10 @@ async function auditPayouts() {
       const li = el("li", r.ok ? "" : "bad")
       const a = el(d.explorer ? "a" : "span", null, `${r.ok ? "✓" : "✗"} ${short(r.hash)}`)
       if (d.explorer) Object.assign(a, { href: `${d.explorer}/tx/${r.hash}`, target: "_blank", rel: "noopener" })
-      li.append(a, r.ok ? "" : ` · failed: ${failed.join(", ")}`)
+      li.append(a, r.ok ? "" : `, failed: ${failed.join(", ")}`)
       list.append(li)
     }
-    out.replaceChildren(head, list, el("div", "evidence", "Checks per payout: " + Object.values(NAMES).join(" · ") + "."))
+    out.replaceChildren(head, list)
   } catch (e) {
     if (id === pid) out.replaceChildren(el("div", "verdict bad", `Could not run the audit (${e.message}). Try again in a minute.`))
   } finally {
@@ -408,8 +565,11 @@ async function auditPayouts() {
  */
 async function indexed(indexer, contract, fromBlock, toBlock) {
   const out = [], seen = new Set()
-  for (let b = fromBlock; ; ) {
-      const r = await (await fetch(`${indexer}?module=logs&action=getLogs&fromBlock=${b}&toBlock=${toBlock}&address=${contract.target}`)).json()
+  for (let b = fromBlock, tries = 0; ; ) {
+      const res = await fetch(`${indexer}?module=logs&action=getLogs&fromBlock=${b}&toBlock=${toBlock}&address=${contract.target}`)
+      // The free indexer answers 429 under bursts: wait and ask again before falling back to slow RPC windows.
+      if (res.status === 429 && tries++ < 3) { await new Promise((ok) => setTimeout(ok, 1500 * tries)); continue }
+      const r = await res.json()
       if (r.status !== "1" && !/no records/i.test(r.message ?? "")) throw new Error(`indexer: ${r.message}`)
       const rows = Array.isArray(r.result) ? r.result : []
       for (const l of rows) {
@@ -424,11 +584,97 @@ async function indexed(indexer, contract, fromBlock, toBlock) {
   }
 }
 
+/** Program state straight from the contract: shown before the (slower) event history arrives. */
+function renderState(p, os, reps) {
+  const now = Date.now() / 1000, m = metas[pid] ?? {}
+  // The trigger needs `quorum` fresh reports at/above the threshold, so the headline is the quorum-th
+  // strongest fresh reading (the latest single report would overstate a 2-of-2 program).
+  const fresh = (r) => r.ts > 0n && now - Number(r.ts) <= 86400 // REPORT_TTL
+  const level = reps.filter(fresh).map((r) => Number(r.value)).sort((x, y) => y - x)[Number(p.quorum) - 1] ?? 0
+  const agreeing = reps.filter((r) => fresh(r) && r.value >= p.triggerThreshold).length
+  const on = p.claimDeadline > 0n, open = on && now <= Number(p.claimDeadline), ended = !on && now > Number(p.seasonEnd)
+  const shown = on ? Number(p.lastIndex) : level
+  $("index").textContent = shown
+  $("threshold").textContent = p.triggerThreshold
+  $("hazardBar").style.width = Math.min(100, shown / Number(p.triggerThreshold) * 100) + "%"
+  $("trigger").classList.toggle("on", on)
+  $("hazardCard").classList.toggle("on", on)
+  $("quorum").textContent = on ? `Triggered: ${p.quorum} of ${os.length} oracle${os.length === 1 ? "" : "s"} agreed.` : `${agreeing} of ${os.length} oracle${os.length === 1 ? "" : "s"} at the trigger. Claims open when ${p.quorum} agree.`
+  $("status").replaceChildren(el("i"), open ? "Claims open" : on ? "Claim window closed" : ended ? "Season ended" : "Watching")
+  $("status").classList.toggle("on", open)
+  const until = (t) => new Date(Number(t) * 1000).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
+  // A demo program can be opened by a replay of a past flood; its evidence says so, and so must this page.
+  const fired = current.findLast((e) => e.fragment.name === "IndexReported" && e.args.triggered)
+  const replay = fired?.args.evidence.match(/^REPLAY.*?peak [\d.]+ m3\/s on (\d{4}-\d{2}-\d{2})/)?.[1] ?? (fired && /^REPLAY/.test(fired.args.evidence) ? "a past date" : null)
+  $("statusLine").replaceChildren(
+    open && replay ? `Claims are open after a labelled replay of the flood of ${/\d/.test(replay) ? day(replay) : replay}, not a live forecast. Enrolled households can claim from a phone with their card.`
+    : open ? "A flood is forecast. Enrolled households can claim now, from a phone, with their card."
+    : on ? "This program paid out and its claim window has closed."
+    : ended ? "This season ended without a flood trigger. Unclaimed money goes back to the coordinator."
+    : `No flood expected yet. The oracles put the chance of a flood${m.leadDays ? ` in the next ${m.leadDays} days` : ""} at ${shown}%, and claims open at ${p.triggerThreshold}%.`,
+    el("small", null, open ? `Claims close ${until(p.claimDeadline)}.` : on ? `Closed ${until(p.claimDeadline)}.` : ended ? "" : `Watching until ${until(p.seasonEnd)}. The oracles post every 6 hours.`))
+
+  const pipes = Object.fromEntries(Object.entries(m.pipelines ?? {}).map(([k, v]) => [k.toLowerCase(), v]))
+  const ago = (t) => { const h = (now - t) / 3600; return h < 1 ? `${Math.round(h * 60)} min ago` : h < 48 ? `${Math.round(h)} h ago` : `${Math.round(h / 24)} days ago` }
+  const reports = current.filter((e) => e.fragment.name === "IndexReported")
+  $("oracleList").replaceChildren(...os.map((o, i) => {
+    const last = reports.findLast((e) => e.args.oracle === o)
+    const kind = pipes[o.toLowerCase()] ?? (m.source ? "glofas" : "")
+    const box = el("div", "oracle"), top = el("div", "top")
+    const v = el("span", `val ${reps[i].value >= p.triggerThreshold && fresh(reps[i]) ? "hot" : ""}`, reps[i].ts > 0n ? `${reps[i].value}%` : "–")
+    top.append(el("span", "name", { glofas: "River flow (GloFAS)", rain: "Rainfall (NOAA GEFS)" }[kind] ?? "Oracle"), v)
+    const sub = el("div", "sub", `${short(o)}, ${reps[i].ts > 0n ? `posted ${ago(Number(reps[i].ts))}` : "no report yet"}`)
+    if (reps[i].ts > 0n && !fresh(reps[i])) sub.append(el("span", "stale", ", expired and not counted"))
+    box.append(top, sub)
+    if (last) {
+      const det = el("details")
+      det.append(el("summary", null, "Evidence posted on-chain"), el("div", "evidence", last.args.evidence))
+      // Keep an open re-check result across the 2 s refresh until a newer report lands.
+      const key = last.transactionHash
+      if (checks[key]) box.append(det, checks[key])
+      else {
+        const b = el("button", "recheck", "Recompute in my browser")
+        b.type = "button"
+        b.onclick = () => recheck(key, metas[pid], last.args, box, b)
+        box.append(det, b)
+      }
+      if (checks[key]?.closest("details")) det.open = true
+    }
+    return box
+  }))
+
+  // Money: paid out, still owed to the enrolled households who have not claimed, and what is left over.
+  const amt = p.amountPerHousehold, disbursed = p.claims * amt
+  const owed = (p.enrolled - p.claims) * amt, held = owed < p.funded - disbursed ? owed : p.funded - disbursed
+  const pct = (v) => (p.funded > 0n ? Number(v * 10000n / p.funded) / 100 : 0) + "%"
+  $("funded").textContent = usd(p.funded)
+  $("disbursed").textContent = usd(disbursed)
+  $("held").textContent = usd(held)
+  $("fundBar").style.width = pct(disbursed)
+  $("heldBar").style.width = pct(held)
+  const spare = p.funded - disbursed - owed
+  $("gap").replaceChildren(spare >= 0n ? "Unallocated " : "Short by ", el("b", null, usd(spare >= 0n ? spare : -spare)), ` USDC${spare < 0n ? ` to pay every enrolled household ${usd(amt)} USDC` : spare >= amt ? `, enough for ${spare / amt} more households` : ", every enrolled household is covered"}`)
+  $("enrolled").textContent = p.enrolled
+  $("paid").textContent = p.claims
+  // One dot per household (scaled past 240 so the grid stays readable); filled dots carry no identity.
+  const per = p.enrolled > 240n ? Math.ceil(Number(p.enrolled) / 240) : 1
+  const total = Math.ceil(Number(p.enrolled) / per), filled = Math.floor(Number(p.claims) / per)
+  if ($("dots").childElementCount !== total || $("dots").dataset.filled !== String(filled)) {
+    $("dots").replaceChildren(...Array.from({ length: total }, (_, i) => el("i", i < filled ? "paid" : "")))
+    $("dots").dataset.filled = filled
+  }
+  $("dots").setAttribute("aria-label", `${p.claims} of ${p.enrolled} households paid`)
+  $("dotsNote").textContent = `${per > 1 ? `Each dot is ${per} households` : "One dot per household"}, in no particular order: the chain cannot tell which one was paid.`
+}
+
 async function tick() {
   await programs()
   if (count === 0n) return
-  const [p, os] = await Promise.all([c.programs(pid), c.oracles(pid)])
-  const reps = await Promise.all(os.map((o) => c.reports(pid, o)))
+  const id = pid
+  const [p, os] = await Promise.all([c.programs(id), c.oracles(id)])
+  const reps = await Promise.all(os.map((o) => c.reports(id, o)))
+  if (id !== pid) return
+  renderState(p, os, reps)
   // Public RPCs cap eth_getLogs at 200 blocks: history comes from the Blockscout indexer in one request,
   // the newest 200 blocks (its lag margin) and every later tick from the RPC; RPC windows if it is down.
   const head = await c.runner.getBlockNumber()
@@ -449,58 +695,16 @@ async function tick() {
     for (const e of await c.queryFilter("*", next, to)) if (!have.has(e.transactionHash + e.index)) have.add(e.transactionHash + e.index), events.push(e)
     next = to + 1
   }
+  if (id !== pid) return
   const mine = events.filter((e) => e.args?.programId === pid && e.fragment).sort((x, y) => x.blockNumber - y.blockNumber || x.index - y.index)
   current = mine
   const agencies = new Set()
   mine.forEach((e) => e.fragment.name === "AgencyAdded" ? agencies.add(e.args.agency) : e.fragment.name === "AgencyRemoved" && agencies.delete(e.args.agency))
-  const disbursed = p.claims * p.amountPerHousehold
-  $("enrolled").textContent = p.enrolled
-  $("agencies").textContent = `across ${agencies.size} active ${agencies.size === 1 ? "agency" : "agencies"}, no shared lists`
-  $("paid").textContent = p.claims
-  // The trigger needs `quorum` fresh reports at/above the threshold, so the headline is the quorum-th
-  // strongest fresh reading (the latest single report would overstate a 2-of-2 program).
-  const now = Date.now() / 1000
-  const fresh = (r) => r.ts > 0n && now - Number(r.ts) <= 86400 // REPORT_TTL
-  const level = reps.filter(fresh).map((r) => Number(r.value)).sort((x, y) => y - x)[Number(p.quorum) - 1] ?? 0
-  const shown = p.claimDeadline > 0n ? Number(p.lastIndex) : level
-  $("index").textContent = shown
-  $("threshold").textContent = p.triggerThreshold
-  $("quorum").textContent = `${p.quorum} of ${os.length} oracle${os.length === 1 ? "" : "s"}`
-  $("hazardBar").style.width = Math.min(100, shown / Number(p.triggerThreshold) * 100) + "%"
-  const on = p.claimDeadline > 0n
-  $("hazardCard").classList.toggle("on", on)
-  $("status").textContent = on ? (now <= Number(p.claimDeadline) ? "TRIGGERED · claims open" : "TRIGGERED · window closed") : now > Number(p.seasonEnd) ? "Season ended" : "Watching"
-  $("deadline").textContent = on ? "until " + new Date(Number(p.claimDeadline) * 1000).toLocaleString() : "season ends " + new Date(Number(p.seasonEnd) * 1000).toLocaleDateString()
-  const reports = mine.filter((e) => e.fragment.name === "IndexReported")
-  const pipes = Object.fromEntries(Object.entries(metas[pid]?.pipelines ?? {}).map(([k, v]) => [k.toLowerCase(), v]))
-  const ago = (t) => { const h = (now - t) / 3600; return h < 1 ? `${Math.round(h * 60)} min ago` : h < 48 ? `${Math.round(h)} h ago` : `${Math.round(h / 24)} days ago` }
-  const list = os.map((o, i) => {
-    const last = reports.findLast((e) => e.args.oracle === o)
-    const box = el("div", "oracle")
-    const who = el("div", "who", `${{ glofas: "GloFAS river discharge", rain: "NOAA GEFS rainfall" }[pipes[o.toLowerCase()] ?? (metas[pid]?.source ? "glofas" : "")] ?? "Oracle"} · ${short(o)} · `)
-    who.append(reps[i].ts > 0n ? `${reps[i].value}% · ${ago(Number(reps[i].ts))}` : "no report yet")
-    if (reps[i].ts > 0n && !fresh(reps[i])) who.append(el("span", "stale", " · expired, not counted"))
-    box.append(who)
-    if (last) {
-      box.append(el("div", "evidence", last.args.evidence))
-      // Keep an open re-check result across the 2 s refresh until a newer report lands.
-      const key = last.transactionHash
-      if (checks[key]) box.append(checks[key])
-      else {
-        const b = el("button", "recheck", "Re-check in my browser")
-        b.type = "button"
-        b.onclick = () => recheck(key, metas[pid], last.args, box, b)
-        box.append(b)
-      }
-    }
-    return box
-  })
-  $("oracleList").replaceChildren(...list)
-  $("disbursed").textContent = usd(disbursed)
-  $("funded").textContent = usd(p.funded)
-  $("fundBar").style.width = (p.funded > 0n ? Number(disbursed * 100n / p.funded) : 0) + "%"
+  $("agencies").textContent = `Enrolled by ${agencies.size} ${agencies.size === 1 ? "agency" : "agencies"} that never share their lists.`
+  renderState(p, os, reps) // again, now with the evidence strings from the history
 
   const feed = $("feed")
+  if (!mine.length) feed.replaceChildren(el("div", "empty", "No events for this program yet."))
   for (const e of mine) {
     const key = e.transactionHash + e.index
     if (seen.has(key)) continue
@@ -509,9 +713,9 @@ async function tick() {
     const [title, meta] = describe(e)
     const row = el("div", `row ${e.fragment.name} ${e.args.triggered ? "on" : ""} new`)
     const body = el("div")
-    body.append(el("div", null, title), el("div", "meta", meta))
+    body.append(el("div", "title", title), el("div", "meta", meta))
     const blk = el(d.explorer ? "a" : "span", "blk", `#${e.blockNumber}`)
-    if (d.explorer) Object.assign(blk, { href: `${d.explorer}/tx/${e.transactionHash}`, target: "_blank", rel: "noopener" })
+    if (d.explorer) Object.assign(blk, { href: `${d.explorer}/tx/${e.transactionHash}`, target: "_blank", rel: "noopener", ariaLabel: `Transaction in block ${e.blockNumber}` })
     row.append(el("span", "dot"), body, blk)
     feed.prepend(row)
   }
@@ -527,15 +731,18 @@ async function tick() {
     $("csv").onclick = exportCsv
     $("donate").onsubmit = donate
     $("json").onclick = exportJson
-    const addr = d.explorer ? `<a href="${d.explorer}/address/${d.naungan}" target="_blank">${short(d.naungan)}</a>` : short(d.naungan)
-    $("net").innerHTML = `${d.network} · ${addr}`
-    $("foot").textContent = `Contract ${d.naungan} · chain ${d.chainId} · refreshes every 2s`
+    $("net").replaceChildren(`${d.network === "baseSepolia" ? "Base Sepolia" : d.network} `)
+    const addr = el(d.explorer ? "a" : "span", null, short(d.naungan))
+    if (d.explorer) Object.assign(addr, { href: `${d.explorer}/address/${d.naungan}`, target: "_blank", rel: "noopener" })
+    $("net").append(addr)
+    $("foot").textContent = `Contract ${d.naungan} on chain ${d.chainId}. This page reads it every 2 seconds and keeps no data of its own.`
     // ponytail: chained timeout so a slow chunked scan never overlaps the next tick
     const loop = () => tick().catch(console.error).finally(() => setTimeout(loop, 2000))
     await tick()
     setTimeout(loop, 2000)
   } catch (err) {
     $("net").textContent = "no deployment found: run scripts/deploy.js"
+    $("pname").textContent = "The chain is unreachable right now"
     console.error(err)
   }
 })()
