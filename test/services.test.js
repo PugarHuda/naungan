@@ -18,6 +18,26 @@ describe("services input validation", () => {
         fs.unlinkSync(f)
     })
 
+    it("reads commitments a household's phone made, for this program only, once each", () => {
+        const { Identity } = require("@semaphore-protocol/core")
+        const { parseCommitment } = require("../lib/csv")
+        const c = new Identity().commitment
+        expect(parseCommitment(`naungan-commitment:4:${c}`, 4n)).to.equal(c) // the scanned QR text
+        expect(parseCommitment(String(c), 4n)).to.equal(c)
+        expect(() => parseCommitment(`naungan-commitment:5:${c}`, 4n)).to.throw(/program 5/)
+        expect(() => parseCommitment("0x12", 4n)).to.throw(/not a Naungan/)
+        expect(() => parseCommitment("0", 4n)).to.throw(/range/)
+        expect(() => parseCommitment("21888242871839275222246405745257275088548364400416034343698204186575808495617", 4n)).to.throw(/range/)
+        const f = path.join(os.tmpdir(), `naungan-c-${process.pid}.csv`)
+        fs.writeFileSync(f, `name,birthYear,village,commitment\nNur Kayas,1985,Kamp Pidie,naungan-commitment:4:${c}\nSiti Aminah,1990,Lambaro,\n`)
+        const rows = readHouseholds(f, 4n)
+        expect(rows[0].commitment).to.equal(c)
+        expect(rows[1]).to.not.have.property("commitment") // no phone: gets a printed card
+        fs.writeFileSync(f, `name,birthYear,village,commitment\nA B,1985,X,${c}\nC D,1990,Y,${c}\n`)
+        expect(() => readHouseholds(f, 4n)).to.throw(/repeats/)
+        fs.unlinkSync(f)
+    })
+
     it("relayer rejects malformed or mismatched proofs before touching the chain", () => {
         const proof = { merkleTreeDepth: 2, merkleTreeRoot: "1", nullifier: "2", message: "3", scope: "5", points: Array(8).fill("0") }
         expect(parseProof({ programId: "5", proof }).pid).to.equal(5n)

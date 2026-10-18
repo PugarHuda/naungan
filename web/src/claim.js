@@ -4,6 +4,7 @@
 import { ethers } from "ethers"
 import { Identity, Group, generateProof } from "@semaphore-protocol/core"
 import { poseidon2 } from "poseidon-lite"
+import QRCode from "qrcode"
 import { unlock, unlockV2 } from "../../lib/cardlock.js"
 
 const T = {
@@ -16,7 +17,12 @@ const T = {
         claimed: "This card has already been claimed. Each household can claim once.",
         enrolled: "Your card is valid for this program.", payTo: "Where should the money go?",
         newWallet: "Create a wallet on this phone", ownWallet: "Use my own address", addr: "Wallet address (0x…)",
-        backup: "Write down this backup key and keep it safe. Anyone with it controls the money.",
+        backup: "Write down this backup key and keep it safe. Anyone with it controls the money.", showKey: "Show backup key",
+        chance: "Flood chance", chanceOf: (a, b) => `${a}% (claims open at ${b}%)`,
+        joinTitle: "Register with your own phone",
+        joinHow: "Show this code to the agency staff. It holds no name and cannot be used to claim. Your secret stays only on this phone, so not even the agency can tell when you claim.",
+        joinWait: "Not registered yet. Show the code below to the agency, then open this page again.",
+        joinBackupBtn: "Show my backup card", joinBackupWarn: "This is your claim card. Print it or keep a photo somewhere safe: if this phone is lost, it is the only way to claim. Anyone holding it can claim for you.",
         claim: "Claim now", proving: "Creating your private proof on this phone…", sending: "Sending through the relayer…",
         done: "Paid", balance: "Paid to", tx: "View transaction", err: "Something went wrong", underfunded: "The program has no funds left right now. Try again later.",
         offline: "No signal. Showing the program as saved on this phone at", queued: "Your claim is ready and saved on this phone. It will be sent automatically when you are back online.",
@@ -38,7 +44,12 @@ const T = {
         claimed: "Kartu ini sudah diklaim. Setiap keluarga hanya bisa klaim sekali.",
         enrolled: "Kartu Anda berlaku untuk program ini.", payTo: "Ke mana uang dikirim?",
         newWallet: "Buat dompet di ponsel ini", ownWallet: "Pakai alamat saya sendiri", addr: "Alamat dompet (0x…)",
-        backup: "Catat kunci cadangan ini dan simpan baik-baik. Siapa pun yang memilikinya menguasai uangnya.",
+        backup: "Catat kunci cadangan ini dan simpan baik-baik. Siapa pun yang memilikinya menguasai uangnya.", showKey: "Tampilkan kunci cadangan",
+        chance: "Peluang banjir", chanceOf: (a, b) => `${a}% (klaim dibuka pada ${b}%)`,
+        joinTitle: "Daftar dengan ponsel Anda sendiri",
+        joinHow: "Tunjukkan kode ini ke petugas lembaga. Kode ini tidak berisi nama dan tidak bisa dipakai klaim. Rahasia Anda hanya ada di ponsel ini, jadi lembaga pun tidak bisa tahu kapan Anda klaim.",
+        joinWait: "Belum terdaftar. Tunjukkan kode di bawah ke lembaga, lalu buka halaman ini lagi.",
+        joinBackupBtn: "Tampilkan kartu cadangan saya", joinBackupWarn: "Ini kartu klaim Anda. Cetak atau simpan fotonya di tempat aman: kalau ponsel ini hilang, hanya kartu ini cara untuk klaim. Siapa pun yang memegangnya bisa klaim atas nama Anda.",
         claim: "Klaim sekarang", proving: "Membuat bukti privat di ponsel ini…", sending: "Mengirim lewat relayer…",
         done: "Terbayar", balance: "Dibayar ke", tx: "Lihat transaksi", err: "Terjadi kesalahan", underfunded: "Dana program sedang habis. Coba lagi nanti.",
         offline: "Tidak ada sinyal. Menampilkan data program yang tersimpan di ponsel ini pada", queued: "Klaim Anda sudah siap dan tersimpan di ponsel ini. Akan dikirim otomatis saat sinyal kembali.",
@@ -54,6 +65,7 @@ const T = {
 }
 let lang = (() => { try { return localStorage.getItem("naungan-lang") } catch { return null } })() || (navigator.language?.startsWith("id") ? "id" : "en")
 const t = (k) => T[lang][k]
+const locale = () => (lang === "id" ? "id-ID" : "en-GB")
 const $ = (id) => document.getElementById(id)
 const show = (id, on = true) => $(id).toggleAttribute("hidden", !on)
 const scopeHash = (pid) => BigInt(ethers.keccak256(ethers.toBeHex(pid, 32))) >> 8n
@@ -112,13 +124,20 @@ async function main() {
         render()
     }
 
+    // A registration link from the agency (#join=<program>): this phone makes its own identity.
+    const joining = location.hash.match(/^#join=(\d{1,20})$/)
+    if (joining) return history.replaceState(null, "", location.pathname), join(BigInt(joining[1]))
     // A card saved for flood alerts reopens when the alert is tapped (a PIN-locked one stays encrypted).
     const fragment = location.hash || (() => { try { return sessionStorage.getItem("naungan-card") || localStorage.getItem(SAVED) } catch { return null } })() || ""
     let ok = false
     try { ok = readCard(fragment) } catch { ok = false }
     if (location.hash) history.replaceState(null, "", location.pathname) // keep the secret out of history and screenshots
     if (!ok) {
-        fetch("deployment.json").then((r) => r.json()).then(walletPanel).catch(() => {})
+        const d = await fetch("deployment.json").then((r) => r.json()).catch(() => null)
+        // A phone that registered itself reopens straight on its own card.
+        const self = d && store.get(SELF(d))
+        if (self?.cards?.[self.last] && readCard(self.cards[self.last])) return (state.self = true), load()
+        if (d) walletPanel(d).catch(() => {})
         show("nocard")
         $("openCard").onclick = () => {
             const v = $("code").value.trim()
@@ -183,6 +202,8 @@ const store = {
     del: (k) => { try { localStorage.removeItem(k) } catch {} }
 }
 const PENDING = "naungan-pending"
+// Identities this phone made for itself, one per program, never overwritten: { last, cards: { [pid]: card } }.
+const SELF = (d) => `naungan-self-${d.naungan}`
 const SAVED = "naungan-card-saved"
 const ARTIFACT = (depth, ext) => `https://snark-artifacts.pse.dev/semaphore/4.13.0/semaphore-${depth}.${ext}`
 const depthOf = (n) => Math.max(1, Math.ceil(Math.log2(Math.max(n, 2))))
@@ -233,10 +254,10 @@ async function load() {
 
     $("pname").textContent = snap.meta.name
     $("pamount").textContent = `${ethers.formatUnits(amount, snap.dec)} USDC`
-    $("pstatus").textContent = deadline === 0n ? t("watching") : open ? `${t("open_")} · ${t("until")} ${new Date(Number(deadline) * 1000).toLocaleString(lang)}` : t("closed")
+    $("pstatus").textContent = deadline === 0n ? t("watching") : open ? `${t("open_")} ${t("until")} ${new Date(Number(deadline) * 1000).toLocaleString(locale(), { dateStyle: "long", timeStyle: "short" })}` : t("closed")
     $("pstatus").className = open ? "pill on" : "pill"
-    $("pindex").textContent = `${snap.lastIndex}% / ${snap.threshold}%`
-    if (snap.offline) ($("offline").textContent = `${t("offline")} ${new Date(snap.at).toLocaleString(lang)}`), show("offline")
+    $("pindex").textContent = t("chanceOf")(snap.lastIndex, snap.threshold)
+    if (snap.offline) ($("offline").textContent = `${t("offline")} ${new Date(snap.at).toLocaleString(locale())}`), show("offline")
 
     const showPaid = (body) => {
         show("progress", false), show("pay", false), show("queued", false), show("done")
@@ -274,7 +295,8 @@ async function load() {
     }
 
     const enrolled = snap.members.includes(state.identity.commitment.toString())
-    const msg = !enrolled ? "notEnrolled" : snap.claimed ? "claimed" : "enrolled"
+    const msg = !enrolled ? (state.self ? "joinWait" : "notEnrolled") : snap.claimed ? "claimed" : "enrolled"
+    if (!enrolled && state.self) joinPanel()
     $("cardmsg").dataset.t = msg
     $("cardmsg").className = enrolled && !snap.claimed ? "note ok" : "note bad"
     render()
@@ -284,10 +306,13 @@ async function load() {
 
     show("pay")
     const w = wallet()
+    // The backup key only appears on request: it controls the money, and screens get photographed.
     const pickNew = () => {
         $("addr").value = w.address
         $("addr").readOnly = true
-        $("backupKey").textContent = w.privateKey
+        $("backupKey").textContent = ""
+        show("backupKey", false), show("showKey")
+        $("showKey").onclick = () => (($("backupKey").textContent = w.privateKey), show("backupKey"), show("showKey", false))
         show("backup")
     }
     $("modeNew").onchange = pickNew
@@ -327,6 +352,35 @@ async function load() {
             show("error")
             $("claim").disabled = false
         }
+    }
+}
+
+/**
+ * Self-registration: the phone makes the identity, so no agency ever holds the secret that could
+ * recognise this household's claim. Re-opening the link reuses the same identity instead of a new one.
+ */
+async function join(pid) {
+    const d = await (await fetch("deployment.json")).json()
+    const saved = store.get(SELF(d)) ?? { cards: {} }
+    const key = pid.toString()
+    const card = saved.cards[key] ?? `p=${pid}&id=${encodeURIComponent(new Identity().export())}`
+    store.set(SELF(d), { last: key, cards: { ...saved.cards, [key]: card } })
+    if (store.get(SELF(d))?.cards?.[key] !== card) throw new Error("this browser cannot save data, so it cannot keep your registration: use a normal (not private) window")
+    readCard(card)
+    state.self = true
+    await load()
+}
+
+/** The code the agency scans into its list, plus a backup card the household can print. */
+function joinPanel() {
+    show("join")
+    const code = `naungan-commitment:${state.pid}:${state.identity.commitment}`
+    $("joinCode").textContent = code
+    // qrcode renders our own text into SVG markup; nothing from the chain or the user goes in.
+    QRCode.toString(code, { type: "svg", margin: 1, errorCorrectionLevel: "M" }).then((svg) => ($("joinQr").innerHTML = svg))
+    $("joinBackupGo").onclick = async () => {
+        $("joinBackupQr").innerHTML = await QRCode.toString(`${location.origin}${location.pathname}#${state.card}`, { type: "svg", margin: 1, errorCorrectionLevel: "M" })
+        show("joinBackup"), show("joinBackupGo", false)
     }
 }
 

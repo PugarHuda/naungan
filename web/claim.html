@@ -48,6 +48,10 @@
   .offline { margin: 10px 0 0; font-size: 14px; color: var(--warn); }
   #queued { background: var(--accent-soft); color: var(--accent); }
   .note:empty { display: none; }
+  .qr { width: 220px; max-width: 100%; margin: 12px 0 6px; background: #fff; }
+  .qr svg { display: block; width: 100%; height: auto; }
+  #joinCode { word-break: break-all; font-size: 12px; }
+  #showKey { margin-top: 8px; }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -77,7 +81,7 @@
     <dl>
       <dt data-t="program"></dt><dd id="pname">…</dd>
       <dt data-t="amount"></dt><dd id="pamount">–</dd>
-      <dt>GloFAS</dt><dd id="pindex">–</dd>
+      <dt data-t="chance"></dt><dd id="pindex">–</dd>
     </dl>
     <p style="margin:14px 0 0"><span class="pill" id="pstatus">–</span></p>
     <p class="offline" id="offline" hidden role="status"></p>
@@ -85,12 +89,21 @@
     <div id="alerts" hidden><button class="link" id="alertGo" type="button" data-t="alertBtn">Alert me when claims open</button><p class="note" id="alertmsg" aria-live="polite"></p></div>
   </section>
 
+  <section class="card" id="join" hidden aria-labelledby="joinH">
+    <strong id="joinH" data-t="joinTitle"></strong>
+    <p class="privacy" data-t="joinHow"></p>
+    <div class="qr" id="joinQr" role="img" aria-label="Registration code for the agency"></div>
+    <p class="to" id="joinCode"></p>
+    <button class="link" id="joinBackupGo" type="button" data-t="joinBackupBtn"></button>
+    <div id="joinBackup" hidden><p class="backup" data-t="joinBackupWarn"></p><div class="qr" id="joinBackupQr" role="img" aria-label="Backup claim card"></div></div>
+  </section>
+
   <section class="card" id="pay" hidden>
     <strong data-t="payTo"></strong>
     <label class="opt"><input type="radio" name="mode" id="modeNew" checked /> <span data-t="newWallet"></span></label>
     <label class="opt"><input type="radio" name="mode" id="modeOwn" /> <span data-t="ownWallet"></span></label>
     <input type="text" id="addr" autocomplete="off" spellcheck="false" aria-label="wallet address" />
-    <div class="backup" id="backup" hidden><span data-t="backup"></span><code id="backupKey"></code></div>
+    <div class="backup" id="backup" hidden><span data-t="backup"></span> <button class="link" id="showKey" type="button" data-t="showKey">Show backup key</button><code id="backupKey" hidden></code></div>
     <button class="primary" id="claim" type="button" data-t="claim">Claim now</button>
   </section>
 

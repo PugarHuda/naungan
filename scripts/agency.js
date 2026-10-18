@@ -11,7 +11,12 @@
 //   needs the relayer's OPRF (lib/cardlock.js v2), so a stolen card cannot be brute-forced offline;
 //   --pin-server overrides deployment.json's relayer.
 //
-// CSV columns: name,birthYear,village (quotes allowed). Cards hold claim secrets: keep them offline.
+// CSV columns: name,birthYear,village (quotes allowed), optional commitment. Cards hold claim secrets: keep them offline.
+//
+// Self-enrolled households: a phone opened at <claim-url>#join=<program> makes its own identity and shows
+// only its commitment (QR "naungan-commitment:<program>:<n>"). Put that in the commitment column: the
+// row is enrolled with it and gets no card, so this agency never holds a secret that could recognise
+// the household's claim. Rows without one get a printed card, whose secret the agency did see.
 const fs = require("fs")
 const path = require("path")
 const http = require("http")
@@ -64,7 +69,7 @@ const pinServer = (base) => async (q) => {
 async function enroll({ program, list, peer = [], "claim-url": claimUrl, cards, pin: withPin, "pin-server": pinUrl }) {
     const { naungan, wallet, d } = await connect()
     if (!(await naungan.isAgency(program, wallet.address))) throw new Error(`${wallet.address} is not an agency of program ${program}`)
-    const records = readCsv(list)
+    const records = readCsv(list, program)
     const dup = new Set(), near = new Set()
     for (const url of peer) {
         const me = new Agency(records)
@@ -84,29 +89,37 @@ async function enroll({ program, list, peer = [], "claim-url": claimUrl, cards, 
     if (near.size) {
         const q = (x) => `"${String(x).replace(/"/g, '""')}"`
         const file = list.replace(/\.csv$/i, "") + ".review.csv"
-        fs.writeFileSync(file, "name,birthYear,village\n" + [...near].map((i) => [records[i].name, records[i].birthYear, records[i].village].map(q).join(",")).join("\n") + "\n")
+        fs.writeFileSync(file, "name,birthYear,village,commitment\n" + [...near].map((i) => [records[i].name, records[i].birthYear, records[i].village, records[i].commitment ?? ""].map(q).join(",")).join("\n") + "\n")
         console.log(`held back ${near.size} possible duplicates → ${file} (confirm with the peer agency, then enroll the real new ones from that file without --peer)`)
     }
     const fresh = records.filter((_, i) => !dup.has(i) && !near.has(i))
     if (fresh.length === 0) return console.log("nothing to enroll")
 
-    const ids = fresh.map(() => new Identity())
+    // Self-enrolled rows bring their commitment; every other row gets a fresh identity and a printed card.
+    const carded = fresh.filter((r) => r.commitment === undefined)
+    if (carded.length && !(claimUrl && cards)) throw new Error(`${carded.length} rows have no commitment and need printed cards: pass --claim-url and --cards`)
+    const onChain = new Set((await naungan.members(program)).map(String))
+    for (const r of fresh) if (r.commitment !== undefined && onChain.has(String(r.commitment))) throw new Error(`${r.name}: this phone's commitment is already enrolled in program ${program}`)
+    const ids = carded.map(() => new Identity())
     // --pin: the QR holds the secret encrypted under a 6-digit PIN that goes on a separate slip. Cards are
     // locked before anything is enrolled: if the PIN server is down, nobody is enrolled without a card.
-    const pins = withPin ? fresh.map(newPin) : []
+    const pins = withPin ? carded.map(newPin) : []
     const ask = withPin && pinServer(pinUrl ?? d.relayer ?? "http://localhost:8788")
     const codes = []
     for (let i = 0; i < ids.length; i++) // one at a time: each lock runs 600k PBKDF2 iterations
         codes.push(withPin ? `p=${program}&e2=${await lockV2(ids[i].export(), pins[i], program, ask)}` : `p=${program}&id=${encodeURIComponent(ids[i].export())}`)
-    for (let i = 0; i < ids.length; i += 100) {
-        const tx = await naungan.enroll(program, ids.slice(i, i + 100).map((x) => x.commitment))
+    const commitments = [...fresh.filter((r) => r.commitment !== undefined).map((r) => r.commitment), ...ids.map((x) => x.commitment)]
+    for (let i = 0; i < commitments.length; i += 100) {
+        const tx = await naungan.enroll(program, commitments.slice(i, i + 100))
         await tx.wait()
-        console.log(`enrolled ${Math.min(i + 100, ids.length)}/${ids.length} · ${tx.hash}`)
+        console.log(`enrolled ${Math.min(i + 100, commitments.length)}/${commitments.length} · ${tx.hash}`)
     }
+    console.log(`${commitments.length - ids.length} self-enrolled from their own phones (no card, this agency holds no secret), ${ids.length} with printed cards`)
+    if (!ids.length) return
 
     const meta = JSON.parse(await naungan.metadata(program))
     const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`)
-    const cardHtml = await Promise.all(fresh.map(async (r, i) => {
+    const cardHtml = await Promise.all(carded.map(async (r, i) => {
         const code = codes[i]
         const svg = await QRCode.toString(`${claimUrl}#${code}`, { type: "svg", errorCorrectionLevel: "M", margin: 1 })
         // Indonesian first: the households read the card; English below for agency staff.
@@ -119,15 +132,15 @@ async function enroll({ program, list, peer = [], "claim-url": claimUrl, cards, 
         const pinFile = cards.replace(/\.html?$/, "") + ".pins.html"
         fs.writeFileSync(pinFile, `<!doctype html><html lang="id"><meta charset="utf-8"><title>Slip PIN Naungan</title><style>body{font:15px system-ui,sans-serif;margin:16px}[lang=en]{color:#555;font-size:.85em}
 p{border:1px dashed #999;border-radius:8px;padding:12px;max-width:420px;page-break-inside:avoid}b{font:700 24px ui-monospace,monospace;letter-spacing:4px}</style>
-${fresh.map((r, i) => `<p>Kartu #${i + 1} · ${esc(r.name)} · ${esc(r.village)}<br>PIN <b>${pins[i]}</b><br>Serahkan terpisah dari kartu. <span lang="en">Hand over separately from the card.</span></p>`).join("\n")}`)
-        console.log(`wrote ${fresh.length} PIN slips → ${pinFile} (print and hand out apart from the cards)`)
+${carded.map((r, i) => `<p>Kartu #${i + 1} · ${esc(r.name)} · ${esc(r.village)}<br>PIN <b>${pins[i]}</b><br>Serahkan terpisah dari kartu. <span lang="en">Hand over separately from the card.</span></p>`).join("\n")}`)
+        console.log(`wrote ${carded.length} PIN slips → ${pinFile} (print and hand out apart from the cards)`)
     }
     fs.mkdirSync(path.dirname(cards), { recursive: true })
     fs.writeFileSync(cards, `<!doctype html><html lang="id"><meta charset="utf-8"><title>Kartu klaim Naungan</title><style>[lang=en]{color:#555;font-size:.9em}
 body{font:14px/1.4 system-ui,sans-serif;margin:16px}article{display:flex;gap:16px;border:1px solid #999;border-radius:10px;padding:14px;margin:0 0 12px;page-break-inside:avoid;max-width:640px}
 .qr{width:180px;flex:none}h2{margin:0 0 4px;font-size:17px}.who{font-weight:600}.warn{color:#b5541c;font-size:12px}ol{padding-left:18px;margin:6px 0}.code{font-size:11px;word-break:break-all}
 </style>${cardHtml.join("\n")}`)
-    console.log(`wrote ${fresh.length} claim cards → ${cards}`)
+    console.log(`wrote ${carded.length} claim cards → ${cards}`)
 }
 
 const { values: a, positionals: [cmd] } = parseArgs({
@@ -140,7 +153,7 @@ const need = (...k) => k.forEach((x) => { if (!a[x]) throw new Error(`--${x} is 
     need("program", "list")
     a.program = BigInt(a.program)
     if (cmd === "serve") return serve({ ...a, port: Number(a.port) })
-    if (cmd === "enroll") return need("claim-url", "cards"), enroll(a)
+    if (cmd === "enroll") return enroll(a) // --claim-url and --cards are needed only for rows that get printed cards
     throw new Error("usage: agency.js serve|enroll --program <id> --list <csv> ...")
 })().catch((e) => {
     console.error(explain(e))
