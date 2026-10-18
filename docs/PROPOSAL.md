@@ -79,6 +79,13 @@ Cash assistance is now a core part of humanitarian response (about 21% of intern
 
 **Sustainability:** open source (MIT) so any agency can self-host every service. A small per-program coordination fee inside the program budget, never on top of a donation, covers relayer gas and oracle runs. Measured with the Hardhat gas reporter: a ZK claim costs ~337k gas, enrolling a household ~100k, an oracle report ~83k. At Base mainnet gas of 0.006 gwei and ETH at $2,431 (17 Oct 2026) that is about **$0.005 of execution per claim**, so delivering $50 costs under 0.1% in gas, versus 5–15% fees for legacy transfers. Governance is a consortium of the participating agencies.
 
+**Why Singapore:** Naungan is not a fix for Singapore at home. Its flash floods usually drain in under an hour, flood-prone land is down to under 30 hectares, and PUB runs its own flood forecasting ([PUB](https://www.pub.gov.sg/Public/KeyInitiatives/Flood-Resilience/About-Floods)). It fits Singapore as a donor and humanitarian hub:
+- The Overseas Humanitarian Assistance Tax Deduction Scheme (OHAS, pilot 2025–2028) gives a 100% deduction for overseas emergency cash given through designated charities, which must show enhanced governance and controls against illicit fund flows ([MCCY](https://www.mccy.gov.sg/about-us/news-and-resources/criteria-for-the-overseas-humanitarian-assistance-tax-deduction-scheme/)). Naungan gives such a charity a public ledger, a browser-run proof check for every payout and on-chain registered agencies. Naungan is a tool for designated charities, not a charity itself.
+- Mercy Relief raised OHAS-deductible funds for the 2025 Sumatra floods ([Mercy Relief](https://mercyrelief.org/?p=9317)); Naungan's trigger replay pays on that same 23 Nov 2025 Krueng Aceh flood.
+- Rahmatan Lil Alamin Foundation, set up by MUIS, is a long-term UNHCR partner in Singapore ([UNHCR](https://zakat.unhcr.org/annualreport/midyear-2024/partnership/rlaf/)): the zakat-plus-UNHCR pair the private dedup demo models.
+
+Pitch in one line: Singapore donors already fund Sumatra flood relief; Naungan makes it reach families in Aceh before the flood, without duplicate records across agencies, and auditable by anyone.
+
 **Risks and mitigations**
 | Risk | Mitigation in the code today |
 |---|---|
