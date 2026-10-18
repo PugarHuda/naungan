@@ -6,7 +6,7 @@ Privacy-preserving, anticipatory humanitarian cash. Agencies deduplicate their b
 
 ```bash
 npm install
-npm test        # 30 tests: contract (real Groth16 proofs), PSI, GloFAS and rainfall trigger math, gasless EIP-3009 spend, PIN-locked cards, service input validation
+npm test        # 32 tests: contract (real Groth16 proofs), PSI, GloFAS and rainfall trigger math, gasless EIP-3009 spend, PIN-locked cards, service input validation
 npm run demo    # Aceh scenario in-process: live GloFAS reading, then a replay of the real Nov 2025 flood
 ```
 
@@ -69,7 +69,7 @@ Funding uses Circle's official testnet USDC (`0x036CbD53842c5426634e7929541eC231
 - **Trigger data** is live GloFAS v4 from Copernicus via Open-Meteo. A `--replay` report is labelled `REPLAY` in its on-chain evidence and never presented as a forecast.
 - **Oracle trust** is an M-of-N quorum of keys chosen by the coordinator; each report is re-derivable from the public API and its on-chain evidence string. Program 4 runs live as **2-of-2 with two independent forecasts**: one key posts GloFAS (Copernicus/ECMWF river model), another posts NOAA GEFS rainfall averaged over five cells of the Krueng Aceh catchment. Both post from the hosted workflow every 6 hours, and the dashboard shows each oracle's reading, age and evidence.
 - **Why the rain oracle uses a 1-in-2-year threshold and a catchment average:** replaying the real Nov 2025 flood, rainfall at the river-mouth cell was 240 mm against a 318 mm 1-in-5-year 10-day total, so a point gauge at 1-in-5 would have blocked the trigger while the river flooded. The catchment mean was 262 mm against a 229 mm 1-in-2-year total: the rain signal confirms GloFAS instead of vetoing it. ERA5 underestimates convective tropical rain, so a stricter rain threshold would miss real events.
-- **Dedup** is semi-honest DDH-PSI over exact and phonetic keys: Fatima/Fatimah and Muhammad/Mohammed match, typo-level variants beyond Soundex do not.
+- **Dedup** is semi-honest DDH-PSI over exact and phonetic keys, tuned for Aceh registers: Fatima/Fatimah, Muhammad/Mohammed, titles (Teuku/T., Teungku/Tgk, Cut, Haji/H.) and bin/binti, and pre-1972 spelling (Oemar/Umar, Djamal/Jamal) all match. A birth year one off is a possible match: it is held back in `<list>.review.csv` for a person to confirm, never auto-merged, because namesakes in one village are also a year apart. Typo-level variants beyond Soundex still miss. Claim cards and PIN slips print in Indonesian with English below.
 - **PIN cards** stop casual theft, photo copies and guessing on the phone (each try costs ~3 s). They do not stop an attacker who has the card and a GPU: a 6-digit PIN falls to an offline search in about a minute. Attempt-limited PIN checks would need a server-side OPRF, which this build does not have.
 - **Event history** for the dashboard and relayer comes from the Blockscout indexer (`deployment.json.indexer`), falling back to 200-block RPC windows when it is unreachable.
 - **The relayer** must be reachable from the household's phone; `deployment.json.relayer` points the claim app at it.
