@@ -383,7 +383,7 @@ async function auditPayouts() {
     if (id !== pid) return
     const good = res.filter((r) => r.ok).length
     const head = el("div", `verdict ${good === res.length ? "ok" : "bad"}`)
-    head.append(el("b", "big", `${good} / ${res.length}`), ` payouts verified · group of ${members.length} rebuilt from members(), ${new Set(claims.map((x) => String(x.nullifier))).size} distinct nullifiers`)
+    head.append(el("b", "big", `${good} / ${res.length}`), ` payouts verified · group of ${members.length} rebuilt from members(), ${new Set(claims.map((x) => String(x.nullifier))).size} distinct nullifier${new Set(claims.map((x) => String(x.nullifier))).size === 1 ? "" : "s"}`)
     const NAMES = { direct: "direct claim() call", scope: "this program", payout: "paid to the proof’s address", nullifier: "event matches proof", root: "enrolled group", proof: "Groth16 proof valid", unique: "nullifier used once" }
     const list = el("ol")
     for (const r of res) {

@@ -17,3 +17,40 @@ describe("PIN-locked claim cards", () => {
         expect(await lock(secret, pin, 2n)).to.not.equal(blob) // fresh salt and IV every time
     })
 })
+
+describe("PIN cards v2: server-checked PIN (OPRF)", () => {
+    const { lockV2, unlockV2, oprfKey, evaluate, MAX_TRIES } = require("../lib/cardlock")
+    const { parsePin, pinCounter } = require("../scripts/relayer")
+    const secret = "mtVmjtzdGv7EMx4T2Z0D8SYEnZbCdUr4+tLEXGL7/LA="
+
+    it("opens only with the right PIN, the right program and the server's key", async () => {
+        const key = await oprfKey("relayer-seed"), seen = []
+        const ask = async (q) => (seen.push(q), evaluate(key, q.point))
+        const pin = newPin()
+        const blob = await lockV2(secret, pin, 2n, ask)
+        expect(blob).to.not.include(secret.slice(0, 8))
+        expect(await unlockV2(blob, pin, 2n, ask)).to.equal(secret)
+        // The server only ever sees a blinded point: never the PIN, and a new point for the same PIN each time.
+        expect(JSON.stringify(seen)).to.not.include(pin)
+        expect(seen[0].card).to.equal(seen[1].card)
+        expect(seen[0].point).to.not.equal(seen[1].point)
+        await expect(unlockV2(blob, pin === "000000" ? "000001" : "000000", 2n, ask)).to.be.rejected
+        await expect(unlockV2(blob, pin, 3n, ask)).to.be.rejected // another program's card
+        // Without the server's key the right PIN is useless: no offline search is possible.
+        const other = await oprfKey("another-seed")
+        await expect(unlockV2(blob, pin, 2n, async (q) => evaluate(other, q.point))).to.be.rejected
+    })
+
+    it("the server rejects bad points and requests, and counts tries per card", async () => {
+        const key = await oprfKey("relayer-seed")
+        expect(() => evaluate(key, "00".repeat(32))).to.throw("identity")
+        expect(() => evaluate(key, "ff".repeat(32))).to.throw()
+        expect(() => evaluate(key, "zz")).to.throw("32 bytes hex")
+        expect(() => parsePin({ programId: 2, card: "ab".repeat(16) })).to.throw("decimal string")
+        expect(() => parsePin({ programId: "2", card: "AB".repeat(16) })).to.throw("16 bytes hex")
+        const pins = pinCounter({})
+        expect(pins.store).to.equal("memory")
+        for (let i = 1; i <= MAX_TRIES + 1; i++) expect(await pins.incr("pin:2:a")).to.equal(i)
+        expect(await pins.incr("pin:2:b")).to.equal(1) // another card has its own count
+    })
+})

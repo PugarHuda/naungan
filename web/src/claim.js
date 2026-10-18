@@ -4,7 +4,7 @@
 import { ethers } from "ethers"
 import { Identity, Group, generateProof } from "@semaphore-protocol/core"
 import { poseidon2 } from "poseidon-lite"
-import { unlock } from "../../lib/cardlock.js"
+import { unlock, unlockV2 } from "../../lib/cardlock.js"
 
 const T = {
     en: {
@@ -23,7 +23,7 @@ const T = {
         privacy: "Your name, ID and location never leave this phone. The blockchain only learns that one enrolled household claimed.",
         wallet: "Wallet on this phone", spend: "Send to a cash-out agent or shop. No fees: you do not need any other coin.",
         to: "Recipient address (0x…)", amt: "Amount in USDC", send: "Send", sent: "Sent", badAmt: "Enter an amount up to your balance",
-        pinTitle: "This card is locked. Enter the 6-digit PIN your agency gave you.", unlock: "Unlock card", checking: "Checking PIN…", pinBad: "That PIN does not open this card. Check the slip from your agency.",
+        pinTitle: "This card is locked. Enter the 6-digit PIN your agency gave you.", unlock: "Unlock card", checking: "Checking PIN…", pinBad: "That PIN does not open this card. Check the slip from your agency.", pinLeft: (n) => `${n} tries left before this card locks.`, pinLocked: "This card is locked after too many wrong PINs. Ask your agency for a new card.", pinOffline: "Checking a PIN needs a connection. Try again when you have signal.",
         alertBtn: "Alert me when claims open", alertOn: "This phone will alert you when claims open, even with the app closed. It remembers your card so the alert opens it.",
         alertNo: "This phone cannot check in the background. Open this page during flood warnings, or listen to your agency.",
         alertDenied: "Notifications are blocked for this site. Allow them in the browser settings to get the alert.",
@@ -45,7 +45,7 @@ const T = {
         privacy: "Nama, NIK, dan lokasi Anda tidak pernah keluar dari ponsel ini. Blockchain hanya tahu bahwa satu keluarga terdaftar telah klaim.",
         wallet: "Dompet di ponsel ini", spend: "Kirim ke agen tarik tunai atau toko. Tanpa biaya: Anda tidak perlu koin lain.",
         to: "Alamat penerima (0x…)", amt: "Jumlah USDC", send: "Kirim", sent: "Terkirim", badAmt: "Masukkan jumlah sampai sebesar saldo Anda",
-        pinTitle: "Kartu ini terkunci. Masukkan PIN 6 angka dari lembaga bantuan Anda.", unlock: "Buka kartu", checking: "Memeriksa PIN…", pinBad: "PIN tidak cocok untuk kartu ini. Periksa lembar PIN dari lembaga Anda.",
+        pinTitle: "Kartu ini terkunci. Masukkan PIN 6 angka dari lembaga bantuan Anda.", unlock: "Buka kartu", checking: "Memeriksa PIN…", pinBad: "PIN tidak cocok untuk kartu ini. Periksa lembar PIN dari lembaga Anda.", pinLeft: (n) => `Sisa ${n} kali percobaan sebelum kartu ini terkunci.`, pinLocked: "Kartu ini terkunci karena terlalu banyak PIN salah. Minta kartu baru ke lembaga Anda.", pinOffline: "Memeriksa PIN butuh koneksi internet. Coba lagi saat ada sinyal.",
         alertBtn: "Beri tahu saya saat klaim dibuka", alertOn: "Ponsel ini akan memberi tahu Anda saat klaim dibuka, meski aplikasi ditutup. Kartu Anda diingat agar notifikasi langsung membukanya.",
         alertNo: "Ponsel ini tidak bisa memeriksa di latar belakang. Buka halaman ini saat ada peringatan banjir, atau ikuti info dari lembaga Anda.",
         alertDenied: "Notifikasi diblokir untuk situs ini. Izinkan di pengaturan browser agar peringatan bisa muncul.",
@@ -71,10 +71,10 @@ const state = { pid: null, identity: null }
 
 function readCard(fragment) {
     const q = new URLSearchParams(fragment.replace(/^#/, ""))
-    const pid = q.get("p"), id = q.get("id"), locked = q.get("e")
+    const pid = q.get("p"), id = q.get("id"), v2 = q.get("e2"), locked = v2 ?? q.get("e")
     if (!pid || !(id || locked) || !/^\d+$/.test(pid)) return false
     state.pid = BigInt(pid)
-    if (locked) state.locked = locked // PIN-locked card: decrypted on the phone in askPin()
+    if (locked) state.locked = locked, state.v2 = v2 != null // PIN-locked card: decrypted on the phone in askPin()
     else state.identity = Identity.import(id) // throws on a corrupted card
     state.card = fragment
     try { sessionStorage.setItem("naungan-card", fragment) } catch {} // a locked card stays encrypted here too
@@ -145,12 +145,30 @@ function askPin() {
         if (!/^[0-9]{6}$/.test(pin)) return $("pin").setCustomValidity(t("pinBad")), $("pin").reportValidity()
         $("pinGo").disabled = true
         $("pinmsg").className = "note", $("pinmsg").textContent = t("checking")
-        let secret
+        let secret, left = null, why = "pinBad"
         try {
-            secret = await unlock(state.locked, pin, state.pid)
-        } catch {
-            $("pinmsg").className = "note bad", $("pinmsg").textContent = t("pinBad")
-            $("pinGo").disabled = false
+            if (!state.v2) secret = await unlock(state.locked, pin, state.pid)
+            else {
+                // v2: the relayer evaluates a blinded point (it never sees the PIN) and counts tries per card.
+                const d = await (await fetch("deployment.json")).json()
+                secret = await unlockV2(state.locked, pin, state.pid, async (q) => {
+                    let res
+                    try {
+                        res = await fetch(new URL("/pin", d.relayer ?? "http://localhost:8788"), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(q) })
+                    } catch {
+                        throw Object.assign(new Error("offline"), { why: "pinOffline" })
+                    }
+                    const body = await res.json().catch(() => ({}))
+                    if (res.status === 429 && body.left === 0) throw Object.assign(new Error("locked"), { why: "pinLocked" })
+                    if (!res.ok) throw Object.assign(new Error(body.error ?? res.status), { why: "pinOffline" })
+                    left = body.left
+                    return body.evaluated
+                })
+            }
+        } catch (e) {
+            why = e.why ?? why
+            $("pinmsg").className = "note bad", $("pinmsg").textContent = t(why) + (why === "pinBad" && left != null ? " " + t("pinLeft")(left) : "")
+            $("pinGo").disabled = why === "pinLocked"
             return
         }
         state.identity = Identity.import(secret)

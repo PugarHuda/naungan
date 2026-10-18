@@ -15,6 +15,8 @@ module.exports = {
         ]
     },
     networks: {
+        // LOCAL_RPC: a dev node on another port (npx hardhat node --port 8555) when 8545 is taken
+        localhost: { url: process.env.LOCAL_RPC || "http://127.0.0.1:8545" },
         baseSepolia: {
             url: process.env.RPC_URL || "https://sepolia.base.org",
             accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : []

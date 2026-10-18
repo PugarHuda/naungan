@@ -7,7 +7,9 @@
 // (possible matches, birth year one off or a one-letter typo, go to <list>.review.csv instead of being enrolled):
 //   node scripts/agency.js enroll --program 1 --list data/zakat.csv --peer http://localhost:7001 \
 //        --claim-url http://localhost:5173/claim.html --cards cards/zakat.html [--pin]
-//   --pin locks each card with a 6-digit PIN printed on a separate slip (cards/zakat.pins.html).
+//   --pin locks each card with a 6-digit PIN printed on a separate slip (cards/zakat.pins.html). The key also
+//   needs the relayer's OPRF (lib/cardlock.js v2), so a stolen card cannot be brute-forced offline;
+//   --pin-server overrides deployment.json's relayer.
 //
 // CSV columns: name,birthYear,village (quotes allowed). Cards hold claim secrets: keep them offline.
 const fs = require("fs")
@@ -16,7 +18,7 @@ const http = require("http")
 const { parseArgs } = require("util")
 const { ethers } = require("ethers")
 const QRCode = require("qrcode")
-const { lock, newPin } = require("../lib/cardlock")
+const { lockV2, newPin } = require("../lib/cardlock")
 const { Identity } = require("@semaphore-protocol/core")
 const { Agency, DST } = require("../lib/psi")
 const { connect, explain } = require("../lib/chain")
@@ -51,8 +53,16 @@ async function serve({ program, list, port }) {
     }).listen(port, () => console.log(`agency ${wallet.address} answering dedup for program ${program} on :${port} (${me.records.length} households)`))
 }
 
-async function enroll({ program, list, peer = [], "claim-url": claimUrl, cards, pin: withPin }) {
-    const { naungan, wallet } = await connect()
+/** POST a blinded point to the relayer's /pin; used by lockV2 at issuance (one of the card's tries). */
+const pinServer = (base) => async (q) => {
+    const res = await fetch(new URL("/pin", base), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(q) })
+    const body = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(`PIN server ${base}: ${body.error ?? res.status}`)
+    return body.evaluated
+}
+
+async function enroll({ program, list, peer = [], "claim-url": claimUrl, cards, pin: withPin, "pin-server": pinUrl }) {
+    const { naungan, wallet, d } = await connect()
     if (!(await naungan.isAgency(program, wallet.address))) throw new Error(`${wallet.address} is not an agency of program ${program}`)
     const records = readCsv(list)
     const dup = new Set(), near = new Set()
@@ -81,6 +91,13 @@ async function enroll({ program, list, peer = [], "claim-url": claimUrl, cards, 
     if (fresh.length === 0) return console.log("nothing to enroll")
 
     const ids = fresh.map(() => new Identity())
+    // --pin: the QR holds the secret encrypted under a 6-digit PIN that goes on a separate slip. Cards are
+    // locked before anything is enrolled: if the PIN server is down, nobody is enrolled without a card.
+    const pins = withPin ? fresh.map(newPin) : []
+    const ask = withPin && pinServer(pinUrl ?? d.relayer ?? "http://localhost:8788")
+    const codes = []
+    for (let i = 0; i < ids.length; i++) // one at a time: each lock runs 600k PBKDF2 iterations
+        codes.push(withPin ? `p=${program}&e2=${await lockV2(ids[i].export(), pins[i], program, ask)}` : `p=${program}&id=${encodeURIComponent(ids[i].export())}`)
     for (let i = 0; i < ids.length; i += 100) {
         const tx = await naungan.enroll(program, ids.slice(i, i + 100).map((x) => x.commitment))
         await tx.wait()
@@ -89,10 +106,8 @@ async function enroll({ program, list, peer = [], "claim-url": claimUrl, cards, 
 
     const meta = JSON.parse(await naungan.metadata(program))
     const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`)
-    // --pin: the QR holds the secret encrypted under a 6-digit PIN that goes on a separate slip.
-    const pins = withPin ? fresh.map(newPin) : []
     const cardHtml = await Promise.all(fresh.map(async (r, i) => {
-        const code = withPin ? `p=${program}&e=${await lock(ids[i].export(), pins[i], program)}` : `p=${program}&id=${encodeURIComponent(ids[i].export())}`
+        const code = codes[i]
         const svg = await QRCode.toString(`${claimUrl}#${code}`, { type: "svg", errorCorrectionLevel: "M", margin: 1 })
         // Indonesian first: the households read the card; English below for agency staff.
         return `<article><div class="qr">${svg}</div><div><h2>Kartu klaim Naungan #${i + 1} <span lang="en">· claim card</span></h2><p class="who">${esc(r.name)} · ${esc(r.village)}</p>
@@ -117,7 +132,7 @@ body{font:14px/1.4 system-ui,sans-serif;margin:16px}article{display:flex;gap:16p
 
 const { values: a, positionals: [cmd] } = parseArgs({
     allowPositionals: true,
-    options: { program: { type: "string" }, list: { type: "string" }, port: { type: "string", default: "7001" }, peer: { type: "string", multiple: true }, "claim-url": { type: "string" }, cards: { type: "string" }, pin: { type: "boolean" } }
+    options: { program: { type: "string" }, list: { type: "string" }, port: { type: "string", default: "7001" }, peer: { type: "string", multiple: true }, "claim-url": { type: "string" }, cards: { type: "string" }, pin: { type: "boolean" }, "pin-server": { type: "string" } }
 })
 const need = (...k) => k.forEach((x) => { if (!a[x]) throw new Error(`--${x} is required`) })
 

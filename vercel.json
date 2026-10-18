@@ -10,6 +10,7 @@
   "rewrites": [
     { "source": "/relay", "destination": "/api/relayer?route=/relay" },
     { "source": "/transfer", "destination": "/api/relayer?route=/transfer" },
+    { "source": "/pin", "destination": "/api/relayer?route=/pin" },
     { "source": "/health", "destination": "/api/relayer?route=/health" }
   ]
 }

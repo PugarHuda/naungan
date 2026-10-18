@@ -7,10 +7,14 @@
 //   POST /transfer { from, to, value, validAfter, validBefore, nonce, signature }  → { txHash }
 //        EIP-3009 transferWithAuthorization: a paid household moves its USDC (to a cash-out agent or
 //        shop) without ever holding ETH. Only sponsored for addresses Naungan has paid.
+//   POST /pin { programId, card, point } → { evaluated, left }
+//        OPRF for PIN-locked v2 cards (lib/cardlock.js): evaluates a blinded point, at most MAX_TRIES
+//        times per card. The server never sees the PIN, and the phone cannot test one without it.
 //   GET  /health                       → relayer address, balance, chain
 const http = require("http")
 const { ethers } = require("ethers")
 const { connect, explain, logs } = require("../lib/chain")
+const { oprfKey, evaluate, MAX_TRIES } = require("../lib/cardlock")
 
 const PORT = Number(process.env.PORT || 8788)
 const PER_MINUTE = Number(process.env.RATE_LIMIT || 10)
@@ -53,11 +57,40 @@ function parseTransfer(body) {
 const revertName = explain
 
 /**
+ * Per-card PIN check counter. Upstash Redis (Vercel Marketplace) when its REST env is set, so the limit
+ * holds across serverless instances and restarts; otherwise per process, which is what `/health` reports.
+ */
+function pinCounter(env = process.env) {
+    const url = env.KV_REST_API_URL ?? env.UPSTASH_REDIS_REST_URL, token = env.KV_REST_API_TOKEN ?? env.UPSTASH_REDIS_REST_TOKEN
+    if (url && token)
+        return {
+            store: "upstash-redis",
+            incr: async (k) => {
+                // A year-long TTL keeps abandoned cards from filling the store; a season is shorter.
+                const res = await fetch(`${url}/pipeline`, { method: "POST", headers: { authorization: `Bearer ${token}` }, body: JSON.stringify([["INCR", k], ["EXPIRE", k, "31536000"]]) })
+                if (!res.ok) throw new Error(`PIN counter store answered ${res.status}`)
+                return Number((await res.json())[0].result)
+            }
+        }
+    const seen = new Map() // ponytail: one entry per card checked since this process started
+    return { store: "memory", incr: async (k) => (seen.set(k, (seen.get(k) ?? 0) + 1), seen.get(k)) }
+}
+
+/** /pin request: validated before anything is counted, so garbage never burns a household's tries. */
+function parsePin(body) {
+    const b = body ?? {}
+    if (typeof b.programId !== "string" || !/^[0-9]{1,20}$/.test(b.programId)) throw new Error("programId must be a decimal string")
+    if (typeof b.card !== "string" || !/^[0-9a-f]{32}$/.test(b.card)) throw new Error("card must be 16 bytes hex")
+    return { programId: b.programId, card: b.card, point: b.point }
+}
+
+/**
  * The relayer core, independent of the transport: `handle(method, path, ip, raw)` → [status, body].
  * Served by the Node http server below and by the Vercel function in api/relayer.js.
  */
-async function createRelayer() {
+async function createRelayer({ pins = pinCounter() } = {}) {
     const { naungan, wallet, signer, provider, d } = await connect()
+    const pinKey = await oprfKey(wallet.privateKey) // rotating the relayer key invalidates v2 cards
     const usdc = new ethers.Contract(d.usdc, ["function transferWithAuthorization(address,address,uint256,uint256,uint256,bytes32,uint8,bytes32,bytes32)"], signer)
     const payees = new Set()
     let scanned = (d.fromBlock ?? 0) - 1
@@ -106,7 +139,21 @@ async function createRelayer() {
     const handle = async (method, url, ip, raw) => {
         if (method === "OPTIONS") return [204, {}]
         if (method === "GET" && url === "/health")
-            return [200, { relayer: wallet.address, balance: ethers.formatEther(await provider.getBalance(wallet.address)), chainId: d.chainId, naungan: d.naungan }]
+            return [200, { relayer: wallet.address, balance: ethers.formatEther(await provider.getBalance(wallet.address)), chainId: d.chainId, naungan: d.naungan, pinStore: pins.store, pinTries: MAX_TRIES }]
+        // Not under the per-IP limit: an agency issues hundreds of cards at once, and the per-card cap is the real bound.
+        if (method === "POST" && url === "/pin") {
+            if (raw.length > 1e3) return [413, { error: "body too large" }]
+            let q, evaluated
+            try {
+                q = parsePin(JSON.parse(raw))
+                evaluated = evaluate(pinKey, q.point)
+            } catch (e) {
+                return [400, { error: e.message }]
+            }
+            const n = await pins.incr(`pin:${q.programId}:${q.card}`)
+            if (n > MAX_TRIES) return [429, { error: "this card is locked after too many PIN attempts: ask your agency for a new card", left: 0 }]
+            return [200, { evaluated, left: MAX_TRIES - n }]
+        }
         if (method !== "POST" || !["/relay", "/transfer"].includes(url)) return [404, { error: "not found" }]
         if (limited(ip)) return [429, { error: "too many requests, try again in a minute" }]
         if (raw.length > MAX_BODY) return [413, { error: "body too large" }]
@@ -172,4 +219,4 @@ async function main() {
 }
 
 if (require.main === module) main().catch((e) => (console.error(e.message), process.exit(1)))
-module.exports = { parseProof, parseTransfer, createRelayer, HEADERS, MAX_BODY }
+module.exports = { parseProof, parseTransfer, parsePin, pinCounter, createRelayer, HEADERS, MAX_BODY }
