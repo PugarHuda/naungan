@@ -66,7 +66,7 @@ Cash assistance is now a core part of humanitarian response (about 21% of intern
 | `lib/psi.js` + `scripts/agency.js` | DDH-PSI over ristretto255, served over HTTP to signed, on-chain-registered agencies only; enrollment and QR claim cards, optionally PIN-locked (a lost or photographed card cannot be claimed) | ✅ Tested, attack-tested (unsigned, non-agency, replayed queries rejected) |
 | `lib/hazard.js` + `scripts/oracle.js` | Live GloFAS ensemble probability and NOAA GEFS catchment rainfall (two independent oracle pipelines), Gumbel return levels, labelled replay of past events | ✅ Live data, tested; 2-of-2 program live |
 | `scripts/relayer.js` | Validates and simulates each claim before paying gas; sponsors gasless USDC spends (EIP-3009, Circle-native) for payout wallets only; nonce-safe queue; rate limit | ✅ Tested end-to-end |
-| `web/claim.html` | Household app (installable PWA): in-browser Groth16 proof, works offline and sends the claim when signal returns, EN/ID | ✅ Browser-tested: claim, offline claim, double claim, underfunded, unenrolled card; axe-core WCAG 2.1 AA: 0 violations |
+| `web/claim.html` | Household app (installable PWA): in-browser Groth16 proof, works offline and sends the claim when signal returns, opt-in flood alert computed on the phone (no push server), EN/ID | ✅ Browser-tested: claim, offline claim, double claim, underfunded, unenrolled card; axe-core WCAG 2.1 AA: 0 violations |
 | `web/dashboard.html`, `web/index.html` | Public totals, oracle evidence, donor funding from any browser wallet and CSV/JSON audit export from chain events only | ✅ XSS- and CSV-injection-tested; WCAG 2.1 AA: 0 violations |
 | **Live on Base Sepolia** | Naungan [`0xA56D554C9364C332ed361AD01833fA7BAf87c25E`](https://sepolia.basescan.org/address/0xA56D554C9364C332ed361AD01833fA7BAf87c25E), source verified on [Sourcify](https://repo.sourcify.dev/84532/0xA56D554C9364C332ed361AD01833fA7BAf87c25E) (exact match), paying Circle testnet USDC. Program #1 (Krueng Aceh): 3 households enrolled, live GloFAS reading posted (0%), then a labelled replay of the Nov 2025 flood opened claims; 3 ZK claims paid from a phone browser (one made offline), and a paid wallet spent 1 USDC gaslessly via EIP-3009. Program #2: claims made on the public GitHub Pages app through the relayer hosted on Vercel, ~12 s per claim | ✅ All on-chain, see the dashboard ledger |
 | CI, Pages, hosted oracle | Tests, build and a Slither gate on every push; web apps on GitHub Pages; the GloFAS oracle runs every 6 hours on GitHub Actions | ✅ |
@@ -88,6 +88,7 @@ Cash assistance is now a core part of humanitarian response (about 21% of intern
 | Compromised agency | `removeAgency`, and the dedup service rejects it immediately |
 | Funds stuck if no flood | `seasonEnd`: the pool is refundable after the season |
 | No signal during the flood | The claim app works offline: proving keys and the group are cached, and the proof is queued and sent when signal returns |
+| Households miss that claims opened | Opt-in alert: the installed app checks the program on-chain in the background and notifies the phone when the trigger fires; it needs no push server, so no third party learns which phones are beneficiaries |
 | Off-ramp / liquidity | Circle USDC, the same asset UNHCR distributes and MoneyGram cashes out |
 
 ## 7. Team & ask

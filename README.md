@@ -24,7 +24,7 @@ npm run demo    # Aceh scenario in-process: live GloFAS reading, then a replay o
 | `scripts/relayer.js` | Gas relayer: validates proof shape, simulates the claim, then submits; also sponsors EIP-3009 `transferWithAuthorization` so a paid household can send USDC to a cash-out agent without ever holding ETH (only for Naungan payout wallets); nonce-safe queue, rate limit |
 | `web/index.html` | Landing page with live counters |
 | `web/dashboard.html` | Public dashboard rebuilt from chain events, each oracle's reading and evidence, **Re-check in my browser** (re-runs the oracle's own `lib/hazard.js` against Open-Meteo and compares value and full evidence with the chain), per-program view, **fund a program from any browser wallet** (EIP-6963 discovery, switches to Base Sepolia, approve + fund, faucet link when short), CSV/JSON audit export |
-| `web/claim.html` + `web/sw.js` | Household claim app (EN / Bahasa Indonesia, installable PWA): reads the QR card, proves membership in the browser, works offline and sends the queued claim when signal returns |
+| `web/claim.html` + `web/sw.js` | Household claim app (EN / Bahasa Indonesia, installable PWA): reads the QR card, proves membership in the browser, works offline and sends the queued claim when signal returns; **flood alerts with no push server**: an installed app polls the program in the background (Periodic Background Sync) and raises a local notification when claims open, so no server or push service ever learns which phones belong to beneficiaries |
 | `.github/workflows` | CI (tests, build, Slither gate), GitHub Pages, and the hosted oracle running every 6 hours |
 
 ## Run the whole system locally

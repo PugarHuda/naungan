@@ -23,7 +23,11 @@ const T = {
         privacy: "Your name, ID and location never leave this phone. The blockchain only learns that one enrolled household claimed.",
         wallet: "Wallet on this phone", spend: "Send to a cash-out agent or shop. No fees: you do not need any other coin.",
         to: "Recipient address (0x…)", amt: "Amount in USDC", send: "Send", sent: "Sent", badAmt: "Enter an amount up to your balance",
-        pinTitle: "This card is locked. Enter the 6-digit PIN your agency gave you.", unlock: "Unlock card", checking: "Checking PIN…", pinBad: "That PIN does not open this card. Check the slip from your agency."
+        pinTitle: "This card is locked. Enter the 6-digit PIN your agency gave you.", unlock: "Unlock card", checking: "Checking PIN…", pinBad: "That PIN does not open this card. Check the slip from your agency.",
+        alertBtn: "Alert me when claims open", alertOn: "This phone will alert you when claims open, even with the app closed. It remembers your card so the alert opens it.",
+        alertNo: "This phone cannot check in the background. Open this page during flood warnings, or listen to your agency.",
+        alertDenied: "Notifications are blocked for this site. Allow them in the browser settings to get the alert.",
+        alertInstall: "Add Naungan to your home screen first (browser menu → Install app), then tap again."
     },
     id: {
         title: "Klaim bantuan Anda", load: "Memuat program…", noCard: "Pindai kartu Naungan dengan kamera ponsel, atau tempel kode kartu di bawah.",
@@ -41,7 +45,11 @@ const T = {
         privacy: "Nama, NIK, dan lokasi Anda tidak pernah keluar dari ponsel ini. Blockchain hanya tahu bahwa satu keluarga terdaftar telah klaim.",
         wallet: "Dompet di ponsel ini", spend: "Kirim ke agen tarik tunai atau toko. Tanpa biaya: Anda tidak perlu koin lain.",
         to: "Alamat penerima (0x…)", amt: "Jumlah USDC", send: "Kirim", sent: "Terkirim", badAmt: "Masukkan jumlah sampai sebesar saldo Anda",
-        pinTitle: "Kartu ini terkunci. Masukkan PIN 6 angka dari lembaga bantuan Anda.", unlock: "Buka kartu", checking: "Memeriksa PIN…", pinBad: "PIN tidak cocok untuk kartu ini. Periksa lembar PIN dari lembaga Anda."
+        pinTitle: "Kartu ini terkunci. Masukkan PIN 6 angka dari lembaga bantuan Anda.", unlock: "Buka kartu", checking: "Memeriksa PIN…", pinBad: "PIN tidak cocok untuk kartu ini. Periksa lembar PIN dari lembaga Anda.",
+        alertBtn: "Beri tahu saya saat klaim dibuka", alertOn: "Ponsel ini akan memberi tahu Anda saat klaim dibuka, meski aplikasi ditutup. Kartu Anda diingat agar notifikasi langsung membukanya.",
+        alertNo: "Ponsel ini tidak bisa memeriksa di latar belakang. Buka halaman ini saat ada peringatan banjir, atau ikuti info dari lembaga Anda.",
+        alertDenied: "Notifikasi diblokir untuk situs ini. Izinkan di pengaturan browser agar peringatan bisa muncul.",
+        alertInstall: "Tambahkan Naungan ke layar utama dulu (menu browser → Instal aplikasi), lalu tekan lagi."
     }
 }
 let lang = (() => { try { return localStorage.getItem("naungan-lang") } catch { return null } })() || (navigator.language?.startsWith("id") ? "id" : "en")
@@ -68,6 +76,7 @@ function readCard(fragment) {
     state.pid = BigInt(pid)
     if (locked) state.locked = locked // PIN-locked card: decrypted on the phone in askPin()
     else state.identity = Identity.import(id) // throws on a corrupted card
+    state.card = fragment
     try { sessionStorage.setItem("naungan-card", fragment) } catch {} // a locked card stays encrypted here too
     return locked ? "locked" : true
 }
@@ -103,7 +112,8 @@ async function main() {
         render()
     }
 
-    const fragment = location.hash || (() => { try { return sessionStorage.getItem("naungan-card") } catch { return null } })() || ""
+    // A card saved for flood alerts reopens when the alert is tapped (a PIN-locked one stays encrypted).
+    const fragment = location.hash || (() => { try { return sessionStorage.getItem("naungan-card") || localStorage.getItem(SAVED) } catch { return null } })() || ""
     let ok = false
     try { ok = readCard(fragment) } catch { ok = false }
     if (location.hash) history.replaceState(null, "", location.pathname) // keep the secret out of history and screenshots
@@ -155,6 +165,7 @@ const store = {
     del: (k) => { try { localStorage.removeItem(k) } catch {} }
 }
 const PENDING = "naungan-pending"
+const SAVED = "naungan-card-saved"
 const ARTIFACT = (depth, ext) => `https://snark-artifacts.pse.dev/semaphore/4.13.0/semaphore-${depth}.${ext}`
 const depthOf = (n) => Math.max(1, Math.ceil(Math.log2(Math.max(n, 2))))
 
@@ -216,6 +227,9 @@ async function load() {
         $("bal").textContent = `${ethers.formatUnits(amount, snap.dec)} USDC`
         $("to").textContent = `${t("balance")} ${body.payout}`
         if (body.payout === wallet().address) walletPanel(d, (b) => b >= amount)
+        // Paid: nothing left to wait for, and the card is spent.
+        navigator.serviceWorker?.ready.then((r) => r.active?.postMessage({ type: "unwatch", watch: { naungan: d.naungan, pid: state.pid.toString() } }))
+        store.del(SAVED), store.del(`naungan-alert-${d.naungan}-${state.pid}`)
     }
 
     // A proof made while offline waits here and is sent the moment the phone is back online.
@@ -247,6 +261,7 @@ async function load() {
     $("cardmsg").className = enrolled && !snap.claimed ? "note ok" : "note bad"
     render()
     walletPanel(d)
+    if (enrolled && !snap.claimed && deadline === 0n) alertPanel(d, snap)
     if (!enrolled || snap.claimed || !open) return
 
     show("pay")
@@ -294,6 +309,38 @@ async function load() {
             show("error")
             $("claim").disabled = false
         }
+    }
+}
+
+// Chrome grants background sync only to an installed app: keep its install prompt for the alert button.
+let installPrompt
+window.addEventListener("beforeinstallprompt", (e) => (e.preventDefault(), (installPrompt = e)))
+
+/** Opt-in flood alert: the service worker polls this program in the background (see sw.js). */
+function alertPanel(d, snap) {
+    const flag = `naungan-alert-${d.naungan}-${state.pid}`
+    const say = (k) => ($("alertmsg").dataset.t = k, render())
+    show("alerts")
+    if (store.get(flag)) return show("alertGo", false), say("alertOn")
+    $("alertGo").onclick = async () => {
+        const reg = await navigator.serviceWorker?.ready
+        if (!reg || !("periodicSync" in reg) || !("Notification" in window)) return say("alertNo")
+        if ((await Notification.requestPermission()) !== "granted") return say("alertDenied")
+        const register = () => reg.periodicSync.register("naungan-watch", { minInterval: 6 * 3600e3 }) // the browser may stretch it by engagement
+        try {
+            await register()
+        } catch {
+            if (!installPrompt) return say("alertInstall") // no prompt offered (already dismissed, iOS…): explain the menu route
+            installPrompt.prompt()
+            const { outcome } = await installPrompt.userChoice
+            installPrompt = null
+            if (outcome !== "accepted") return say("alertInstall")
+            try { await register() } catch { return say("alertInstall") }
+        }
+        reg.active.postMessage({ type: "watch", watch: { rpc: d.rpc, naungan: d.naungan, pid: state.pid.toString(), lang, name: snap.meta.name } })
+        try { localStorage.setItem(SAVED, state.card) } catch {}
+        store.set(flag, true)
+        show("alertGo", false), say("alertOn")
     }
 }
 
