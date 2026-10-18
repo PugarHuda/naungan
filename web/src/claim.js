@@ -29,6 +29,8 @@ const T = {
         privacy: "Your name, ID and location never leave this phone. The blockchain only learns that one enrolled household claimed.",
         wallet: "Wallet on this phone", spend: "Send to a cash-out agent or shop. No fees: you do not need any other coin.",
         to: "Recipient address (0x…)", amt: "Amount in USDC", send: "Send", sent: "Sent", badAmt: "Enter an amount up to your balance",
+        scan: "Scan the shop's QR code", scanNo: "This browser cannot scan. Ask the shop to show its address and type or paste it.", scanBad: "That QR code holds no wallet address.", scanDenied: "Camera access was blocked. Allow it in the browser settings, or type the address.",
+        fxNote: (d) => `Rupiah value at the ${d} USD rate (exchangerate-api.com); 1 USDC is worth 1 US dollar.`,
         pinTitle: "This card is locked. Enter the 6-digit PIN your agency gave you.", unlock: "Unlock card", checking: "Checking PIN…", pinBad: "That PIN does not open this card. Check the slip from your agency.", pinLeft: (n) => `${n} tries left before this card locks.`, pinLocked: "This card is locked after too many wrong PINs. Ask your agency for a new card.", pinOffline: "Checking a PIN needs a connection. Try again when you have signal.",
         alertBtn: "Alert me when claims open", alertOn: "This phone will alert you when claims open, even with the app closed. It remembers your card so the alert opens it.",
         alertNo: "This phone cannot check in the background. Open this page during flood warnings, or listen to your agency.",
@@ -56,6 +58,8 @@ const T = {
         privacy: "Nama, NIK, dan lokasi Anda tidak pernah keluar dari ponsel ini. Blockchain hanya tahu bahwa satu keluarga terdaftar telah klaim.",
         wallet: "Dompet di ponsel ini", spend: "Kirim ke agen tarik tunai atau toko. Tanpa biaya: Anda tidak perlu koin lain.",
         to: "Alamat penerima (0x…)", amt: "Jumlah USDC", send: "Kirim", sent: "Terkirim", badAmt: "Masukkan jumlah sampai sebesar saldo Anda",
+        scan: "Pindai kode QR toko", scanNo: "Browser ini tidak bisa memindai. Minta toko menunjukkan alamatnya lalu ketik atau tempel.", scanBad: "Kode QR itu tidak berisi alamat dompet.", scanDenied: "Akses kamera diblokir. Izinkan di pengaturan browser, atau ketik alamatnya.",
+        fxNote: (d) => `Nilai rupiah memakai kurs USD tanggal ${d} (exchangerate-api.com); 1 USDC bernilai 1 dolar AS.`,
         pinTitle: "Kartu ini terkunci. Masukkan PIN 6 angka dari lembaga bantuan Anda.", unlock: "Buka kartu", checking: "Memeriksa PIN…", pinBad: "PIN tidak cocok untuk kartu ini. Periksa lembar PIN dari lembaga Anda.", pinLeft: (n) => `Sisa ${n} kali percobaan sebelum kartu ini terkunci.`, pinLocked: "Kartu ini terkunci karena terlalu banyak PIN salah. Minta kartu baru ke lembaga Anda.", pinOffline: "Memeriksa PIN butuh koneksi internet. Coba lagi saat ada sinyal.",
         alertBtn: "Beri tahu saya saat klaim dibuka", alertOn: "Ponsel ini akan memberi tahu Anda saat klaim dibuka, meski aplikasi ditutup. Kartu Anda diingat agar notifikasi langsung membukanya.",
         alertNo: "Ponsel ini tidak bisa memeriksa di latar belakang. Buka halaman ini saat ada peringatan banjir, atau ikuti info dari lembaga Anda.",
@@ -201,6 +205,32 @@ const store = {
     set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)) } catch {} },
     del: (k) => { try { localStorage.removeItem(k) } catch {} }
 }
+/**
+ * What a USDC amount means at the market: the day's USD→IDR rate from a free public API, kept on the
+ * phone so it still shows offline. USDC is redeemable 1:1 for US dollars, so USD is the right base.
+ */
+const FX = "naungan-fx-idr"
+async function idrRate() {
+    const saved = store.get(FX)
+    if (saved && Date.now() - saved.at < 12 * 3600e3) return saved
+    try {
+        const j = await (await fetch("https://open.er-api.com/v6/latest/USD")).json()
+        if (j.result !== "success" || !(j.rates?.IDR > 0)) throw new Error("no rate")
+        const fx = { idr: j.rates.IDR, day: j.time_last_update_unix * 1000, at: Date.now() }
+        store.set(FX, fx)
+        return fx
+    } catch {
+        return saved // offline or the API is down: the last known rate, or none
+    }
+}
+async function showIdr(id, usdc) {
+    const fx = await idrRate()
+    if (!fx) return
+    $(id).textContent = `≈ Rp ${Math.round(Number(usdc) * fx.idr).toLocaleString("id-ID")}`
+    $(id).title = t("fxNote")(new Date(fx.day).toLocaleDateString(locale()))
+    show(id)
+}
+
 const PENDING = "naungan-pending"
 // Identities this phone made for itself, one per program, never overwritten: { last, cards: { [pid]: card } }.
 const SELF = (d) => `naungan-self-${d.naungan}`
@@ -254,6 +284,7 @@ async function load() {
 
     $("pname").textContent = snap.meta.name
     $("pamount").textContent = `${ethers.formatUnits(amount, snap.dec)} USDC`
+    showIdr("pidr", ethers.formatUnits(amount, snap.dec))
     $("pstatus").textContent = deadline === 0n ? t("watching") : open ? `${t("open_")} ${t("until")} ${new Date(Number(deadline) * 1000).toLocaleString(locale(), { dateStyle: "long", timeStyle: "short" })}` : t("closed")
     $("pstatus").className = open ? "pill on" : "pill"
     $("pindex").textContent = t("chanceOf")(snap.lastIndex, snap.threshold)
@@ -264,6 +295,7 @@ async function load() {
         $("txlink").href = d.explorer ? `${d.explorer}/tx/${body.txHash}` : "#"
         $("txlink").textContent = d.explorer ? t("tx") : body.txHash
         $("bal").textContent = `${ethers.formatUnits(amount, snap.dec)} USDC`
+        showIdr("balIdr", ethers.formatUnits(amount, snap.dec))
         $("to").textContent = `${t("balance")} ${body.payout}`
         if (body.payout === wallet().address) walletPanel(d, (b) => b >= amount)
         // Paid: nothing left to wait for, and the card is spent.
@@ -436,7 +468,9 @@ async function walletPanel(d, settled = () => true) {
     if (bal === 0n) return show("wallet", false)
     show("wallet")
     $("wbal").textContent = `${ethers.formatUnits(bal, dec)} USDC`
+    showIdr("wIdr", ethers.formatUnits(bal, dec))
     $("waddr").textContent = w.address
+    $("scanGo").onclick = () => scanAddress($("sendTo"), $("wmsg"))
     $("send").onclick = async () => {
         let to, value
         try { to = ethers.getAddress($("sendTo").value.trim()) } catch { return $("sendTo").setCustomValidity(t("to")), $("sendTo").reportValidity() }
@@ -472,6 +506,41 @@ async function walletPanel(d, settled = () => true) {
         }
         $("send").disabled = false
     }
+}
+
+/**
+ * Paying a shop or cash-out agent: point the camera at the QR its wallet app shows. Uses the browser's
+ * own BarcodeDetector (Chrome on Android); plain addresses and EIP-681 "ethereum:0x…" links both work.
+ */
+async function scanAddress(input, msg) {
+    const say = (k) => ((msg.className = "note bad"), (msg.textContent = t(k)))
+    if (!("BarcodeDetector" in window) || !navigator.mediaDevices?.getUserMedia) return say("scanNo")
+    let stream
+    try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+    } catch {
+        return say("scanDenied")
+    }
+    const video = $("scanVideo")
+    video.srcObject = stream
+    show("scanBox")
+    await video.play()
+    const detector = new BarcodeDetector({ formats: ["qr_code"] })
+    const stop = () => (stream.getTracks().forEach((x) => x.stop()), show("scanBox", false))
+    $("scanStop").onclick = stop
+    for (let i = 0; i < 300 && stream.active; i++) { // about a minute, then give up quietly
+        const [code] = await detector.detect(video).catch(() => [])
+        if (code) {
+            stop()
+            const addr = code.rawValue.match(/0x[0-9a-fA-F]{40}/)?.[0]
+            if (!addr) return say("scanBad")
+            input.value = ethers.getAddress(addr.toLowerCase())
+            msg.textContent = ""
+            return $("sendAmt").focus()
+        }
+        await new Promise((r) => setTimeout(r, 200))
+    }
+    stop()
 }
 
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {})

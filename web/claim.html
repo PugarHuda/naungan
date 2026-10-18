@@ -52,6 +52,7 @@
   .qr svg { display: block; width: 100%; height: auto; }
   #joinCode { word-break: break-all; font-size: 12px; }
   #showKey { margin-top: 8px; }
+  .idr { color: var(--muted); font-weight: 500; font-size: 15px; }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -80,7 +81,7 @@
   <section class="card" id="program" hidden>
     <dl>
       <dt data-t="program"></dt><dd id="pname">…</dd>
-      <dt data-t="amount"></dt><dd id="pamount">–</dd>
+      <dt data-t="amount"></dt><dd><span id="pamount">–</span> <span class="idr" id="pidr" hidden></span></dd>
       <dt data-t="chance"></dt><dd id="pindex">–</dd>
     </dl>
     <p style="margin:14px 0 0"><span class="pill" id="pstatus">–</span></p>
@@ -113,16 +114,18 @@
 
   <section class="card" id="done" hidden>
     <span class="pill" data-t="done"></span>
-    <div class="big" id="bal"></div>
+    <div class="big" id="bal"></div><div class="idr" id="balIdr" hidden></div>
     <div class="to" id="to"></div>
     <a id="txlink" target="_blank" rel="noopener"></a>
   </section>
 
   <section class="card" id="wallet" hidden>
     <strong data-t="wallet"></strong>
-    <div class="big" id="wbal"></div>
+    <div class="big" id="wbal"></div><div class="idr" id="wIdr" hidden></div>
     <div class="to" id="waddr"></div>
     <p class="privacy" data-t="spend"></p>
+    <button class="link" id="scanGo" type="button" data-t="scan" style="margin-top:12px">Scan the shop's QR code</button>
+    <div id="scanBox" hidden><video id="scanVideo" playsinline muted style="width:100%;border-radius:12px;margin-top:10px;background:#000"></video><button class="link" id="scanStop" type="button">✕</button></div>
     <input type="text" id="sendTo" autocomplete="off" spellcheck="false" aria-label="recipient address" />
     <input type="text" id="sendAmt" inputmode="decimal" autocomplete="off" aria-label="amount in USDC" />
     <button class="primary" id="send" type="button" data-t="send">Send</button>
