@@ -1,5 +1,5 @@
 const { expect } = require("chai")
-const { Agency, privateDedup, soundex, nameTokens } = require("../lib/psi")
+const { Agency, privateDedup, soundex, nameTokens, recordKeys } = require("../lib/psi")
 
 describe("private cross-agency dedup (PSI)", () => {
     it("finds the same household across spelling variants without sharing lists", () => {
@@ -74,5 +74,27 @@ describe("private cross-agency dedup (PSI)", () => {
     it("soundex groups common transliterations", () => {
         expect(soundex("muhammad")).to.equal(soundex("mohammed"))
         expect(soundex("fatima")).to.equal(soundex("fatimah"))
+    })
+
+    it("works outside Indonesia with the basic name profile, and refuses mixed profiles", () => {
+        const a = new Agency([
+            { name: "María José García", birthYear: 1984, village: "San Pedro Sula" },
+            { name: "Jan Novak", birthYear: 1990, village: "Brno" },
+            { name: "Dr. Amina Okafor", birthYear: 1979, village: "Maiduguri" }
+        ], { profile: "basic" })
+        const b = new Agency([
+            { name: "Maria Jose Garcia", birthYear: 1984, village: "san pedro sula" }, // accents dropped by one register
+            { name: "Yan Novak", birthYear: 1990, village: "Brno" }, // another person: no j/y folding here
+            { name: "Amina Okafor", birthYear: 1979, village: "Maiduguri" } // honorific left out
+        ], { profile: "basic" })
+        expect([...privateDedup(a, b)].sort()).to.deep.equal([0, 2])
+        // The Indonesian profile would fold Jan and Yan together; that is right in Aceh, wrong in Brno.
+        expect(nameTokens("Jan Novak", undefined, "id")).to.deep.equal(nameTokens("Yan Novak", undefined, "id"))
+        expect(nameTokens("Jan Novak", undefined, "basic")).to.not.deep.equal(nameTokens("Yan Novak", undefined, "basic"))
+        expect(() => new Agency([], { profile: "xx" })).to.throw(/unknown name profile/)
+        // Same record, different profiles: the exact and phonetic keys differ, which is why the service checks the profile.
+        const r = { name: "Jusuf Hasan", birthYear: 1970, village: "Lambaro" }
+        const main = (p) => recordKeys(r, false, p).filter((x) => !x.near).map((x) => x.k)
+        expect(main("basic").filter((k) => main("id").includes(k))).to.have.length(0)
     })
 })

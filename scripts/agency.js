@@ -7,6 +7,8 @@
 // (possible matches, birth year one off or a one-letter typo, go to <list>.review.csv instead of being enrolled):
 //   node scripts/agency.js enroll --program 1 --list data/zakat.csv --peer http://localhost:7001 \
 //        --claim-url http://localhost:5173/claim.html --cards cards/zakat.html [--pin]
+//   --names id|basic picks how names are normalised before matching (default id: Indonesian/Malay titles
+//   and spelling; basic: accents, case and common honorifics only). Both agencies must use the same one.
 //   --pin locks each card with a 6-digit PIN printed on a separate slip (cards/zakat.pins.html). The key also
 //   needs the relayer's OPRF (lib/cardlock.js v2), so a stolen card cannot be brute-forced offline;
 //   --pin-server overrides deployment.json's relayer.
@@ -25,7 +27,7 @@ const { ethers } = require("ethers")
 const QRCode = require("qrcode")
 const { lockV2, newPin } = require("../lib/cardlock")
 const { Identity } = require("@semaphore-protocol/core")
-const { Agency, DST } = require("../lib/psi")
+const { Agency, DST, PROFILES, DEFAULT_PROFILE } = require("../lib/psi")
 const { connect, explain } = require("../lib/chain")
 const { readHouseholds: readCsv } = require("../lib/csv")
 
@@ -35,17 +37,19 @@ const FRESH_MS = 5 * 60e3
 // The signed payload binds the program, a timestamp and the exact points, so it can't be replayed elsewhere.
 const digest = (programId, ts, points) => ethers.solidityPackedKeccak256(["string", "uint256", "uint256", "bytes32"], ["naungan-psi", programId, ts, ethers.id(points.join(","))])
 
-async function serve({ program, list, port }) {
+async function serve({ program, list, port, names = DEFAULT_PROFILE }) {
     const { naungan, wallet } = await connect()
-    const me = new Agency(readCsv(list))
+    const me = new Agency(readCsv(list), { profile: names })
     http.createServer(async (req, res) => {
         const reply = (code, body) => (res.writeHead(code, { "content-type": "application/json" }), res.end(JSON.stringify(body)))
         if (req.method !== "POST" || req.url !== "/psi") return reply(404, { error: "not found" })
         let raw = ""
         for await (const c of req) if ((raw += c).length > 24e6) return reply(413, { error: "too large" })
         try {
-            const { points, ts, signature, v } = JSON.parse(raw)
+            const { points, ts, signature, v, names: theirs = DEFAULT_PROFILE } = JSON.parse(raw)
             if (v !== DST) throw new Error(`peer runs dedup ${v ?? "naungan-psi-v1"}, this agency runs ${DST}: update both to the same release`)
+            // Different profiles normalise names differently: every key would differ and dedup would silently find nothing.
+            if (theirs !== me.profile) throw new Error(`peer matches names with the "${theirs}" profile, this agency uses "${me.profile}": agree on one (--names)`)
             if (!Array.isArray(points) || points.length === 0 || points.length > MAX_POINTS) throw new Error("bad points")
             if (Math.abs(Date.now() - Number(ts)) > FRESH_MS) throw new Error("stale request")
             const from = ethers.verifyMessage(ethers.getBytes(digest(program, ts, points)), signature)
@@ -66,17 +70,17 @@ const pinServer = (base) => async (q) => {
     return body.evaluated
 }
 
-async function enroll({ program, list, peer = [], "claim-url": claimUrl, cards, pin: withPin, "pin-server": pinUrl }) {
+async function enroll({ program, list, peer = [], "claim-url": claimUrl, cards, pin: withPin, "pin-server": pinUrl, names = DEFAULT_PROFILE }) {
     const { naungan, wallet, d } = await connect()
     if (!(await naungan.isAgency(program, wallet.address))) throw new Error(`${wallet.address} is not an agency of program ${program}`)
     const records = readCsv(list, program)
     const dup = new Set(), near = new Set()
     for (const url of peer) {
-        const me = new Agency(records)
+        const me = new Agency(records, { profile: names })
         const points = me.request()
         const ts = Date.now()
         const signature = await wallet.signMessage(ethers.getBytes(digest(program, ts, points)))
-        const res = await fetch(new URL("/psi", url), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ points, ts, signature, v: DST }) })
+        const res = await fetch(new URL("/psi", url), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ points, ts, signature, v: DST, names }) })
         const body = await res.json()
         if (!res.ok) throw new Error(`${url}: ${body.error}`)
         const found = me.intersect(body)
@@ -145,12 +149,13 @@ body{font:14px/1.4 system-ui,sans-serif;margin:16px}article{display:flex;gap:16p
 
 const { values: a, positionals: [cmd] } = parseArgs({
     allowPositionals: true,
-    options: { program: { type: "string" }, list: { type: "string" }, port: { type: "string", default: "7001" }, peer: { type: "string", multiple: true }, "claim-url": { type: "string" }, cards: { type: "string" }, pin: { type: "boolean" }, "pin-server": { type: "string" } }
+    options: { program: { type: "string" }, list: { type: "string" }, port: { type: "string", default: "7001" }, peer: { type: "string", multiple: true }, "claim-url": { type: "string" }, cards: { type: "string" }, pin: { type: "boolean" }, "pin-server": { type: "string" }, names: { type: "string", default: DEFAULT_PROFILE } }
 })
 const need = (...k) => k.forEach((x) => { if (!a[x]) throw new Error(`--${x} is required`) })
 
 ;(async () => {
     need("program", "list")
+    if (!PROFILES[a.names]) throw new Error(`--names must be ${Object.keys(PROFILES).join(" or ")}`)
     a.program = BigInt(a.program)
     if (cmd === "serve") return serve({ ...a, port: Number(a.port) })
     if (cmd === "enroll") return enroll(a) // --claim-url and --cards are needed only for rows that get printed cards

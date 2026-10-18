@@ -112,6 +112,20 @@
   .caveat { font-size: 13px; color: var(--muted); margin: 16px 0 0; max-width: 820px; }
   #recordMsg { color: var(--muted); }
 
+  .demo { display: block; width: 100%; border-radius: 24px; background: var(--ink); margin: 0 0 18px; aspect-ratio: 16 / 9; }
+  .anyform { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+  .anyform input { flex: 1 1 260px; min-width: 0; font: 500 17px "Plus Jakarta Sans", sans-serif; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; }
+  .hits { list-style: none; padding: 0; margin: 14px 0 0; display: flex; flex-wrap: wrap; gap: 8px; }
+  .hits button { font: 600 14px "Plus Jakarta Sans", sans-serif; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px; cursor: pointer; }
+  .hits button:hover, .hits button[aria-pressed="true"] { border-color: var(--green-ink); }
+  .anyout { margin-top: 18px; padding: 26px 28px; }
+  .anyout h3 { margin: 0 0 4px; font-size: 22px; letter-spacing: -0.02em; }
+  .anyout .figs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin: 18px 0; }
+  .anyout .figs b { display: block; font-size: 34px; letter-spacing: -0.03em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .anyout .figs span { color: var(--muted); font-size: 14px; }
+  #anyChart { display: block; width: 100%; height: auto; }
+  @media (max-width: 700px) { .anyout .figs { grid-template-columns: 1fr; } }
+
   .split { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
   .ledger { padding: 30px; }
   .ledger h3 { font-size: 21px; font-weight: 600; margin: 0 0 16px; letter-spacing: -0.01em; }
@@ -192,6 +206,7 @@
       <div class="ctas">
         <a class="btn go" href="dashboard.html">See it live on Base</a>
         <a class="btn plain" href="claim.html">Claim with a card →</a>
+        <a class="btn plain" href="#demo">Watch the 2-minute demo</a>
       </div>
     </div>
   </div>
@@ -269,6 +284,21 @@
   </div>
 </section>
 
+<section class="band" id="anywhere" aria-labelledby="anyH">
+  <div class="wrap">
+    <div class="eyebrow">Anywhere</div>
+    <h2 class="big" id="anyH">Not only Aceh: check any river.</h2>
+    <p class="intro">The flood data covers rivers worldwide and the contract takes any location, so a program can run wherever floods are forecast. Search a place and this page works out, in your browser with the oracle’s own code, its 1-in-5-year flood level, the next 30 days of forecast and when the trigger would have paid since 1997. Matching names between agencies has a profile per region too (Indonesian and Malay, or basic for anywhere else).</p>
+    <form class="anyform" id="anyForm">
+      <label for="anyQ" style="position:absolute;left:-9999px">Place to check</label>
+      <input id="anyQ" name="q" autocomplete="off" placeholder="Try Sylhet, Maiduguri, Piura or Kerala" required />
+      <button class="btn go" type="submit" id="anyGo">Search places</button>
+    </form>
+    <ul class="hits" id="anyHits" aria-label="Matching places"></ul>
+    <div class="panel anyout" id="anyOut" role="status" hidden></div>
+  </div>
+</section>
+
 <section class="band" id="privacy">
   <div class="wrap">
     <div class="eyebrow">Private by construction</div>
@@ -326,7 +356,8 @@
   <div class="wrap">
     <div class="eyebrow">Built, not just pitched</div>
     <h2 class="big">A working prototype you can verify yourself.</h2>
-    <p class="intro">Real Groth16 proofs generated on the phone and verified on-chain, a hosted gas relayer, an authenticated agency dedup service, two independent flood oracles (GloFAS river discharge and NOAA GEFS rainfall, 2-of-2 quorum) running every 6 hours and 39 automated tests. From the dashboard anyone can re-run an oracle's computation, or re-verify every payout's zero-knowledge proof from its raw transaction, in their own browser.</p>
+    <p class="intro">Real Groth16 proofs generated on the phone and verified on-chain, a hosted gas relayer, an authenticated agency dedup service, two independent flood oracles (GloFAS river discharge and NOAA GEFS rainfall, 2-of-2 quorum) running every 6 hours and 40 automated tests. From the dashboard anyone can re-run an oracle's computation, or re-verify every payout's zero-knowledge proof from its raw transaction, in their own browser.</p>
+    <video id="demo" class="demo" controls preload="none" poster="demo-poster.jpg" aria-label="Two-minute captioned walkthrough of the live app"><source src="demo.mp4" type="video/mp4" /></video>
     <div class="built">
       <a class="panel card" href="dashboard.html"><h3>Live dashboard →</h3><p>Totals rebuilt from chain events only, refreshed every two seconds, with a one-click audit of every payout’s proof.</p></a>
       <a class="panel card" id="contractCard" target="_blank" rel="noopener"><h3>Contract on Basescan →</h3><p class="mono" id="contract">…</p></a>
@@ -371,12 +402,12 @@ const fmt = (d) => new Date(d + "T00:00:00Z").toLocaleDateString("en-GB", { day:
 const NS = "http://www.w3.org/2000/svg"
 const el = (tag, attrs, text) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (text != null) e.textContent = text; return e }
 
-async function forecast(meta) {
+async function forecast(meta, svgId = "chart", noteId = "chartNote") {
   const r = await fetch(`https://flood-api.open-meteo.com/v1/flood?latitude=${meta.lat}&longitude=${meta.lon}&daily=river_discharge_median,river_discharge_max&forecast_days=30`)
   if (!r.ok) throw new Error(`GloFAS forecast ${r.status}`)
   const j = await r.json()
   const { threshold } = await floodThreshold(meta)
-  const svg = $("chart"), W = 260, H = 110, n = j.daily.time.length
+  const svg = $(svgId), W = 260, H = 110, n = j.daily.time.length
   const top = Math.max(threshold * 1.15, ...j.daily.river_discharge_max.filter((v) => v != null))
   const x = (i) => (i / (n - 1)) * W, y = (v) => H - 14 - (v / top) * (H - 22)
   const line = (vals) => vals.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(v ?? 0).toFixed(1)}`).join("")
@@ -387,7 +418,8 @@ async function forecast(meta) {
     el("text", { x: W, y: y(threshold) - 4, fill: "#FFB36B", "font-size": 9, "text-anchor": "end" }, `1-in-${meta.returnPeriod}y flood ${Math.round(threshold)} m³/s`),
     ...[0, 9, 19, 29].map((i) => el("text", { x: Math.min(Math.max(x(i), 8), W - 8), y: H - 2, fill: "#9AA1AB", "font-size": 8, "text-anchor": "middle" }, j.daily.time[i].slice(5)))
   )
-  $("chartNote").textContent = `GloFAS median (line) and wettest member (band), next 30 days, run ${j.daily.time[0]}`
+  $(noteId).textContent = `GloFAS median (line) and wettest member (band), next 30 days, run ${j.daily.time[0]}`
+  return { threshold, peak: Math.max(...j.daily.river_discharge_median.slice(0, 11).filter((v) => v != null)) }
 }
 
 function drawRecord(meta, r) {
@@ -416,6 +448,70 @@ function drawRecord(meta, r) {
   $("recordMsg").textContent = `GloFAS v4 river discharge above the 1-in-${meta.returnPeriod}-year flood (${Math.round(r.flood.threshold)} m³/s)` +
     (quorum ? `, and ERA5 catchment rainfall above its 1-in-${meta.rain.returnPeriod}-year ${meta.leadDays}-day total (${Math.round(r.rain.threshold)} mm) within ${meta.leadDays} days of it` : "") +
     `. This is what a perfect forecast would have triggered: it shows how often the program would pay, not how skilful forecasts are.`
+}
+
+// Any river: Open-Meteo's geocoder finds the place, then the same GloFAS code the oracle runs gives its
+// flood level, forecast and 30-year record. Nothing is stored; each search is a few public API calls.
+const text = (tag, t, cls) => Object.assign(document.createElement(tag), { textContent: t, className: cls ?? "" })
+$("anyForm").onsubmit = async (e) => {
+  e.preventDefault()
+  const q = $("anyQ").value.trim(), hits = $("anyHits")
+  hits.replaceChildren(text("li", "Searching…"))
+  try {
+    const r = await (await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=6&language=en&format=json`)).json()
+    if (!r.results?.length) return hits.replaceChildren(text("li", `No place called “${q}” found. Try a city or district name.`))
+    hits.replaceChildren(...r.results.map((p) => {
+      const li = document.createElement("li"), b = text("button", [p.name, p.admin1, p.country].filter(Boolean).join(", "))
+      b.type = "button"
+      b.onclick = () => { hits.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", x === b)); checkRiver(p) }
+      li.append(b)
+      return li
+    }))
+  } catch (err) {
+    hits.replaceChildren(text("li", `The place search is unavailable right now (${err.message}).`))
+  }
+}
+// A town's centre usually sits on a side stream, not the river that floods it. GloFAS answers 25 points in
+// one request, so look about 10 km around and take the cell with the largest recent mean flow.
+async function riverCell(lat, lon) {
+  const steps = [-0.1, -0.05, 0, 0.05, 0.1], lats = [], lons = []
+  for (const a of steps) for (const b of steps) lats.push((lat + a).toFixed(3)), lons.push((lon + b).toFixed(3))
+  const res = await fetch(`https://flood-api.open-meteo.com/v1/flood?latitude=${lats}&longitude=${lons}&daily=river_discharge&past_days=92&forecast_days=1`)
+  if (!res.ok) throw new Error(`GloFAS ${res.status}`)
+  const mean = (x) => { const v = x.daily.river_discharge.filter((y) => y != null); return v.length ? v.reduce((s, y) => s + y, 0) / v.length : -1 }
+  const best = [].concat(await res.json()).map((x) => ({ lat: Number(x.latitude.toFixed(3)), lon: Number(x.longitude.toFixed(3)), flow: mean(x) })).sort((a, b) => b.flow - a.flow)[0]
+  const km = 6371 * 2 * Math.asin(Math.sqrt(Math.sin(((best.lat - lat) * Math.PI) / 360) ** 2 + Math.cos((lat * Math.PI) / 180) * Math.cos((best.lat * Math.PI) / 180) * Math.sin(((best.lon - lon) * Math.PI) / 360) ** 2))
+  return { ...best, km }
+}
+async function checkRiver(p) {
+  const out = $("anyOut")
+  out.hidden = false
+  out.replaceChildren(text("h3", `${p.name}, ${p.country ?? ""}`), text("p", "Finding the main river near this place, then reading about 30 years of its discharge from GloFAS… (up to a minute if the free API asks us to wait)", "caveat"))
+  const figs = document.createElement("div"); figs.className = "figs"
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg")
+  Object.assign(svg, { id: "anyChart" }); svg.setAttribute("viewBox", "0 0 260 110"); svg.setAttribute("role", "img"); svg.setAttribute("aria-label", `GloFAS 30-day river forecast for ${p.name}`)
+  const note = text("p", "", "caveat"); note.id = "anyNote"
+  try {
+    const cell = await riverCell(p.latitude, p.longitude)
+    const meta = { name: p.name, lat: cell.lat, lon: cell.lon, returnPeriod: 5, leadDays: 10 }
+    const r = await trackRecord(meta)
+    const years = Math.round((Date.parse(r.flood.to) - Date.parse(r.flood.from)) / 3.156e10)
+    const fig = (big, small) => { const d = document.createElement("div"); d.append(text("b", big), text("span", small)); return d }
+    figs.append(fig(`${Math.round(r.flood.threshold).toLocaleString("en")} m³/s`, "1-in-5-year flood level here"),
+      fig(String(r.paid.length), `times the trigger would have paid in ${years} years`),
+      fig(r.paid.length ? fmt(r.paid.at(-1).peakDate) : "never", "most recent payout"))
+    const list = document.createElement("ul"); list.className = "paid-list"
+    for (const e of r.paid.slice(-6).reverse()) { const li = document.createElement("li"); li.append(text("b", fmt(e.peakDate)), `river peak ${Math.round(e.peak).toLocaleString("en")} m³/s`); list.append(li) }
+    out.replaceChildren(text("h3", `${p.name}, ${[p.admin1, p.country].filter(Boolean).join(", ")}`), text("p", `Main river cell near ${p.name}: ${meta.lat}, ${meta.lon}, ${cell.km < 1 ? "at the place itself" : `${Math.round(cell.km)} km away`}, mean flow ${Math.round(cell.flow).toLocaleString("en")} m³/s over the last 3 months`, "caveat"), figs, svg, note, list)
+    // The record is already on screen: a forecast hiccup only blanks the chart, never the record.
+    await forecast(meta, "anyChart", "anyNote")
+      .then((f) => (note.textContent += f.peak >= f.threshold ? ". The forecast reaches the flood level in the next 10 days." : `. The next 10 days peak at ${Math.round(f.peak).toLocaleString("en")} m³/s, below the flood level.`))
+      .catch((e) => (svg.remove(), (note.textContent = `The 30-day forecast is unavailable right now (${e.message}).`)))
+    if (r.flood.threshold < 20) out.append(text("p", "Even the largest river cell within about 10 km is a small stream, so a GloFAS trigger fits poorly here; a rainfall trigger would carry more weight.", "caveat"))
+    out.append(text("p", "A perfect-forecast replay of a GloFAS-only trigger: how often a program here would pay, not how skilful forecasts are.", "caveat"))
+  } catch (err) {
+    out.replaceChildren(text("h3", p.name), text("p", `No river data for this point right now (${err.message}). Try again in a minute, or a nearby place.`, "caveat"))
+  }
 }
 
 ;(async () => {
