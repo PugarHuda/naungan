@@ -3,7 +3,7 @@ const fs = require("fs")
 const os = require("os")
 const path = require("path")
 const { parseLine, readHouseholds } = require("../lib/csv")
-const { parseProof } = require("../scripts/relayer")
+const { parseProof, claimStatus, transferStatus } = require("../scripts/relayer")
 
 describe("services input validation", () => {
     it("parses quoted CSV cells and validates household rows", () => {
@@ -48,6 +48,14 @@ describe("services input validation", () => {
         expect(() => parseProof({ programId: "5", proof: { ...proof, nullifier: "-1" } })).to.throw(/malformed/) // a negative never reaches ABI encoding
         expect(() => parseProof({ programId: "5", proof: { ...proof, points: [...proof.points.slice(1), (2n ** 256n).toString()] } })).to.throw(/malformed/)
         expect(() => parseProof(null)).to.throw()
+    })
+
+    it("relayer calls only the contract's own verdicts final, so a queued claim survives an RPC hiccup", () => {
+        for (const v of ["AlreadyClaimed", "Underfunded", "ClaimWindowClosed", "NotTriggered", "WrongScope", "BadPayout"]) expect(claimStatus(v)).to.equal(422)
+        // A lagging node that has not seen the newest group root, a timeout, a bare revert: retry, keep the proof.
+        for (const v of ["Semaphore__MerkleTreeRootIsNotPartOfTheGroup", "request timeout", "transaction reverted without a reason (CALL_EXCEPTION)"]) expect(claimStatus(v)).to.equal(503)
+        expect(transferStatus({ reason: "FiatTokenV2: invalid signature" })).to.equal(422)
+        expect(transferStatus(new Error("fetch failed"))).to.equal(503)
     })
 })
 

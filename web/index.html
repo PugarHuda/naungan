@@ -394,7 +394,7 @@ if (gl) import("./hero3d.js").catch((e) => console.warn("3D scene unavailable:",
 </script>
 <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js" integrity="sha384-6Zl0Pc8zjSz8KvmNeXRvUQgY4ryFb+BwDvKCmLYcBME0joAaru491tQgi9B7zsMM" crossorigin="anonymous"></script>
 <script type="module">
-// Everything on this page is live: totals and the newest program from the contract, its forecast from
+// Everything on this page is live: totals and the featured flood program from the contract, its forecast from
 // GloFAS, its track record recomputed here with the oracles' code (verify.js bundles lib/hazard.js).
 import { floodThreshold, trackRecord } from "./verify.js"
 const $ = (id) => document.getElementById(id)
@@ -528,14 +528,21 @@ async function checkRiver(p) {
     ], new ethers.JsonRpcProvider(d.rpc, d.chainId, { staticNetwork: true }))
     const n = Number(await c.programCount())
     if (n === 0) return ($("pname").textContent = "No program yet")
-    const [ps, meta] = await Promise.all([Promise.all(Array.from({ length: n }, (_, i) => c.programs(i + 1))), c.metadata(n).then(JSON.parse)])
-    $("nprog").textContent = ps.length // totals span every program, the chart above is the newest one
+    const [ps, metas] = await Promise.all([Promise.all(Array.from({ length: n }, (_, i) => c.programs(i + 1))), Promise.all(Array.from({ length: n }, (_, i) => c.metadata(i + 1).then((t) => { try { return JSON.parse(t) } catch { return {} } })))])
+    // The river chart and track record below are flood views: feature the newest 2-of-2 flood program
+    // (GloFAS + rainfall), else the newest flood program. Heat programs have their own dashboard view.
+    const flood = (m) => m.lat && m.hazard !== "heat"
+    let at = metas.findLastIndex((m) => flood(m) && m.rain)
+    if (at < 0) at = metas.findLastIndex(flood)
+    if (at < 0) at = n - 1
+    const meta = metas[at]
+    $("nprog").textContent = ps.length // totals span every program, the chart above is the featured one
     $("enrolled").textContent = ps.reduce((s, p) => s + p.enrolled, 0n)
     $("paid").textContent = ps.reduce((s, p) => s + p.claims, 0n)
     $("usd").textContent = Number(ethers.formatUnits(ps.reduce((s, p) => s + p.claims * p.amountPerHousehold, 0n), 6)).toLocaleString("en", { maximumFractionDigits: 2 })
-    const latest = ps.at(-1) // the newest program is the one the hosted oracles are watching
+    const latest = ps[at]
     $("pname").textContent = meta.name.split(" · ")[0]
-    $("pdate").textContent = `Program #${n} · ${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}`
+    $("pdate").textContent = `Program #${at + 1} · ${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}`
     $("pnow").textContent = `${latest.lastIndex}%`
     $("ptrig").textContent = `${latest.triggerThreshold}%`
     $("nowBox").classList.toggle("on", latest.claimDeadline > 0n)

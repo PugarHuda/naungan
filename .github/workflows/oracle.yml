@@ -20,7 +20,7 @@ jobs:
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - run: npx hardhat compile
-      - name: Post GloFAS reading
+      - name: Post GloFAS / heatwave reading (each program's metadata picks the pipeline)
         env:
           PRIVATE_KEY: ${{ secrets.ORACLE_KEY }}
           PROGRAMS: ${{ inputs.program || vars.PROGRAMS }}

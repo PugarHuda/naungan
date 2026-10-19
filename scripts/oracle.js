@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Flood oracle: computes the trigger for a program from the hazard parameters stored on-chain and
 // posts it with its evidence string. Each oracle runs the pipeline the program metadata assigns to
-// its address (`pipelines`: "glofas" river discharge or "rain" NOAA GEFS catchment rainfall), so a
+// its address (`pipelines`: "glofas" river discharge, "rain" NOAA GEFS catchment rainfall or "heat" NOAA GEFS
+// maximum temperature; a heat program defaults to "heat"), so a
 // 2-of-2 quorum needs two independent forecasts to agree. --source overrides it (e.g. for --dry-run).
 //
 //   node scripts/oracle.js --program 1                      one live assessment (ensemble forecast)
@@ -24,12 +25,12 @@ async function once({ naungan, wallet }, pid) {
     if (p.claimDeadline > 0n) return console.log(`program ${pid}: already triggered`), true
     if (!a["dry-run"] && !(await naungan.isOracle(pid, wallet.address))) throw new Error(`this key (${wallet.address}) is not an oracle of program ${pid}`)
     const m = await programMeta(naungan, pid)
-    const source = a.source ?? Object.entries(m.pipelines ?? {}).find(([o]) => o.toLowerCase() === wallet.address.toLowerCase())?.[1] ?? "glofas"
-    const run = { glofas: [hazard.assess, hazard.replay], rain: [hazard.assessRain, hazard.replayRain] }[source]
-    if (!run) throw new Error(`unknown pipeline "${source}" (glofas or rain)`)
+    const source = a.source ?? Object.entries(m.pipelines ?? {}).find(([o]) => o.toLowerCase() === wallet.address.toLowerCase())?.[1] ?? (m.hazard === "heat" ? "heat" : "glofas")
+    const run = { glofas: [hazard.assess, hazard.replay], rain: [hazard.assessRain, hazard.replayRain], heat: [hazard.assessHeat, hazard.replayHeat] }[source]
+    if (!run) throw new Error(`unknown pipeline "${source}" (glofas, rain or heat)`)
     const r = a.replay ? await run[1]({ ...m, date: a.replay }) : await run[0](m)
     const above = BigInt(r.probability) >= p.triggerThreshold
-    console.log(`${new Date().toISOString()} program ${pid} · ${m.name}\n  P(flood) = ${r.probability}% (trigger at ${p.triggerThreshold}%) → ${above ? "above trigger" : "below trigger"}\n  ${r.evidence}`)
+    console.log(`${new Date().toISOString()} program ${pid} · ${m.name}\n  P(${m.hazard === "heat" ? "heatwave" : "flood"}) = ${r.probability}% (trigger at ${p.triggerThreshold}%) → ${above ? "above trigger" : "below trigger"}\n  ${r.evidence}`)
     if (a["dry-run"]) return false
     const rcpt = await (await naungan.reportIndex(pid, r.probability, r.evidence)).wait()
     const ev = rcpt.logs.map((l) => naungan.interface.parseLog(l)).find((x) => x?.name === "IndexReported")

@@ -1,5 +1,5 @@
 const { expect } = require("chai")
-const { annualMaxima, returnLevel, exceedance, rolling, assessRain, episodes, agree } = require("../lib/hazard")
+const { annualMaxima, returnLevel, exceedance, rolling, assessRain, episodes, agree, longestRun, assessHeat, replayHeat } = require("../lib/hazard")
 
 describe("hazard (GloFAS trigger math)", () => {
     it("takes yearly peaks from complete years only", () => {
@@ -62,12 +62,43 @@ describe("hazard (GloFAS trigger math)", () => {
         }
     })
 
+    it("a heatwave is a run of consecutive days strictly above the temperature, broken by a cooler or missing day", () => {
+        expect(longestRun([37, 38.5, 39, 37.9, 40, 41, 42], 38)).to.equal(3)
+        expect(longestRun([38, 38, 38], 38)).to.equal(0) // "above 38 °C", as the Bangladesh Red Crescent protocol reads
+        expect(longestRun([39, null, 39], 38)).to.equal(1)
+    })
+
+    it("heat trigger counts the GEFS members that forecast the heatwave, and replays ERA5 the same way", async () => {
+        const real = global.fetch
+        global.fetch = async (url) => ({
+            ok: true,
+            json: async () => url.includes("archive")
+                ? { daily: { time: ["2024-04-19", "2024-04-20", "2024-04-21"], temperature_2m_max: [39.0, 39.8, 37.5] } }
+                // 3 members over 4 days: member01 has two hot days in a row, member02 two separate hot days, member03 none.
+                : { latitude: 23.75, longitude: 90.5, daily: { time: ["d0", "d1", "d2", "d3"], temperature_2m_max: [36, 37, 36, 35],
+                    temperature_2m_max_member01: [37, 38.4, 39.1, 36], temperature_2m_max_member02: [38.5, 37, 38.6, 36] } }
+        })
+        try {
+            const m = { lat: 23.81, lon: 90.41, leadDays: 4, heat: { tmax: 38, days: 2 } }
+            const r = await assessHeat(m)
+            expect(r).to.include({ over: 1, members: 3, probability: 33, threshold: 38 })
+            expect(r.evidence).to.match(/^NOAA GEFS 0\.25 max temperature .*heatwave = 2\+ days above 38 C \| 1\/3 members/)
+            const past = await replayHeat({ ...m, leadDays: 3, date: "2024-04-19" })
+            expect(past.probability).to.equal(100)
+            expect(past.evidence).to.match(/^REPLAY of ERA5 observed max temperature .*window 2024-04-19\.\.2024-04-21 \| 2 consecutive days above 38 C, hottest 39\.8 C/)
+        } finally {
+            global.fetch = real
+        }
+    })
+
     it("the dashboard re-check reads which pipeline, run and replay window produced a report", async () => {
         const { parseEvidence } = await import("../web/src/verify.mjs")
         expect(parseEvidence("GloFAS v4 via Open-Meteo | cell 5.575,95.325 | run 2026-10-18 | lead 10d")).to.deep.equal({ pipeline: "glofas", replay: null, run: "2026-10-18" })
         expect(parseEvidence("NOAA GEFS 0.25 rainfall via Open-Meteo | catchment mean of 5 cells | run 2026-10-17")).to.deep.equal({ pipeline: "rain", replay: null, run: "2026-10-17" })
         expect(parseEvidence("REPLAY of GloFAS v4 reanalysis via Open-Meteo (not a live forecast) | cell 1,2 | window 2025-11-20..2025-11-29")).to.include({ pipeline: "glofas", replay: "2025-11-20" })
         expect(parseEvidence("REPLAY of ERA5 observed rainfall via Open-Meteo (not a live forecast) | window 2025-11-20..2025-11-29")).to.include({ pipeline: "rain", replay: "2025-11-20" })
+        expect(parseEvidence("NOAA GEFS 0.25 max temperature via Open-Meteo | mean of 1 cells | run 2026-10-19 | lead 7d")).to.deep.equal({ pipeline: "heat", replay: null, run: "2026-10-19" })
+        expect(parseEvidence("REPLAY of ERA5 observed max temperature via Open-Meteo (not a live forecast) | mean of 1 cells | window 2024-04-15..2024-04-21")).to.include({ pipeline: "heat", replay: "2024-04-15" })
         expect(parseEvidence("trust me, 99%")).to.equal(null)
     })
 

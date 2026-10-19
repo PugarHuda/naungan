@@ -58,6 +58,18 @@ function parseTransfer(body) {
 const revertName = explain
 
 /**
+ * Status for a failed dry run. Only the contract's own verdicts are final (422: the phone drops the proof);
+ * anything else (RPC timeout, 429, a lagging node that has not seen the group's root yet) is 503, so a
+ * queued claim is kept and retried instead of silently deleted.
+ */
+const FINAL = new Set(["AlreadyClaimed", "Underfunded", "WrongScope", "BadPayout", "ClaimWindowClosed", "NotTriggered", "UnknownProgram"])
+const claimStatus = (name) => (FINAL.has(name) ? 422 : 503)
+/** USDC reverts with a reason string ("FiatTokenV2: invalid signature"); no reason means the RPC failed, not the authorization. */
+const transferStatus = (e) => (e?.reason ? 422 : 503)
+const MIN_SPONSORED = 10_000n // 0.01 USDC: below this a sponsored transfer only burns the relayer's gas
+const DAILY_TRANSFERS = 20 // per payout wallet: a household paying shops, not a script draining gas
+
+/**
  * State every relayer instance must share: PIN tries per card, per-IP request counts, and which claims
  * and transfers are in flight or done. Upstash Redis over its REST API when the env is set, so it holds
  * across serverless instances and restarts; otherwise one process's memory, which `/health` reports.
@@ -96,6 +108,8 @@ function sharedStore(env = process.env) {
     }
 }
 const YEAR = 31536000, MONTH = 2592000
+// PIN try counters must outlive any card: a stolen card left in a drawer must not earn fresh guesses.
+const PIN_TTL = 10 * YEAR
 
 /** /pin request: validated before anything is counted, so garbage never burns a household's tries. */
 function parsePin(body) {
@@ -187,6 +201,8 @@ async function createRelayer({ store = sharedStore() } = {}) {
         if (method === "POST" && url === "/pin") {
             if (await limited(`pin:${ip}`, PIN_PER_MINUTE)) return [429, { error: "too many requests, try again in a minute" }]
             if (raw.length > 1e3) return [413, { error: "body too large" }]
+            // Serverless instances each have their own memory: without the shared store the try cap is not enforced.
+            if (store.store === "memory" && process.env.VERCEL) return [503, { error: "PIN service is not configured (no shared store)" }]
             let q, evaluated
             try {
                 q = parsePin(JSON.parse(raw))
@@ -194,7 +210,7 @@ async function createRelayer({ store = sharedStore() } = {}) {
             } catch (e) {
                 return [400, { error: e.message }]
             }
-            const n = await store.incr(`naungan:pin:${q.programId}:${q.card}`, YEAR) // prefixed: the store may be shared with other apps
+            const n = await store.incr(`naungan:pin:${q.programId}:${q.card}`, PIN_TTL) // prefixed: the store may be shared with other apps
             if (n > MAX_TRIES) return [429, { error: "this card is locked after too many PIN attempts: ask your agency for a new card", left: 0 }]
             return [200, { evaluated, left: MAX_TRIES - n }]
         }
@@ -208,12 +224,16 @@ async function createRelayer({ store = sharedStore() } = {}) {
             } catch (e) {
                 return [400, { error: e.message }]
             }
+            if (a.value < MIN_SPONSORED) return [400, { error: "the smallest sponsored transfer is 0.01 USDC" }]
+            if (await limited(`from:${a.from}`, 3)) return [429, { error: "too many transfers from this wallet, try again in a minute" }]
             if (!(await isPayee(a.from))) return [403, { error: "only Naungan payout wallets are sponsored" }]
+            if ((await store.incr(`naungan:tx:${a.from}:${Math.floor(Date.now() / 864e5)}`, 2 * 86400)) > DAILY_TRANSFERS)
+                return [429, { error: `this wallet used its ${DAILY_TRANSFERS} free transfers for today` }]
             const args = [a.from, a.to, a.value, a.validAfter, a.validBefore, a.nonce, a.v, a.r, a.s]
             try {
                 await usdc.transferWithAuthorization.staticCall(...args)
             } catch (e) {
-                return [422, { error: e.reason ?? revertName(e) }]
+                return [transferStatus(e), { error: e.reason ?? revertName(e) }]
             }
             try {
                 const txHash = await send(`auth:${a.from}:${a.nonce}`, () => usdc.transferWithAuthorization(...args), "authorization is used or canceled")
@@ -229,19 +249,34 @@ async function createRelayer({ store = sharedStore() } = {}) {
         } catch (e) {
             return [400, { error: e.message }]
         }
+        const key = `claim:${pid}:${proof.nullifier}`
+        // A household whose phone lost our answer retries and hits AlreadyClaimed: if we sent that claim,
+        // answer with the original payout instead of an error, so the phone shows "paid", not "failed".
+        const paidBefore = async () => {
+            const h = settled.get(key) ?? (await store.get(`naungan:relay:${key}`).catch(() => null))
+            if (!/^0x[0-9a-f]{64}$/i.test(h ?? "")) return null
+            const rcpt = await provider.getTransactionReceipt(h)
+            const ev = rcpt?.logs.map((l) => { try { return naungan.interface.parseLog(l) } catch { return null } }).find((x) => x?.name === "Claimed" && x.args.nullifier === proof.nullifier)
+            if (!ev) return null
+            const p = await naungan.programs(pid)
+            return { txHash: h, payout: ev.args.payout, amount: p.amountPerHousehold.toString(), already: true }
+        }
         try {
             await naungan.claim.staticCall(pid, proof) // dry run first: never spend gas on a doomed claim
         } catch (e) {
-            return [422, { error: revertName(e) }]
+            const name = revertName(e)
+            const paid = name === "AlreadyClaimed" && (await paidBefore())
+            return paid ? [200, paid] : [claimStatus(name), { error: name }]
         }
         try {
-            const txHash = await send(`claim:${pid}:${proof.nullifier}`, () => naungan.claim(pid, proof), "AlreadyClaimed")
+            const txHash = await send(key, () => naungan.claim(pid, proof), "AlreadyClaimed")
             payees.add(ethers.getAddress(ethers.toBeHex(proof.message, 20)))
             const p = await naungan.programs(pid)
             console.log(`${new Date().toISOString()} program ${pid} paid ${ethers.getAddress(ethers.toBeHex(proof.message, 20))} · ${txHash}`)
             return [200, { txHash, payout: ethers.getAddress(ethers.toBeHex(proof.message, 20)), amount: p.amountPerHousehold.toString() }]
         } catch (e) {
-            return [e.status ?? 502, { error: e.status ? e.message : revertName(e) }]
+            const paid = e.status === 422 && (await paidBefore().catch(() => null))
+            return paid ? [200, paid] : [e.status ?? 502, { error: e.status ? e.message : revertName(e) }]
         }
     }
     // An RPC hiccup inside a request must answer 500, not crash the server with an unhandled rejection.
@@ -263,4 +298,4 @@ async function main() {
 }
 
 if (require.main === module) main().catch((e) => (console.error(e.message), process.exit(1)))
-module.exports = { parseProof, parseTransfer, parsePin, sharedStore, createRelayer, HEADERS, MAX_BODY }
+module.exports = { parseProof, parseTransfer, parsePin, sharedStore, createRelayer, claimStatus, transferStatus, HEADERS, MAX_BODY }

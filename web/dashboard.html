@@ -54,6 +54,7 @@
   .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--muted); padding: 0 4px 8px; }
   .legend span::before { content: ""; display: inline-block; width: 14px; height: 4px; border-radius: 2px; margin-right: 6px; vertical-align: middle; background: var(--ink); }
   .legend .l-band::before { height: 10px; background: rgba(61, 210, 123, .25); }
+  .hydro.heat .legend .l-band::before { background: rgba(240, 128, 60, .3); }
   .legend .l-flood::before { background: repeating-linear-gradient(90deg, var(--warn) 0 4px, transparent 4px 7px); }
   .legend .l-lead::before { height: 10px; background: #E6E9EC; }
 
@@ -173,7 +174,7 @@
         <h1 id="pname">Loading the program…</h1>
         <p class="say" id="statusLine">Reading the contract on Base.<small id="deadline"></small></p>
         <figure class="hydro" id="hydroBox">
-          <div class="legend" aria-hidden="true"><span>Median forecast</span><span class="l-band">Wettest ensemble member</span><span class="l-flood">Flood level</span><span class="l-lead">Trigger window</span></div>
+          <div class="legend" aria-hidden="true"><span>Median forecast</span><span class="l-band" id="lgBand">Wettest ensemble member</span><span class="l-flood" id="lgLevel">Flood level</span><span class="l-lead">Trigger window</span></div>
           <svg id="hydro" viewBox="0 0 760 300" role="img" aria-label="River discharge forecast for the next 30 days against the program's flood level"></svg>
           <figcaption id="hydroNote">Fetching the GloFAS river forecast…</figcaption>
         </figure>
@@ -401,7 +402,7 @@ function describe(e) {
     case "AgencyRemoved": return ["Agency removed by the coordinator", short(a.agency)]
     case "Enrolled": return [`${a.households} households enrolled anonymously`, `agency ${short(a.agency)}, commitments only`]
     case "Funded": return [`${usd(a.amount)} USDC added to the pool`, `donor ${short(a.donor)}`]
-    case "IndexReported": return [`Oracle reported ${a.value}% flood probability${a.triggered ? ": trigger reached, claims open" : ""}`, a.evidence]
+    case "IndexReported": return [`Oracle reported ${a.value}% ${words(metas[a.programId]).noun} probability${a.triggered ? ": trigger reached, claims open" : ""}`, a.evidence]
     case "Claimed": return ["A household was paid", `nullifier ${short(ethers.toBeHex(a.nullifier))} to ${short(a.payout)}`]
     case "Refunded": return [`${usd(a.amount)} USDC returned to a donor`, `their pro-rata share of what was not paid out, to ${short(a.donor)}`]
   }
@@ -472,7 +473,52 @@ function select(id) {
   if (d?.eas) auditors(id)
   $("recordGo").hidden = !m.lat // programs without a hazard location have nothing to replay
   $("hydroBox").hidden = !m.lat
-  if (m.lat) (hydroFor[id] ??= hydrograph(m)).then((draw) => id === pid && draw()).catch((e) => id === pid && ($("hydroNote").textContent = `The river forecast is unavailable right now (${e.message}). The trigger panel still shows what the oracles posted.`))
+  const heat = m.hazard === "heat"
+  $("hydroBox").classList.toggle("heat", heat)
+  $("lgBand").textContent = heat ? "Hottest ensemble member" : "Wettest ensemble member"
+  $("lgLevel").textContent = heat ? "Heatwave level" : "Flood level"
+  $("hydro").setAttribute("aria-label", heat ? "Daily maximum temperature forecast against the program's heatwave level" : "River discharge forecast for the next 30 days against the program's flood level")
+  $("hydroNote").textContent = heat ? "Fetching the NOAA GEFS temperature forecast…" : "Fetching the GloFAS river forecast…"
+  if (m.lat) (hydroFor[id] ??= heat ? heatChart(m) : hydrograph(m)).then((draw) => id === pid && draw()).catch((e) => id === pid && ($("hydroNote").textContent = `The ${heat ? "temperature" : "river"} forecast is unavailable right now (${e.message}). The trigger panel still shows what the oracles posted.`))
+}
+
+/** Words that change with the hazard a program insures against. */
+const words = (m) => m?.hazard === "heat" ? { noun: "heatwave", Noun: "Heatwave" } : { noun: "flood", Noun: "Flood" }
+
+// Heat programs: the 16-day NOAA GEFS maximum-temperature ensemble (the oracle's own request, lib/hazard.js
+// heatForecast) against the program's heatwave temperature, with the trigger's lead window shaded.
+async function heatChart(meta) {
+  const v = await import("./verify.js")
+  const { cells, tmax, days } = v.heatParams(meta)
+  const f = await v.heatForecast({ cells, leadDays: 16 })
+  const at = (i) => f.series.map((s) => s[i]).filter((x) => x != null).sort((a, b) => a - b)
+  // The last forecast day can come back empty for every member: chart only the days that have data.
+  const n = f.time.findIndex((_, i) => at(i).length === 0) < 0 ? f.time.length : f.time.findIndex((_, i) => at(i).length === 0)
+  if (n < 2) throw new Error("GEFS returned no temperature forecast")
+  const med = f.time.slice(0, n).map((_, i) => at(i)[at(i).length >> 1]), max = f.time.slice(0, n).map((_, i) => at(i).at(-1))
+  return () => {
+    const W = 760, H = 300, L = 52, R = 12, T = 14, B = 34
+    const lo = Math.floor(Math.min(...med) - 3), hi = Math.ceil(Math.max(tmax + 2, ...max))
+    const x = (i) => L + (i / (n - 1)) * (W - L - R), y = (t) => T + (1 - (t - lo) / (hi - lo)) * (H - T - B)
+    const line = (vals) => vals.map((t, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(t).toFixed(1)}`).join("")
+    const kids = [svgEl("rect", { x: L, y: T, width: x(Math.min(meta.leadDays, n - 1)) - L, height: H - T - B, fill: "#F0F2F4", rx: 6 })]
+    for (let k = 0; k <= 4; k++) {
+      const t = lo + ((hi - lo) / 4) * k
+      kids.push(svgEl("line", { x1: L, x2: W - R, y1: y(t), y2: y(t), stroke: "#E6E9EC" }), svgEl("text", { x: L - 8, y: y(t) + 4, "font-size": 12, fill: "#5C6268", "text-anchor": "end" }, Math.round(t)))
+    }
+    kids.push(
+      svgEl("path", { d: `${line(max)}L${x(n - 1)},${y(lo)}L${L},${y(lo)}Z`, fill: "rgba(240,128,60,.22)" }),
+      svgEl("path", { d: line(med), fill: "none", stroke: "#0A0B0F", "stroke-width": 3, "stroke-linejoin": "round", "stroke-linecap": "round" }),
+      svgEl("line", { x1: L, x2: W - R, y1: y(tmax), y2: y(tmax), stroke: "#A94F0B", "stroke-width": 2, "stroke-dasharray": "7 5" }),
+      svgEl("text", { x: W - R, y: y(tmax) - 8, fill: "#A94F0B", "font-size": 13, "font-weight": 700, "text-anchor": "end" }, `Heatwave: ${days}+ days above ${tmax} °C`),
+      svgEl("text", { x: L + 8, y: T + 18, fill: "#5C6268", "font-size": 12 }, `Next ${meta.leadDays} days: what the trigger looks at`),
+      svgEl("text", { x: 14, y: T + (H - T - B) / 2, fill: "#5C6268", "font-size": 12, transform: `rotate(-90 14 ${T + (H - T - B) / 2})`, "text-anchor": "middle" }, "°C, daily max")
+    )
+    for (const i of [0, 5, 10, n - 1]) kids.push(svgEl("text", { x: x(i), y: H - 10, "font-size": 12, fill: "#5C6268", "text-anchor": i === 0 ? "start" : i === n - 1 ? "end" : "middle" }, i === 0 ? "Today" : new Date(f.time[i] + "T00:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" })))
+    $("hydro").replaceChildren(...kids)
+    const peak = Math.max(...med.slice(0, meta.leadDays))
+    $("hydroNote").textContent = `NOAA GEFS run ${day(f.time[0])} for ${meta.name.split(" · ")[0]}, ${f.series.length} ensemble members. The median hottest day in the next ${meta.leadDays} days is ${peak.toFixed(1)} °C, ${peak > tmax ? "above" : `${(tmax - peak).toFixed(1)} °C below`} the heatwave level.`
+  }
 }
 
 // The hero: GloFAS's 30-day river forecast for the program's cell against the flood level its trigger uses
@@ -513,7 +559,7 @@ async function trackRecord() {
   const id = pid, m = metas[id], out = $("recordOut")
   if (!m) return out.replaceChildren(el("div", "verdict", "Still connecting to the chain. Try again in a few seconds."))
   $("recordGo").disabled = true
-  out.replaceChildren(el("div", "verdict", "Fetching about 30 years of river discharge and rainfall from Open-Meteo…"))
+  out.replaceChildren(el("div", "verdict", m.hazard === "heat" ? "Fetching about 40 years of daily maximum temperature from Open-Meteo…" : "Fetching about 30 years of river discharge and rainfall from Open-Meteo…"))
   try {
     const r = await (await import("./verify.js")).trackRecord(m)
     if (id !== pid) return
@@ -530,8 +576,9 @@ async function trackRecord() {
     for (const e of r.rainOnly) tl.append(svgEl("rect", { x: x(e.peakDate) - 2.5, y: 68, width: 5, height: 24, rx: 2.5, fill: "#B8BEC4" }))
     for (const e of r.paid) tl.append(svgEl("rect", { x: x(e.peakDate) - 3.5, y: 14, width: 7, height: 78, rx: 3.5, fill: "#3DD27B" }))
     const list = el("ol")
-    for (const e of r.paid.slice().reverse()) list.append(el("li", null, `${day(e.peakDate)}, river ${Math.round(e.peak)} m³/s`))
-    const note = el("p", "fine", `Pays when the river passes the 1-in-${m.returnPeriod}-year flood (${Math.round(r.flood.threshold)} m³/s)` +
+    const heat = m.hazard === "heat"
+    for (const e of r.paid.slice().reverse()) list.append(el("li", null, heat ? `${day(e.start)} to ${day(e.end)}, up to ${e.peak.toFixed(1)} °C` : `${day(e.peakDate)}, river ${Math.round(e.peak)} m³/s`))
+    const note = el("p", "fine", heat ? `Pays when ERA5 records ${m.heat?.days ?? 2} or more consecutive days above ${r.flood.threshold} °C. This replays a perfect forecast: it shows how often the program pays, not how skilful forecasts are.` : `Pays when the river passes the 1-in-${m.returnPeriod}-year flood (${Math.round(r.flood.threshold)} m³/s)` +
       (r.rain ? ` and catchment rain passes its 1-in-${m.rain.returnPeriod}-year ${m.leadDays}-day total (${Math.round(r.rain.threshold)} mm) within ${m.leadDays} days.` : ".") +
       " This replays a perfect forecast: it shows how often the program pays, not how skilful forecasts are.")
     out.replaceChildren(head, tl, list, note)
@@ -680,7 +727,8 @@ function renderState(p, os, reps) {
   const on = p.claimDeadline > 0n, open = on && now <= Number(p.claimDeadline), ended = !on && now > Number(p.seasonEnd)
   const shown = on ? Number(p.lastIndex) : level
   $("index").textContent = shown
-  $("triggerH").textContent = on ? "Flood probability at the trigger" : "Flood probability now"
+  const w = words(m)
+  $("triggerH").textContent = on ? `${w.Noun} probability at the trigger` : `${w.Noun} probability now`
   $("threshold").textContent = p.triggerThreshold
   $("hazardBar").style.width = Math.min(100, shown / Number(p.triggerThreshold) * 100) + "%"
   $("trigger").classList.toggle("on", on)
@@ -691,14 +739,14 @@ function renderState(p, os, reps) {
   const until = (t) => new Date(Number(t) * 1000).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
   // A demo program can be opened by a replay of a past flood; its evidence says so, and so must this page.
   const fired = current.findLast((e) => e.fragment.name === "IndexReported" && e.args.triggered)
-  const replay = fired?.args.evidence.match(/^REPLAY.*?peak [\d.]+ m3\/s on (\d{4}-\d{2}-\d{2})/)?.[1] ?? (fired && /^REPLAY/.test(fired.args.evidence) ? "a past date" : null)
+  const replay = fired?.args.evidence.match(/^REPLAY.*?(?:peak [\d.]+ m3\/s on |window )(\d{4}-\d{2}-\d{2})/)?.[1] ?? (fired && /^REPLAY/.test(fired.args.evidence) ? "a past date" : null)
   $("statusLine").replaceChildren(
-    open && replay ? `Claims are open after a labelled replay of the flood of ${/\d/.test(replay) ? day(replay) : replay}, not a live forecast. Enrolled households can claim from a phone with their card.`
-    : open && fired ? "A flood is forecast. Enrolled households can claim now, from a phone, with their card."
+    open && replay ? `Claims are open after a labelled replay of the ${w.noun} of ${/\d/.test(replay) ? day(replay) : replay}, not a live forecast. Enrolled households can claim from a phone with their card.`
+    : open && fired ? `A ${w.noun} is forecast. Enrolled households can claim now, from a phone, with their card.`
     : open ? "Claims are open. Enrolled households can claim now, from a phone, with their card. Reading what triggered it…"
     : on ? "This program paid out and its claim window has closed. Donors can take back their share of what was not paid out."
-    : ended ? "This season ended without a flood trigger. Each donor can take back their share of the pool below."
-    : `No flood expected yet. The oracles put the chance of a flood${m.leadDays ? ` in the next ${m.leadDays} days` : ""} at ${shown}%, and claims open at ${p.triggerThreshold}%.`,
+    : ended ? `This season ended without a ${w.noun} trigger. Each donor can take back their share of the pool below.`
+    : `No ${w.noun} expected yet. The oracles put the chance of a ${w.noun}${m.leadDays ? ` in the next ${m.leadDays} days` : ""} at ${shown}%, and claims open at ${p.triggerThreshold}%.`,
     el("small", null, open ? `Claims close ${until(p.claimDeadline)}.` : on ? `Closed ${until(p.claimDeadline)}.` : ended ? "" : `Watching until ${until(p.seasonEnd)}. The oracles post every 6 hours.`))
 
   const pipes = Object.fromEntries(Object.entries(m.pipelines ?? {}).map(([k, v]) => [k.toLowerCase(), v]))
@@ -706,10 +754,10 @@ function renderState(p, os, reps) {
   const reports = current.filter((e) => e.fragment.name === "IndexReported")
   $("oracleList").replaceChildren(...os.map((o, i) => {
     const last = reports.findLast((e) => e.args.oracle === o)
-    const kind = pipes[o.toLowerCase()] ?? (m.source ? "glofas" : "")
+    const kind = pipes[o.toLowerCase()] ?? (m.hazard === "heat" ? "heat" : m.source ? "glofas" : "")
     const box = el("div", "oracle"), top = el("div", "top")
     const v = el("span", `val ${reps[i].value >= p.triggerThreshold && fresh(reps[i]) ? "hot" : ""}`, reps[i].ts > 0n ? `${reps[i].value}%` : "–")
-    top.append(el("span", "name", { glofas: "River flow (GloFAS)", rain: "Rainfall (NOAA GEFS)" }[kind] ?? "Oracle"), v)
+    top.append(el("span", "name", { glofas: "River flow (GloFAS)", rain: "Rainfall (NOAA GEFS)", heat: "Max temperature (NOAA GEFS)" }[kind] ?? "Oracle"), v)
     const sub = el("div", "sub", `${short(o)}, ${reps[i].ts > 0n ? `posted ${ago(Number(reps[i].ts))}` : "no report yet"}`)
     if (!on && reps[i].ts > 0n && !fresh(reps[i])) sub.append(el("span", "stale", ", expired and not counted"))
     box.append(top, sub)

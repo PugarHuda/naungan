@@ -18,6 +18,10 @@ const T = {
         enrolled: "Your card is valid for this program.", payTo: "Where should the money go?",
         newWallet: "Create a wallet on this phone", ownWallet: "Use my own address", addr: "Wallet address (0x…)",
         backup: "Write down this backup key and keep it safe. Anyone with it controls the money.", showKey: "Show backup key",
+        watching_heat: "Watching the temperature forecast. Claims open automatically when a heatwave is forecast.",
+        open__heat: "Heatwave alert: claims are open", chance_heat: "Heatwave chance",
+        alertNo_heat: "This phone cannot check in the background. Open this page during heatwave warnings, or listen to your agency.",
+        joinClosed_heat: "Registration closed when the heatwave alert opened claims, so this phone cannot join this program now. Ask your agency about the next one.",
         chance: "Flood chance", chanceOf: (a, b) => `${a}% (claims open at ${b}%)`,
         joinTitle: "Register with your own phone",
         joinHow: "Show this code to the agency staff. It holds no name and cannot be used to claim. Your secret stays only on this phone, so not even the agency can tell when you claim.",
@@ -51,6 +55,10 @@ const T = {
         enrolled: "Kartu Anda berlaku untuk program ini.", payTo: "Ke mana uang dikirim?",
         newWallet: "Buat dompet di ponsel ini", ownWallet: "Pakai alamat saya sendiri", addr: "Alamat dompet (0x…)",
         backup: "Catat kunci cadangan ini dan simpan baik-baik. Siapa pun yang memilikinya menguasai uangnya.", showKey: "Tampilkan kunci cadangan",
+        watching_heat: "Memantau prakiraan suhu. Klaim terbuka otomatis saat gelombang panas diprakirakan.",
+        open__heat: "Peringatan gelombang panas: klaim dibuka", chance_heat: "Peluang gelombang panas",
+        alertNo_heat: "Ponsel ini tidak bisa memeriksa di latar belakang. Buka halaman ini saat ada peringatan gelombang panas, atau ikuti info dari lembaga Anda.",
+        joinClosed_heat: "Pendaftaran ditutup saat peringatan gelombang panas membuka klaim, jadi ponsel ini tidak bisa ikut program ini sekarang. Tanyakan program berikutnya ke lembaga Anda.",
         chance: "Peluang banjir", chanceOf: (a, b) => `${a}% (klaim dibuka pada ${b}%)`,
         joinTitle: "Daftar dengan ponsel Anda sendiri",
         joinHow: "Tunjukkan kode ini ke petugas lembaga. Kode ini tidak berisi nama dan tidak bisa dipakai klaim. Rahasia Anda hanya ada di ponsel ini, jadi lembaga pun tidak bisa tahu kapan Anda klaim.",
@@ -76,7 +84,8 @@ const T = {
     }
 }
 let lang = (() => { try { return localStorage.getItem("naungan-lang") } catch { return null } })() || (navigator.language?.startsWith("id") ? "id" : "en")
-const t = (k) => T[lang][k]
+// Hazard-specific wording (a heat program says "heatwave", not "flood") falls back to the shared string.
+const t = (k) => (state.hazard === "heat" && T[lang][k + "_heat"]) || T[lang][k]
 const locale = () => (lang === "id" ? "id-ID" : "en-GB")
 const $ = (id) => document.getElementById(id)
 const show = (id, on = true) => $(id).toggleAttribute("hidden", !on)
@@ -322,6 +331,7 @@ async function load() {
     const open = deadline > 0n && now <= Number(deadline)
 
     $("pname").textContent = snap.meta.name
+    if (state.hazard !== snap.meta.hazard) (state.hazard = snap.meta.hazard), render()
     $("pamount").textContent = `${ethers.formatUnits(amount, snap.dec)} USDC`
     showIdr("pidr", ethers.formatUnits(amount, snap.dec))
     $("pstatus").textContent = deadline === 0n ? t("watching") : open ? `${t("open_")} ${t("until")} ${new Date(Number(deadline) * 1000).toLocaleString(locale(), { dateStyle: "long", timeStyle: "short" })}` : t("closed")
@@ -462,7 +472,7 @@ function joinPanel() {
 let installPrompt
 window.addEventListener("beforeinstallprompt", (e) => (e.preventDefault(), (installPrompt = e)))
 
-/** Opt-in flood alert: the service worker polls this program in the background (see sw.js). */
+/** Opt-in hazard alert: the service worker polls this program in the background (see sw.js). */
 function alertPanel(d, snap) {
     const flag = `naungan-alert-${d.naungan}-${state.pid}`
     const say = (k) => ($("alertmsg").dataset.t = k, render())
@@ -483,7 +493,7 @@ function alertPanel(d, snap) {
             if (outcome !== "accepted") return say("alertInstall")
             try { await register() } catch { return say("alertInstall") }
         }
-        reg.active.postMessage({ type: "watch", watch: { rpc: d.rpc, naungan: d.naungan, pid: state.pid.toString(), lang, name: snap.meta.name } })
+        reg.active.postMessage({ type: "watch", watch: { rpc: d.rpc, naungan: d.naungan, pid: state.pid.toString(), lang, name: snap.meta.name, hazard: snap.meta.hazard } })
         try { localStorage.setItem(SAVED, state.card) } catch {}
         store.set(flag, true)
         show("alertGo", false), say("alertOn")

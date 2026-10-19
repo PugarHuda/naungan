@@ -1,6 +1,6 @@
 // Offline support for the household claim app. Signal drops exactly when floods hit, so the app,
 // the Semaphore proving keys and the last deployment info are served from cache when offline.
-const SHELL = "naungan-shell-v6"
+const SHELL = "naungan-shell-v7"
 const ARTIFACTS = "naungan-artifacts-v1" // proving keys are immutable per version: cache forever
 const WATCH = "naungan-watch" // programs this phone waits on: chain address + program id only, no identity
 const PRECACHE = ["claim.html", "claim.js", "manifest.webmanifest", "icon.svg", "deployment.json"]
@@ -35,8 +35,8 @@ async function networkFirst(req) {
 // Background Sync) and shows a local notification when claims open. Web Push would need a server
 // that keeps every enrolled phone's subscription and lets the push service know who is a beneficiary.
 const NOTE = {
-    en: (name) => ({ title: "Flood alert: claims are open", body: `${name}: open Naungan and tap Claim before the window closes.` }),
-    id: (name) => ({ title: "Peringatan banjir: klaim dibuka", body: `${name}: buka Naungan dan tekan Klaim sebelum masa klaim berakhir.` })
+    en: (name, heat) => ({ title: `${heat ? "Heatwave" : "Flood"} alert: claims are open`, body: `${name}: open Naungan and tap Claim before the window closes.` }),
+    id: (name, heat) => ({ title: `Peringatan ${heat ? "gelombang panas" : "banjir"}: klaim dibuka`, body: `${name}: buka Naungan dan tekan Klaim sebelum masa klaim berakhir.` })
 }
 const watchKey = (w) => `/__watch__/${w.naungan}/${w.pid}`
 
@@ -58,7 +58,7 @@ async function checkWatches() {
         if (end === 0n) continue
         if (now > end) { await cache.delete(req); continue } // window over: stop watching
         if (w.notified) continue
-        const n = (NOTE[w.lang] ?? NOTE.en)(w.name)
+        const n = (NOTE[w.lang] ?? NOTE.en)(w.name, w.hazard === "heat")
         try {
             await self.registration.showNotification(n.title, { body: n.body, tag: watchKey(w), icon: "icon.svg", badge: "icon.svg", requireInteraction: true, data: { url: "claim.html" } })
         } catch { continue } // permission revoked: leave it un-notified so a later grant still alerts, and check the rest

@@ -37,6 +37,6 @@ Naungan fixes all three in one working system on Base Sepolia with Circle USDC:
 
 **Why Singapore:** Singapore's OHAS pilot (2025–2028) gives a 100% tax deduction for overseas emergency cash through designated charities with strong controls on fund flows; Naungan gives those charities a public ledger and a proof check per payout. Mercy Relief already raised OHAS-deductible funds for the 2025 Sumatra floods.
 
-**Built and tested:** 45 automated tests (contract with real Groth16 proofs, payout audit, PSI, trigger math, PIN lockout, gasless spend), Slither in CI, live oracles on GitHub Actions, relayer on Vercel with Upstash Redis.
+**Built and tested:** 48 automated tests (contract with real Groth16 proofs, payout audit, PSI, flood/rain/heatwave trigger math, PIN lockout, gasless spend, relayer verdicts), Slither in CI, live oracles on GitHub Actions, relayer on Vercel with Upstash Redis.
 
 **Team:** Pugar Huda Mantoro (solo).
