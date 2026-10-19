@@ -208,7 +208,7 @@
         <p class="fine" id="dotsNote">One dot per household, in no particular order: the chain cannot tell which one was paid.</p>
       </div>
       <form class="give donate" id="donate">
-        <h2>Add to the pool</h2>
+        <h2 id="donateH">Add to the pool</h2>
         <p class="lead-in" style="margin:0" id="donateNote">From any browser wallet. Test USDC is free at faucet.circle.com.</p>
         <label class="amount" for="donateAmt"><input id="donateAmt" type="number" inputmode="decimal" min="0.01" step="0.01" value="1" required aria-label="Amount in USDC" /><span>USDC</span></label>
         <button class="btn go" type="submit" id="donateBtn">Connect wallet and fund</button>
@@ -271,13 +271,15 @@ const ABI = [
   "function programs(uint256) view returns (address coordinator,uint256 quorum,uint256 groupId,uint256 amountPerHousehold,uint256 triggerThreshold,uint256 claimWindow,uint256 claimDeadline,uint256 lastIndex,uint256 enrolled,uint256 funded,uint256 claims,uint256 seasonEnd)",
   "function token() view returns (address)",
   "function fund(uint256 programId, uint256 amount)",
+  "function refund(uint256 programId)",
+  "function contributed(uint256, address) view returns (uint256)",
   "event AgencyAdded(uint256 indexed programId, address agency)",
   "event AgencyRemoved(uint256 indexed programId, address agency)",
   "event Enrolled(uint256 indexed programId, address indexed agency, uint256 households)",
   "event Funded(uint256 indexed programId, address indexed donor, uint256 amount)",
   "event IndexReported(uint256 indexed programId, address oracle, uint256 value, uint256 agreeing, bool triggered, string evidence)",
   "event Claimed(uint256 indexed programId, uint256 nullifier, address payout)",
-  "event Refunded(uint256 indexed programId, uint256 amount)"
+  "event Refunded(uint256 indexed programId, address indexed donor, uint256 amount)"
 ]
 const $ = (id) => document.getElementById(id)
 const usd = (v) => (Number(v) / 1e6).toLocaleString("en", { maximumFractionDigits: 2 })
@@ -320,9 +322,7 @@ async function donate(ev) {
   btn.disabled = true
   try {
     const p = await c.programs(pid)
-    const now = Date.now() / 1000
-    // Money sent after the window or season would only sit until the coordinator refunds it.
-    if (p.claimDeadline > 0n ? now > Number(p.claimDeadline) : now > Number(p.seasonEnd)) throw new Error("this program has ended; pick a running one")
+    if (ended(p)) return await refund(p, eth, say)
     const amt = ethers.parseUnits($("donateAmt").value || "0", 6)
     if (amt <= 0n) throw new Error("enter an amount above 0")
     say("Waiting for your wallet…")
@@ -350,6 +350,22 @@ async function donate(ev) {
   } finally {
     btn.disabled = false
   }
+}
+
+// The contract takes no money once claims are over; each donor then pulls back their own share of what was not paid out.
+const ended = (p) => Date.now() / 1000 > Number(p.claimDeadline > 0n ? p.claimDeadline : p.seasonEnd)
+async function refund(p, eth, say) {
+  say("Waiting for your wallet…")
+  const signer = await walletSigner(eth)
+  const me = await signer.getAddress()
+  const gave = await c.contributed(pid, me)
+  if (gave === 0n) return say(`${short(me)} has no money in program #${pid} to take back (or already took it).`)
+  const share = gave * (p.funded - p.claims * p.amountPerHousehold) / p.funded
+  say(`You gave ${usd(gave)} USDC; your share of what was not paid out is ${usd(share)} USDC. Confirm in your wallet…`)
+  const tx = await c.connect(signer).refund(pid, { gasLimit: 120000n })
+  say("Refund sent, waiting for the block…", d.explorer && `${d.explorer}/tx/${tx.hash}`)
+  if ((await tx.wait()).status !== 1) throw new Error("the refund transaction reverted")
+  say(`${usd(share)} USDC is back in ${short(me)}.`, d.explorer && `${d.explorer}/tx/${tx.hash}`)
 }
 
 // Recompute a report from Open-Meteo in this browser with the oracle's own code (verify.js bundles lib/hazard.js).
@@ -387,7 +403,7 @@ function describe(e) {
     case "Funded": return [`${usd(a.amount)} USDC added to the pool`, `donor ${short(a.donor)}`]
     case "IndexReported": return [`Oracle reported ${a.value}% flood probability${a.triggered ? ": trigger reached, claims open" : ""}`, a.evidence]
     case "Claimed": return ["A household was paid", `nullifier ${short(ethers.toBeHex(a.nullifier))} to ${short(a.payout)}`]
-    case "Refunded": return [`${usd(a.amount)} USDC unclaimed returned`, "after the claim window or season end"]
+    case "Refunded": return [`${usd(a.amount)} USDC returned to a donor`, `their pro-rata share of what was not paid out, to ${short(a.donor)}`]
   }
 }
 
@@ -726,6 +742,11 @@ function renderState(p, os, reps) {
   const spare = p.funded - disbursed - owed
   $("gap").replaceChildren(spare >= 0n ? "Unallocated " : "Short by ", el("b", null, usd(spare >= 0n ? spare : -spare)), ` USDC${spare < 0n ? ` to pay every enrolled household ${usd(amt)} USDC` : spare >= amt ? `, enough for ${spare / amt} more households` : ", every enrolled household is covered"}`)
   $("enrolled").textContent = p.enrolled
+  const over = ended(p)
+  $("donateH").textContent = over ? "Take back your share" : "Add to the pool"
+  $("donateAmt").closest("label").hidden = over
+  $("donateAmt").required = !over
+  $("donateBtn").textContent = over ? "Connect wallet and refund" : "Connect wallet and fund"
   $("paid").textContent = p.claims
   // One dot per household (scaled past 240 so the grid stays readable); filled dots carry no identity.
   const per = p.enrolled > 240n ? Math.ceil(Number(p.enrolled) / 240) : 1

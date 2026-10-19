@@ -10,10 +10,10 @@
     "graphql": "https://base-sepolia.easscan.org/graphql",
     "explorer": "https://base-sepolia.easscan.org"
   },
-  "naungan": "0xA56D554C9364C332ed361AD01833fA7BAf87c25E",
+  "naungan": "0x00E9E8F7a9E8Dd4923Eb92eC5536f70ecD0C70f4",
   "usdc": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
   "usdcIsCircle": true,
-  "semaphore": "0x647787568ADf29dBA55Dbc068C618ECF575b420F",
+  "semaphore": "0x6e5Dd641faea7772baA3F83B30a643EC17d4180d",
   "relayer": "https://naungan.vercel.app",
-  "fromBlock": 48245411
+  "fromBlock": 48328064
 }

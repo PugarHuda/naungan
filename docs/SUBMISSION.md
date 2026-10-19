@@ -16,7 +16,7 @@ Paste-ready fields for https://dorahacks.io/hackathon/web3-social-good-2026 (dea
 - Public dashboard: https://naungan.vercel.app/dashboard.html?program=2
 - Demo claim card (one household left unclaimed for judges): https://naungan.vercel.app/claim.html#p=2&id=sG0DdcsCNBfd7i%2FIGGuxLmkPFbIN2ydmlblYsEm3rK8%3D
 - Source: https://github.com/PugarHuda/naungan
-- Contract (Base Sepolia, Sourcify-verified): https://sepolia.basescan.org/address/0xA56D554C9364C332ed361AD01833fA7BAf87c25E
+- Contract (Base Sepolia, Sourcify-verified): https://sepolia.basescan.org/address/0x00E9E8F7a9E8Dd4923Eb92eC5536f70ecD0C70f4
 - Relayer health: https://naungan.vercel.app/health
 
 **Description**
@@ -37,6 +37,6 @@ Naungan fixes all three in one working system on Base Sepolia with Circle USDC:
 
 **Why Singapore:** Singapore's OHAS pilot (2025–2028) gives a 100% tax deduction for overseas emergency cash through designated charities with strong controls on fund flows; Naungan gives those charities a public ledger and a proof check per payout. Mercy Relief already raised OHAS-deductible funds for the 2025 Sumatra floods.
 
-**Built and tested:** 40 automated tests (contract with real Groth16 proofs, payout audit, PSI, trigger math, PIN lockout, gasless spend), Slither in CI, live oracles on GitHub Actions, relayer on Vercel with Upstash Redis.
+**Built and tested:** 45 automated tests (contract with real Groth16 proofs, payout audit, PSI, trigger math, PIN lockout, gasless spend), Slither in CI, live oracles on GitHub Actions, relayer on Vercel with Upstash Redis.
 
 **Team:** Pugar Huda Mantoro (solo).

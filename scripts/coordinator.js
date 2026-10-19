@@ -7,7 +7,7 @@
 //   node scripts/coordinator.js add-agency    --program 1 --agency 0x..
 //   node scripts/coordinator.js remove-agency --program 1 --agency 0x..
 //   node scripts/coordinator.js fund          --program 1 --amount 10        (USDC, approves first)
-//   node scripts/coordinator.js refund        --program 1
+//   node scripts/coordinator.js refund        --program 1        (this key's own pro-rata share, once claims are over)
 //   node scripts/coordinator.js status        --program 1
 const { parseArgs } = require("util")
 const { ethers } = require("ethers")
@@ -111,7 +111,7 @@ const wait = async (txp) => {
         }
         return console.log(`funded ${a.amount} USDC · ${await wait(naungan.fund(pid, amt))}`)
     }
-    if (cmd === "refund") return console.log(`refunded · ${await wait(naungan.refundUnclaimed(pid))}`)
+    if (cmd === "refund") return console.log(`refunded the pro-rata share of ${ethers.formatUnits(await naungan.contributed(pid, wallet.address), dec)} USDC given · ${await wait(naungan.refund(pid))}`)
     if (cmd === "status") {
         const p = await naungan.programs(pid)
         const f = (x) => ethers.formatUnits(x, dec)

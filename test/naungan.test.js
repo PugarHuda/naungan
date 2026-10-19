@@ -154,27 +154,30 @@ describe("Naungan", () => {
         await expect(naungan.claim(programId, last)).to.be.revertedWithCustomError(naungan, "Underfunded")
     })
 
-    it("returns unclaimed funds only after the window closes, then stops paying", async () => {
-        await naungan.connect(donor).fund(programId, USDC(70))
-        await expect(naungan.refundUnclaimed(programId)).to.be.revertedWithCustomError(naungan, "ClaimWindowOpen")
-        await expect(naungan.connect(outsider).refundUnclaimed(programId)).to.be.revertedWithCustomError(naungan, "NotCoordinator")
+    it("returns unclaimed funds to each donor pro rata, only after the window closes", async () => {
+        await usdc.mint(outsider.address, USDC(70))
+        await usdc.connect(outsider).approve(await naungan.getAddress(), USDC(70))
+        await naungan.connect(outsider).fund(programId, USDC(70)) // pool 220, paid 150, 70 left
+        await expect(naungan.connect(donor).refund(programId)).to.be.revertedWithCustomError(naungan, "ClaimWindowOpen")
         await warp(8 * DAY)
         await expect(naungan.claim(programId, await proofFor(households[3], outsider.address))).to.be.revertedWithCustomError(naungan, "ClaimWindowClosed")
-        const before = await usdc.balanceOf(coordinator.address)
-        await naungan.refundUnclaimed(programId)
-        expect((await usdc.balanceOf(coordinator.address)) - before).to.equal(USDC(70))
+        await expect(naungan.connect(donor).fund(programId, USDC(1))).to.be.revertedWithCustomError(naungan, "ClaimWindowClosed")
+        await expect(naungan.connect(coordinator).refund(programId)).to.be.revertedWithCustomError(naungan, "NothingToRefund")
+        const share = (gave) => (gave * USDC(70)) / USDC(220)
+        await expect(naungan.connect(donor).refund(programId)).to.emit(naungan, "Refunded").withArgs(programId, donor.address, share(USDC(150)))
+        await expect(naungan.connect(outsider).refund(programId)).to.changeTokenBalance(usdc, outsider, share(USDC(70)))
+        await expect(naungan.connect(donor).refund(programId)).to.be.revertedWithCustomError(naungan, "NothingToRefund")
+        expect(await usdc.balanceOf(await naungan.getAddress())).to.be.lte(1n) // rounding dust only
     })
 
     it("refunds a program whose season ended without a trigger, and stops reports after it", async () => {
         await naungan.createProgram([oracle.address], 1, USDC(10), 60, DAY, (await now()) + 30 * DAY, META)
         const pid = await naungan.programCount()
         await naungan.connect(donor).fund(pid, USDC(40))
-        await expect(naungan.refundUnclaimed(pid)).to.be.revertedWithCustomError(naungan, "ClaimWindowOpen")
+        await expect(naungan.connect(donor).refund(pid)).to.be.revertedWithCustomError(naungan, "ClaimWindowOpen")
         await warp(31 * DAY)
         await expect(naungan.connect(oracle).reportIndex(pid, 100, "late")).to.be.revertedWithCustomError(naungan, "SeasonOver")
-        const before = await usdc.balanceOf(coordinator.address)
-        await naungan.refundUnclaimed(pid)
-        expect((await usdc.balanceOf(coordinator.address)) - before).to.equal(USDC(40))
+        await expect(naungan.connect(donor).refund(pid)).to.changeTokenBalance(usdc, donor, USDC(40))
     })
     it("needs a quorum of distinct, fresh oracle reports to trigger", async () => {
         const [, o1, o2, o3] = await ethers.getSigners()

@@ -53,6 +53,8 @@ contract Naungan {
     // ponytail: own nullifier set instead of semaphore.validateProof, which anyone can call
     // with a leaked proof to burn the nullifier before the real claim lands.
     mapping(uint256 => mapping(uint256 => bool)) public nullifierUsed;
+    /// What each donor put into each program, so leftovers go back to the people who gave them.
+    mapping(uint256 => mapping(address => uint256)) public contributed;
 
     /// @param metadata JSON describing the hazard, location and data source, so anyone can audit the trigger.
     event ProgramCreated(uint256 indexed programId, address coordinator, uint256 amountPerHousehold, uint256 triggerThreshold, string metadata);
@@ -64,7 +66,7 @@ contract Naungan {
     /// @param agreeing distinct oracles whose fresh report is at or above the threshold, this one included.
     event IndexReported(uint256 indexed programId, address oracle, uint256 value, uint256 agreeing, bool triggered, string evidence);
     event Claimed(uint256 indexed programId, uint256 nullifier, address payout);
-    event Refunded(uint256 indexed programId, uint256 amount);
+    event Refunded(uint256 indexed programId, address indexed donor, uint256 amount);
 
     error NotCoordinator();
     error NotAgency();
@@ -81,6 +83,7 @@ contract Naungan {
     error UnknownProgram();
     error SeasonOver();
     error BadParams();
+    error NothingToRefund();
 
     constructor(ISemaphore _semaphore, IERC20 _token) {
         semaphore = _semaphore;
@@ -149,8 +152,12 @@ contract Naungan {
     }
 
     function fund(uint256 programId, uint256 amount) external {
-        if (programs[programId].coordinator == address(0)) revert UnknownProgram();
-        programs[programId].funded += amount;
+        Program storage p = programs[programId];
+        if (p.coordinator == address(0)) revert UnknownProgram();
+        // Closed programs take no money: it could never be claimed, and it would skew everyone's refund share.
+        if (closed(p)) revert ClaimWindowClosed();
+        p.funded += amount;
+        contributed[programId][msg.sender] += amount;
         token.safeTransferFrom(msg.sender, address(this), amount);
         emit Funded(programId, msg.sender, amount);
     }
@@ -203,16 +210,25 @@ contract Naungan {
         emit Claimed(programId, proof.nullifier, payout);
     }
 
-    /// @notice Unclaimed funds go back to the coordinator after the claim window closes, or after
-    /// the season ends without a trigger, so donor money is never locked forever.
-    function refundUnclaimed(uint256 programId) external {
+    /// @notice Once the claim window closes (or the season ends without a trigger), each donor takes
+    /// back their pro-rata share of what was not paid out. Pull-based: nobody can redirect a donor's
+    /// money, and the coordinator never holds it. After closing, `funded` and `claims` are frozen,
+    /// so every donor's share is computed from the same totals.
+    function refund(uint256 programId) external {
         Program storage p = programs[programId];
-        if (msg.sender != p.coordinator) revert NotCoordinator();
-        bool done = p.claimDeadline == 0 ? block.timestamp > p.seasonEnd : block.timestamp > p.claimDeadline;
-        if (!done) revert ClaimWindowOpen();
-        uint256 left = p.funded - p.claims * p.amountPerHousehold;
-        p.funded = p.claims * p.amountPerHousehold;
-        token.safeTransfer(msg.sender, left);
-        emit Refunded(programId, left);
+        if (!closed(p)) revert ClaimWindowOpen();
+        uint256 gave = contributed[programId][msg.sender];
+        if (gave == 0) revert NothingToRefund();
+        contributed[programId][msg.sender] = 0;
+        // ponytail: floor division leaves at most (donors - 1) base units of dust in the contract
+        uint256 owed = gave * (p.funded - p.claims * p.amountPerHousehold) / p.funded;
+        token.safeTransfer(msg.sender, owed);
+        emit Refunded(programId, msg.sender, owed);
+    }
+
+    /// Claims (or, without a trigger, the season) are over for good.
+    function closed(Program storage p) internal view returns (bool) {
+        if (p.coordinator == address(0)) return false;
+        return p.claimDeadline == 0 ? block.timestamp > p.seasonEnd : block.timestamp > p.claimDeadline;
     }
 }

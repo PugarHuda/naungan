@@ -54,7 +54,7 @@ Cash assistance is now a core part of humanitarian response (about 21% of intern
 
 - **Neutral shared state between parties who do not trust each other.** That is exactly why WFP built Building Blocks on a blockchain. Naungan removes the remaining trust problem: no agency operates the registry, and no agency sees another's data.
 - **Global one-claim-per-household rule without identity.** Nullifiers make double claims impossible and publicly checkable while revealing nothing about who claimed.
-- **Programmable, pre-committed money.** Donors fund a pool that releases only on an objective trigger and only to proven-eligible members, and it refunds automatically.
+- **Programmable, pre-committed money.** Donors fund a pool that releases only on an objective trigger and only to proven-eligible members, and once claims are over each donor pulls back their own pro-rata share of whatever was not paid out.
 - **Verifiable accountability with zero personal data.** Anyone can recompute "N unique households paid, X disbursed" from chain events.
 - **Why not a database?** A database needs an operator that every agency trusts with its beneficiary list, which is the very concentration of power and data that the sector is trying to avoid.
 
@@ -62,13 +62,13 @@ Cash assistance is now a core part of humanitarian response (about 21% of intern
 
 | Component | What it does | Status |
 |---|---|---|
-| `contracts/Naungan.sol` | Programs with on-chain hazard metadata, M-of-N oracle quorum, agency add/remove, anonymous enrollment, oracle trigger with evidence, ZK claim with relayer-safe payout, own nullifier set (front-running safe), per-program pools, season end and refunds | ✅ 15 contract tests; Slither: 0 medium/high |
+| `contracts/Naungan.sol` | Programs with on-chain hazard metadata, M-of-N oracle quorum, agency add/remove, anonymous enrollment, oracle trigger with evidence, ZK claim with relayer-safe payout, own nullifier set (front-running safe), per-program pools, season end and pro-rata donor refunds | ✅ 17 contract tests; Slither: 0 medium/high |
 | `lib/psi.js` + `scripts/agency.js` | DDH-PSI over ristretto255, served over HTTP to signed, on-chain-registered agencies only; enrollment and QR claim cards, optionally PIN-locked with a relayer-checked OPRF (a lost or photographed card cannot be claimed or brute-forced offline; 20 tries per card) | ✅ Tested, attack-tested (unsigned, non-agency, replayed queries rejected; wrong PIN, lockout, foreign key) |
 | `lib/hazard.js` + `scripts/oracle.js` | Live GloFAS ensemble probability and NOAA GEFS catchment rainfall (two independent oracle pipelines), Gumbel return levels, labelled replay of past events | ✅ Live data, tested; 2-of-2 program live |
 | `scripts/relayer.js` | Validates and simulates each claim before paying gas; sponsors gasless USDC spends (EIP-3009, Circle-native) for payout wallets only; nonce-safe queue; rate limit | ✅ Tested end-to-end |
 | `web/claim.html` | Household app (installable PWA): in-browser Groth16 proof, works offline and sends the claim when signal returns, opt-in flood alert computed on the phone (no push server), EN/ID | ✅ Browser-tested: claim, offline claim, double claim, underfunded, unenrolled card; axe-core WCAG 2.1 AA: 0 violations |
 | `web/dashboard.html`, `web/index.html` | Public totals, oracle evidence, donor funding from any browser wallet and CSV/JSON audit export from chain events only | ✅ XSS- and CSV-injection-tested; WCAG 2.1 AA: 0 violations |
-| **Live on Base Sepolia** | Naungan [`0xA56D554C9364C332ed361AD01833fA7BAf87c25E`](https://sepolia.basescan.org/address/0xA56D554C9364C332ed361AD01833fA7BAf87c25E), source verified on [Sourcify](https://repo.sourcify.dev/84532/0xA56D554C9364C332ed361AD01833fA7BAf87c25E) (exact match), paying Circle testnet USDC. Program #1 (Krueng Aceh): 3 households enrolled, live GloFAS reading posted (0%), then a labelled replay of the Nov 2025 flood opened claims; 3 ZK claims paid from a phone browser (one made offline), and a paid wallet spent 1 USDC gaslessly via EIP-3009. Program #2: claims made on the public GitHub Pages app through the relayer hosted on Vercel, ~12 s per claim | ✅ All on-chain, see the dashboard ledger |
+| **Live on Base Sepolia** | Naungan [`0x00E9E8F7a9E8Dd4923Eb92eC5536f70ecD0C70f4`](https://sepolia.basescan.org/address/0x00E9E8F7a9E8Dd4923Eb92eC5536f70ecD0C70f4), source verified on [Sourcify](https://repo.sourcify.dev/84532/0x00E9E8F7a9E8Dd4923Eb92eC5536f70ecD0C70f4) (exact match), paying Circle testnet USDC. Program #1 (Krueng Aceh): 3 households enrolled, live GloFAS reading posted (0%), then a labelled replay of the Nov 2025 flood opened claims; 3 ZK claims paid from a phone browser (one made offline), and a paid wallet spent 1 USDC gaslessly via EIP-3009. Program #2: claims made on the public GitHub Pages app through the relayer hosted on Vercel, ~12 s per claim | ✅ All on-chain, see the dashboard ledger |
 | CI, Pages, hosted oracle | Tests, build and a Slither gate on every push; web apps on GitHub Pages; the GloFAS oracle runs every 6 hours on GitHub Actions | ✅ |
 
 ## 6. Feasibility & long-term sustainability (15%)
@@ -93,7 +93,7 @@ Pitch in one line: Singapore donors already fund Sumatra flood relief; Naungan m
 | Small groups weaken anonymity | One group per program across all agencies; the relayer decouples who submits from who is paid |
 | Oracle manipulation | M-of-N quorum of independent oracle keys with a 24-hour freshness window, so no single key can trigger; the live 2-of-2 program combines two independent forecast models (GloFAS and NOAA GEFS); every report carries an evidence string re-derivable from the public API; it can only release *pre-committed* funds to *pre-enrolled* households |
 | Compromised agency | `removeAgency`, and the dedup service rejects it immediately |
-| Funds stuck if no flood | `seasonEnd`: the pool is refundable after the season |
+| Funds stuck if no flood | `seasonEnd`: after the season (or the claim window) each donor takes back their pro-rata share; the coordinator never holds it |
 | No signal during the flood | The claim app works offline: proving keys and the group are cached, and the proof is queued and sent when signal returns |
 | Households miss that claims opened | Opt-in alert: the installed app checks the program on-chain in the background and notifies the phone when the trigger fires; it needs no push server, so no third party learns which phones are beneficiaries |
 | Off-ramp / liquidity | Circle USDC, the same asset UNHCR distributes and MoneyGram cashes out |
