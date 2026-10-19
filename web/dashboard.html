@@ -322,7 +322,7 @@ async function donate(ev) {
   btn.disabled = true
   try {
     const p = await c.programs(pid)
-    if (ended(p)) return await refund(p, eth, say)
+    if (isOver(p)) return await refund(p, eth, say)
     const amt = ethers.parseUnits($("donateAmt").value || "0", 6)
     if (amt <= 0n) throw new Error("enter an amount above 0")
     say("Waiting for your wallet…")
@@ -353,7 +353,7 @@ async function donate(ev) {
 }
 
 // The contract takes no money once claims are over; each donor then pulls back their own share of what was not paid out.
-const ended = (p) => Date.now() / 1000 > Number(p.claimDeadline > 0n ? p.claimDeadline : p.seasonEnd)
+const isOver = (p) => Date.now() / 1000 > Number(p.claimDeadline > 0n ? p.claimDeadline : p.seasonEnd)
 async function refund(p, eth, say) {
   say("Waiting for your wallet…")
   const signer = await walletSigner(eth)
@@ -696,8 +696,8 @@ function renderState(p, os, reps) {
     open && replay ? `Claims are open after a labelled replay of the flood of ${/\d/.test(replay) ? day(replay) : replay}, not a live forecast. Enrolled households can claim from a phone with their card.`
     : open && fired ? "A flood is forecast. Enrolled households can claim now, from a phone, with their card."
     : open ? "Claims are open. Enrolled households can claim now, from a phone, with their card. Reading what triggered it…"
-    : on ? "This program paid out and its claim window has closed."
-    : ended ? "This season ended without a flood trigger. Unclaimed money goes back to the coordinator."
+    : on ? "This program paid out and its claim window has closed. Donors can take back their share of what was not paid out."
+    : ended ? "This season ended without a flood trigger. Each donor can take back their share of the pool below."
     : `No flood expected yet. The oracles put the chance of a flood${m.leadDays ? ` in the next ${m.leadDays} days` : ""} at ${shown}%, and claims open at ${p.triggerThreshold}%.`,
     el("small", null, open ? `Claims close ${until(p.claimDeadline)}.` : on ? `Closed ${until(p.claimDeadline)}.` : ended ? "" : `Watching until ${until(p.seasonEnd)}. The oracles post every 6 hours.`))
 
@@ -742,7 +742,7 @@ function renderState(p, os, reps) {
   const spare = p.funded - disbursed - owed
   $("gap").replaceChildren(spare >= 0n ? "Unallocated " : "Short by ", el("b", null, usd(spare >= 0n ? spare : -spare)), ` USDC${spare < 0n ? ` to pay every enrolled household ${usd(amt)} USDC` : spare >= amt ? `, enough for ${spare / amt} more households` : ", every enrolled household is covered"}`)
   $("enrolled").textContent = p.enrolled
-  const over = ended(p)
+  const over = isOver(p)
   $("donateH").textContent = over ? "Take back your share" : "Add to the pool"
   $("donateAmt").closest("label").hidden = over
   $("donateAmt").required = !over
