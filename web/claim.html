@@ -31,6 +31,7 @@
   .note { padding: 12px 14px; border-radius: 12px; font-weight: 600; margin: 14px 0 0; }
   .note.ok { background: var(--accent-soft); color: var(--accent); } .note.bad { background: var(--warn-soft); color: var(--warn); }
   label.opt { display: flex; gap: 10px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  select { font: 14px ui-monospace, monospace; padding: 8px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); max-width: 100%; }
   input[type=text], input[type=password], textarea { width: 100%; font: 15px ui-monospace, monospace; padding: 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); margin-top: 12px; }
   .primary { width: 100%; margin-top: 16px; padding: 16px; font: 700 18px "Plus Jakarta Sans", system-ui, sans-serif; border: 0; border-radius: 14px; background: var(--cta); color: var(--ink); cursor: pointer; border-radius: 99px; }
   .primary:disabled { opacity: .5; cursor: wait; }
@@ -87,6 +88,7 @@
     <p style="margin:14px 0 0"><span class="pill" id="pstatus">–</span></p>
     <p class="offline" id="offline" hidden role="status"></p>
     <p class="note" id="cardmsg" aria-live="polite"></p>
+    <button class="link" id="another" type="button" data-t="another" hidden style="margin-top:12px">Use another card</button>
     <div id="alerts" hidden><button class="link" id="alertGo" type="button" data-t="alertBtn">Alert me when claims open</button><p class="note" id="alertmsg" aria-live="polite"></p></div>
   </section>
 
@@ -121,6 +123,7 @@
 
   <section class="card" id="wallet" hidden>
     <strong data-t="wallet"></strong>
+    <div id="wpickBox" hidden><label for="wpick" class="privacy" data-t="pickWallet"></label> <select id="wpick"></select></div>
     <div class="big" id="wbal"></div><div class="idr" id="wIdr" hidden></div>
     <div class="to" id="waddr"></div>
     <p class="privacy" data-t="spend"></p>

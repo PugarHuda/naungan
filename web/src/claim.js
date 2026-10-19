@@ -35,7 +35,11 @@ const T = {
         alertBtn: "Alert me when claims open", alertOn: "This phone will alert you when claims open, even with the app closed. It remembers your card so the alert opens it.",
         alertNo: "This phone cannot check in the background. Open this page during flood warnings, or listen to your agency.",
         alertDenied: "Notifications are blocked for this site. Allow them in the browser settings to get the alert.",
-        alertInstall: "Add Naungan to your home screen first (browser menu → Install app), then tap again."
+        alertInstall: "Add Naungan to your home screen first (browser menu → Install app), then tap again.",
+        unknownProgram: "This card is for a program that does not exist on this network. Check that you scanned a Naungan card.",
+        notCard: "That is not a Naungan card code. Paste the whole code printed under the QR.", pinFormat: "Enter the 6 digits of your PIN.",
+        joinClosed: "Registration closed when the flood alert opened claims, so this phone cannot join this program now. Ask your agency about the next one.",
+        another: "Use another card", pickWallet: "Wallet"
     },
     id: {
         title: "Klaim bantuan Anda", load: "Memuat program…", noCard: "Pindai kartu Naungan dengan kamera ponsel, atau tempel kode kartu di bawah.",
@@ -64,7 +68,11 @@ const T = {
         alertBtn: "Beri tahu saya saat klaim dibuka", alertOn: "Ponsel ini akan memberi tahu Anda saat klaim dibuka, meski aplikasi ditutup. Kartu Anda diingat agar notifikasi langsung membukanya.",
         alertNo: "Ponsel ini tidak bisa memeriksa di latar belakang. Buka halaman ini saat ada peringatan banjir, atau ikuti info dari lembaga Anda.",
         alertDenied: "Notifikasi diblokir untuk situs ini. Izinkan di pengaturan browser agar peringatan bisa muncul.",
-        alertInstall: "Tambahkan Naungan ke layar utama dulu (menu browser → Instal aplikasi), lalu tekan lagi."
+        alertInstall: "Tambahkan Naungan ke layar utama dulu (menu browser → Instal aplikasi), lalu tekan lagi.",
+        unknownProgram: "Kartu ini untuk program yang tidak ada di jaringan ini. Pastikan Anda memindai kartu Naungan.",
+        notCard: "Itu bukan kode kartu Naungan. Tempel seluruh kode yang tercetak di bawah QR.", pinFormat: "Masukkan 6 angka PIN Anda.",
+        joinClosed: "Pendaftaran ditutup saat peringatan banjir membuka klaim, jadi ponsel ini tidak bisa ikut program ini sekarang. Tanyakan program berikutnya ke lembaga Anda.",
+        another: "Pakai kartu lain", pickWallet: "Dompet"
     }
 }
 let lang = (() => { try { return localStorage.getItem("naungan-lang") } catch { return null } })() || (navigator.language?.startsWith("id") ? "id" : "en")
@@ -106,14 +114,39 @@ function render() {
     $("lang").textContent = lang === "en" ? "Bahasa Indonesia" : "English"
 }
 
+/**
+ * A fresh payout wallet per card: two households claiming on one shared phone (or one household in two
+ * programs) are paid to unrelated addresses, so the chain cannot link their claims and their money never
+ * mixes. Kept as { [naungan:program:commitment]: privateKey }; "naungan-wallet" is the single wallet that
+ * earlier versions used for every card, still listed so its balance stays reachable.
+ */
+const WALLETS = "naungan-wallets"
+const cardKey = () => `${state.naungan}:${state.pid}:${state.identity.commitment}`
 function wallet() {
     try {
-        let k = localStorage.getItem("naungan-wallet")
-        if (!k) localStorage.setItem("naungan-wallet", (k = ethers.Wallet.createRandom().privateKey))
-        return new ethers.Wallet(k)
+        const all = JSON.parse(localStorage.getItem(WALLETS) ?? "{}")
+        if (!all[cardKey()]) {
+            all[cardKey()] = ethers.Wallet.createRandom().privateKey
+            localStorage.setItem(WALLETS, JSON.stringify(all))
+            if (JSON.parse(localStorage.getItem(WALLETS))[cardKey()] !== all[cardKey()]) throw new Error("not saved")
+        }
+        return new ethers.Wallet(all[cardKey()])
     } catch {
         return (state.ephemeral ??= ethers.Wallet.createRandom()) // storage blocked: still works for this visit
     }
+}
+/** Every payout wallet this phone holds a key for, newest first. */
+function wallets() {
+    let keys = []
+    try { keys = [...Object.values(JSON.parse(localStorage.getItem(WALLETS) ?? "{}")).reverse(), localStorage.getItem("naungan-wallet")] } catch {}
+    return [...new Set(keys.filter(Boolean))].map((k) => new ethers.Wallet(k))
+}
+
+/** Any failure while showing a card ends here, in the household's language, never as a silent hang. */
+const fail = (e) => {
+    show("progress", false)
+    $("error").textContent = e?.fatal ? t("unknownProgram") : `${t("err")}: ${e?.message ?? e}`
+    show("error")
 }
 
 // Scanning a second card in the same tab only changes the fragment (no page load): start over
@@ -131,6 +164,9 @@ async function main() {
     // A registration link from the agency (#join=<program>): this phone makes its own identity.
     const joining = location.hash.match(/^#join=(\d{1,20})$/)
     if (joining) return history.replaceState(null, "", location.pathname), join(BigInt(joining[1]))
+    // "Use another card" (#new): show the empty card form, never a card this phone remembers.
+    const fresh = location.hash === "#new"
+    if (fresh) try { sessionStorage.removeItem("naungan-card") } catch {}
     // A card saved for flood alerts reopens when the alert is tapped (a PIN-locked one stays encrypted).
     const fragment = location.hash || (() => { try { return sessionStorage.getItem("naungan-card") || localStorage.getItem(SAVED) } catch { return null } })() || ""
     let ok = false
@@ -139,20 +175,20 @@ async function main() {
     if (!ok) {
         const d = await fetch("deployment.json").then((r) => r.json()).catch(() => null)
         // A phone that registered itself reopens straight on its own card.
-        const self = d && store.get(SELF(d))
+        const self = !fresh && d && store.get(SELF(d))
         if (self?.cards?.[self.last] && readCard(self.cards[self.last])) return (state.self = true), load()
         if (d) walletPanel(d).catch(() => {})
         show("nocard")
         $("openCard").onclick = () => {
             const v = $("code").value.trim()
             const frag = v.includes("#") ? v.slice(v.indexOf("#")) : v
-            try {
-                const r = readCard(frag)
-                if (r === "locked") return askPin()
-                if (r) return show("nocard", false), load()
-            } catch {}
-            $("code").setCustomValidity(t("err")), $("code").reportValidity()
+            let r = false
+            try { r = readCard(frag) } catch {}
+            if (r === "locked") return askPin()
+            if (r) return show("nocard", false), load().catch(fail)
+            $("code").setCustomValidity(t("notCard")), $("code").reportValidity()
         }
+        $("code").oninput = () => $("code").setCustomValidity("")
         return
     }
     if (ok === "locked") return askPin()
@@ -165,7 +201,7 @@ function askPin() {
     $("pinGo").onclick = async () => {
         const pin = $("pin").value.trim()
         $("pin").setCustomValidity("")
-        if (!/^[0-9]{6}$/.test(pin)) return $("pin").setCustomValidity(t("pinBad")), $("pin").reportValidity()
+        if (!/^[0-9]{6}$/.test(pin)) return $("pin").setCustomValidity(t("pinFormat")), $("pin").reportValidity()
         $("pinGo").disabled = true
         $("pinmsg").className = "note", $("pinmsg").textContent = t("checking")
         let secret, left = null, why = "pinBad"
@@ -196,7 +232,7 @@ function askPin() {
         }
         state.identity = Identity.import(secret)
         show("pinbox", false)
-        await load().catch((e) => (($("error").textContent = `${t("err")}: ${e.message}`), show("error")))
+        await load().catch(fail)
     }
 }
 
@@ -277,7 +313,10 @@ async function load() {
     show("program")
     const d = await (await fetch("deployment.json")).json() // the service worker serves the last copy when offline
     const relayer = d.relayer ?? "http://localhost:8788"
+    state.naungan = d.naungan
     const snap = await snapshot(d)
+    show("another")
+    $("another").onclick = () => (location.hash = "new") // the hashchange listener reloads
     const amount = BigInt(snap.amount), deadline = BigInt(snap.deadline)
     const now = Math.floor(Date.now() / 1000)
     const open = deadline > 0n && now <= Number(deadline)
@@ -297,7 +336,8 @@ async function load() {
         $("bal").textContent = `${ethers.formatUnits(amount, snap.dec)} USDC`
         showIdr("balIdr", ethers.formatUnits(amount, snap.dec))
         $("to").textContent = `${t("balance")} ${body.payout}`
-        if (body.payout === wallet().address) walletPanel(d, (b) => b >= amount)
+        $("cardmsg").dataset.t = "claimed", ($("cardmsg").className = "note ok"), render()
+        walletPanel(d, (b) => b >= amount, body.payout)
         // Paid: nothing left to wait for, and the card is spent.
         navigator.serviceWorker?.ready.then((r) => r.active?.postMessage({ type: "unwatch", watch: { naungan: d.naungan, pid: state.pid.toString() } }))
         store.del(SAVED), store.del(`naungan-alert-${d.naungan}-${state.pid}`)
@@ -327,12 +367,13 @@ async function load() {
     }
 
     const enrolled = snap.members.includes(state.identity.commitment.toString())
-    const msg = !enrolled ? (state.self ? "joinWait" : "notEnrolled") : snap.claimed ? "claimed" : "enrolled"
-    if (!enrolled && state.self) joinPanel()
+    // Enrollment freezes when the trigger fires (the contract reverts AlreadyTriggered): say so instead of sending them to the agency.
+    const msg = !enrolled ? (state.self ? (deadline > 0n ? "joinClosed" : "joinWait") : "notEnrolled") : snap.claimed ? "claimed" : "enrolled"
+    if (!enrolled && state.self && deadline === 0n) joinPanel()
     $("cardmsg").dataset.t = msg
     $("cardmsg").className = enrolled && !snap.claimed ? "note ok" : "note bad"
     render()
-    walletPanel(d)
+    walletPanel(d, undefined, enrolled ? wallet().address : undefined)
     if (enrolled && !snap.claimed && deadline === 0n) alertPanel(d, snap)
     if (!enrolled || snap.claimed || !open) return
 
@@ -374,6 +415,7 @@ async function load() {
             $("step").dataset.t = "sending", render()
             showPaid(await relay(relayer, job))
         } catch (e) {
+            if (e.fatal) return fail(e)
             show("progress", false)
             if (job && !e.business) {
                 store.set(PENDING, job) // no signal: keep the proof, send it automatically later
@@ -400,7 +442,7 @@ async function join(pid) {
     if (store.get(SELF(d))?.cards?.[key] !== card) throw new Error("this browser cannot save data, so it cannot keep your registration: use a normal (not private) window")
     readCard(card)
     state.self = true
-    await load()
+    await load().catch(fail)
 }
 
 /** The code the agency scans into its list, plus a backup card the household can print. */
@@ -452,24 +494,37 @@ function alertPanel(d, snap) {
  * The payout wallet holds USDC but no ETH. The household signs an EIP-3009 transferWithAuthorization
  * (Circle USDC supports it natively) and the relayer submits it, so cashing out needs no gas token.
  */
-async function walletPanel(d, settled = () => true) {
-    let key
-    try { key = localStorage.getItem("naungan-wallet") } catch {}
-    if (!key || !navigator.onLine) return
-    const w = new ethers.Wallet(key)
+async function walletPanel(d, settled = () => true, prefer) {
+    const all = wallets()
+    if (!all.length || !navigator.onLine) return
     const token = new ethers.Contract(d.usdc, ERC20, rpc(d))
-    let bal = 0n, dec = 6
+    const dec = await token.decimals().catch(() => 6n)
+    const read = (a) => token.balanceOf(a).catch(() => 0n)
+    const bals = new Map(await Promise.all(all.map(async (x) => [x.address, await read(x.address)])))
     // Right after a payment, a load-balanced public RPC can still answer from a node a block behind.
-    for (let i = 0; i < 6; i++) {
-        ;[bal, dec] = await Promise.all([token.balanceOf(w.address), token.decimals()]).catch(() => [0n, 6])
-        if (settled(bal)) break
+    for (let i = 0; prefer && bals.has(prefer) && i < 6 && !settled(bals.get(prefer)); i++) {
         await new Promise((r) => setTimeout(r, 2000))
+        bals.set(prefer, await read(prefer))
     }
-    if (bal === 0n) return show("wallet", false)
+    const funded = all.filter((x) => bals.get(x.address) > 0n).sort((a, b) => (b.address === prefer) - (a.address === prefer))
+    if (!funded.length) return show("wallet", false)
     show("wallet")
-    $("wbal").textContent = `${ethers.formatUnits(bal, dec)} USDC`
-    showIdr("wIdr", ethers.formatUnits(bal, dec))
-    $("waddr").textContent = w.address
+    // One phone can hold several households' wallets: pick which one to spend from, never a merged total.
+    const pick = $("wpick")
+    pick.replaceChildren(...funded.map((x) => new Option(`${x.address.slice(0, 8)}…${x.address.slice(-4)} · ${ethers.formatUnits(bals.get(x.address), dec)} USDC`, x.address)))
+    show("wpickBox", funded.length > 1)
+    const use = (addr) => {
+        const w = funded.find((x) => x.address === addr), bal = bals.get(addr)
+        $("wbal").textContent = `${ethers.formatUnits(bal, dec)} USDC`
+        showIdr("wIdr", ethers.formatUnits(bal, dec))
+        $("waddr").textContent = w.address
+        spendFrom(d, token, w, bal, dec)
+    }
+    pick.onchange = () => use(pick.value)
+    use(funded[0].address)
+}
+
+function spendFrom(d, token, w, bal, dec) {
     $("scanGo").onclick = () => scanAddress($("sendTo"), $("wmsg"))
     $("send").onclick = async () => {
         let to, value
@@ -499,7 +554,7 @@ async function walletPanel(d, settled = () => true) {
             $("wmsg").className = "note ok"
             $("wmsg").textContent = `${t("sent")} ${ethers.formatUnits(value, dec)} USDC → ${to}`
             $("sendAmt").value = ""
-            await walletPanel(d, (b) => b <= bal - value)
+            await walletPanel(d, (b) => b <= bal - value, w.address)
         } catch (e) {
             $("wmsg").className = "note bad"
             $("wmsg").textContent = `${t("err")}: ${e.message}`

@@ -74,6 +74,7 @@ async function enroll({ program, list, peer = [], "claim-url": claimUrl, cards, 
     const { naungan, wallet, d } = await connect()
     if (!(await naungan.isAgency(program, wallet.address))) throw new Error(`${wallet.address} is not an agency of program ${program}`)
     const records = readCsv(list, program)
+    if (!peer.length) console.warn("no --peer given: this list is NOT deduplicated against any other agency; households another agency already enrolled will be enrolled twice")
     const dup = new Set(), near = new Set()
     for (const url of peer) {
         const me = new Agency(records, { profile: names })

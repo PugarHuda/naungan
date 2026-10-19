@@ -209,7 +209,7 @@
       </div>
       <form class="give donate" id="donate">
         <h2>Add to the pool</h2>
-        <p class="lead-in" style="margin:0">From any browser wallet on Base Sepolia. Test USDC is free at faucet.circle.com.</p>
+        <p class="lead-in" style="margin:0" id="donateNote">From any browser wallet. Test USDC is free at faucet.circle.com.</p>
         <label class="amount" for="donateAmt"><input id="donateAmt" type="number" inputmode="decimal" min="0.01" step="0.01" value="1" required aria-label="Amount in USDC" /><span>USDC</span></label>
         <button class="btn go" type="submit" id="donateBtn">Connect wallet and fund</button>
         <div id="donateMsg" role="status"></div>
@@ -227,6 +227,7 @@
           <li>Each household claimed once</li><li>Event matches the transaction</li>
         </ul>
         <div class="result" id="auditOut" role="status"></div>
+        <div class="result" id="easOut" role="status" hidden></div>
       </article>
       <article class="panel" aria-labelledby="recordH">
         <h2 id="recordH">Would it have paid before?</h2>
@@ -291,13 +292,29 @@ const wallets = []
 window.addEventListener("eip6963:announceProvider", (e) => wallets.push(e.detail))
 window.dispatchEvent(new Event("eip6963:requestProvider"))
 
+/** The visitor's wallet on this deployment's chain (added to the wallet if it does not know it yet). */
+async function walletSigner(eth) {
+  await eth.request({ method: "eth_requestAccounts" })
+  const hex = "0x" + d.chainId.toString(16)
+  if ((await eth.request({ method: "eth_chainId" })) !== hex) {
+    try {
+      await eth.request({ method: "wallet_switchEthereumChain", params: [{ chainId: hex }] })
+    } catch (e) {
+      if (e.code !== 4902) throw e // 4902: the wallet does not know this chain yet
+      await eth.request({ method: "wallet_addEthereumChain", params: [{ chainId: hex, chainName: d.network === "baseSepolia" ? "Base Sepolia" : d.network, rpcUrls: [d.rpc], blockExplorerUrls: d.explorer ? [d.explorer] : [], nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 } }] })
+    }
+  }
+  return new ethers.BrowserProvider(eth).getSigner()
+}
+const sayIn = (msg) => (text, href, label = "View transaction") => {
+  msg.replaceChildren(text)
+  if (href) msg.append(" ", Object.assign(el("a", null, label), { href, target: "_blank", rel: "noopener" }))
+}
+
 async function donate(ev) {
   ev.preventDefault()
   const msg = $("donateMsg"), btn = $("donateBtn")
-  const say = (text, href) => {
-    msg.replaceChildren(text)
-    if (href) msg.append(" ", Object.assign(el("a", null, "View transaction"), { href, target: "_blank", rel: "noopener" }))
-  }
+  const say = sayIn(msg)
   const eth = wallets[0]?.provider ?? window.ethereum
   if (!eth) return say("No browser wallet found. Install one (e.g. MetaMask or Coinbase Wallet), or fund with scripts/coordinator.js.")
   btn.disabled = true
@@ -309,17 +326,7 @@ async function donate(ev) {
     const amt = ethers.parseUnits($("donateAmt").value || "0", 6)
     if (amt <= 0n) throw new Error("enter an amount above 0")
     say("Waiting for your wallet…")
-    await eth.request({ method: "eth_requestAccounts" })
-    const hex = "0x" + d.chainId.toString(16)
-    if ((await eth.request({ method: "eth_chainId" })) !== hex) {
-      try {
-        await eth.request({ method: "wallet_switchEthereumChain", params: [{ chainId: hex }] })
-      } catch (e) {
-        if (e.code !== 4902) throw e // 4902: the wallet does not know this chain yet
-        await eth.request({ method: "wallet_addEthereumChain", params: [{ chainId: hex, chainName: d.network === "baseSepolia" ? "Base Sepolia" : d.network, rpcUrls: [d.rpc], blockExplorerUrls: d.explorer ? [d.explorer] : [], nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 } }] })
-      }
-    }
-    const signer = await new ethers.BrowserProvider(eth).getSigner()
+    const signer = await walletSigner(eth)
     const me = await signer.getAddress()
     const usdc = new ethers.Contract(await c.token(), ["function balanceOf(address) view returns (uint256)", "function allowance(address,address) view returns (uint256)", "function approve(address,uint256) returns (bool)"], signer)
     const bal = await usdc.balanceOf(me)
@@ -444,6 +451,9 @@ function select(id) {
   history.replaceState(null, "", `?program=${id}`)
   $("recordOut").replaceChildren()
   $("auditOut").replaceChildren()
+  $("easOut").replaceChildren()
+  lastAudit = null
+  if (d?.eas) auditors(id)
   $("recordGo").hidden = !m.lat // programs without a hazard location have nothing to replay
   $("hydroBox").hidden = !m.lat
   if (m.lat) (hydroFor[id] ??= hydrograph(m)).then((draw) => id === pid && draw()).catch((e) => id === pid && ($("hydroNote").textContent = `The river forecast is unavailable right now (${e.message}). The trigger panel still shows what the oracles posted.`))
@@ -536,8 +546,10 @@ async function auditPayouts() {
       new ethers.Contract(d.naungan, ["function members(uint256) view returns (uint256[])"], c.runner).members(id),
       Promise.all(claimed.map(async (e) => ({ nullifier: e.args.nullifier, payout: e.args.payout, tx: (await c.runner.getTransaction(e.transactionHash)) ?? { hash: e.transactionHash, to: null, data: "0x" } })))
     ])
+    const atBlock = await c.runner.getBlockNumber()
     const res = await auditClaims({ programId: id, members: members.map(String), claims, contract: d.naungan })
     if (id !== pid) return
+    lastAudit = { pid: id, claims: res.length, verified: res.filter((r) => r.ok).length, members: members.map(String), atBlock }
     const good = res.filter((r) => r.ok).length
     const head = el("div", `head verdict ${good === res.length ? "ok" : "bad"}`)
     head.append(el("b", null, `${good} of ${res.length}`), el("span", null, `payouts verified against a group of ${members.length} households rebuilt from the contract`))
@@ -552,10 +564,67 @@ async function auditPayouts() {
       list.append(li)
     }
     out.replaceChildren(head, list)
+    if (d.eas) {
+      const sign = el("button", "recheck", "Sign this result on-chain (EAS)")
+      sign.type = "button"
+      sign.onclick = () => signAudit(sign)
+      out.append(el("p", "fine", "Publish what you just found under your own address, so donors can count independent checks instead of trusting us."), sign)
+    }
   } catch (e) {
     if (id === pid) out.replaceChildren(el("div", "verdict bad", `Could not run the audit (${e.message}). Try again in a minute.`))
   } finally {
     $("auditGo").disabled = false
+  }
+}
+
+// Independent audits on the Ethereum Attestation Service (lib/eas.js, bundled in audit.js): the result of the
+// run above, signed by the visitor's wallet, and everyone else's published runs for this program.
+let lastAudit = null
+async function signAudit(button) {
+  const a = lastAudit, msg = el("div", "verdict")
+  button.replaceWith(msg)
+  const say = sayIn(msg)
+  const eth = wallets[0]?.provider ?? window.ethereum
+  if (!eth) return say("No browser wallet found. Auditors without one can run `node scripts/eas.js audit --program " + a.pid + "` with their own key.")
+  try {
+    const { attestCall, attestedUid, groupRoot } = await import("./audit.js")
+    say("Confirm the attestation in your wallet…")
+    const signer = await walletSigner(eth)
+    const tx = await signer.sendTransaction({ to: d.eas.address, data: attestCall(d.naungan, { programId: a.pid, claims: a.claims, verified: a.verified, members: a.members.length, groupRoot: groupRoot(a.members) ?? 0n, atBlock: a.atBlock }) })
+    say("Sent, waiting for the block…", d.explorer && `${d.explorer}/tx/${tx.hash}`)
+    const uid = attestedUid(await tx.wait())
+    msg.className = "verdict ok"
+    say(`Signed by ${short(await signer.getAddress())}: ${a.verified} of ${a.claims} payouts verified at block ${a.atBlock}.`, `${d.eas.explorer}/attestation/view/${uid}`, "View on EAS")
+    setTimeout(() => auditors(a.pid), 8000) // the EAS indexer needs a few seconds to pick it up
+  } catch (e) {
+    msg.className = "verdict bad"
+    say(e.code === 4001 || e.code === "ACTION_REJECTED" ? "Cancelled in the wallet." : `Could not attest: ${e.shortMessage ?? e.message}`)
+  }
+}
+
+async function auditors(id) {
+  const box = $("easOut")
+  if (!d.eas) return
+  box.hidden = false
+  try {
+    const { listAudits, summarise } = await import("./audit.js")
+    const audits = await listAudits({ graphql: d.eas.graphql, naungan: d.naungan, programId: id })
+    if (id !== pid) return
+    const s = summarise(audits)
+    const head = el("div", `head verdict ${s.flagged ? "bad" : s.auditors ? "ok" : ""}`)
+    head.append(el("b", null, String(s.auditors)), el("span", null, s.auditors
+      ? `independent ${s.auditors === 1 ? "auditor has" : "auditors have"} signed this check on EAS: ${s.clean} found every payout valid${s.flagged ? `, ${s.flagged} flagged a payout` : ""}`
+      : "independent audits signed on EAS yet. Run the check above and be the first."))
+    const list = el("ol")
+    for (const x of s.latest.sort((p, q) => q.atBlock - p.atBlock)) {
+      const li = el("li", x.verified === x.claims ? "" : "bad")
+      const link = Object.assign(el("a", null, `${x.verified === x.claims ? "✓" : "✗"} ${short(x.attester)}`), { href: `${d.eas.explorer}/attestation/view/${x.uid}`, target: "_blank", rel: "noopener" })
+      li.append(link, `, ${x.verified} of ${x.claims} at block ${x.atBlock}`)
+      list.append(li)
+    }
+    box.replaceChildren(head, list)
+  } catch (e) {
+    if (id === pid) box.replaceChildren(el("div", "verdict", `Independent audits on EAS are unavailable right now (${e.message}).`))
   }
 }
 
@@ -595,6 +664,7 @@ function renderState(p, os, reps) {
   const on = p.claimDeadline > 0n, open = on && now <= Number(p.claimDeadline), ended = !on && now > Number(p.seasonEnd)
   const shown = on ? Number(p.lastIndex) : level
   $("index").textContent = shown
+  $("triggerH").textContent = on ? "Flood probability at the trigger" : "Flood probability now"
   $("threshold").textContent = p.triggerThreshold
   $("hazardBar").style.width = Math.min(100, shown / Number(p.triggerThreshold) * 100) + "%"
   $("trigger").classList.toggle("on", on)
@@ -625,7 +695,7 @@ function renderState(p, os, reps) {
     const v = el("span", `val ${reps[i].value >= p.triggerThreshold && fresh(reps[i]) ? "hot" : ""}`, reps[i].ts > 0n ? `${reps[i].value}%` : "–")
     top.append(el("span", "name", { glofas: "River flow (GloFAS)", rain: "Rainfall (NOAA GEFS)" }[kind] ?? "Oracle"), v)
     const sub = el("div", "sub", `${short(o)}, ${reps[i].ts > 0n ? `posted ${ago(Number(reps[i].ts))}` : "no report yet"}`)
-    if (reps[i].ts > 0n && !fresh(reps[i])) sub.append(el("span", "stale", ", expired and not counted"))
+    if (!on && reps[i].ts > 0n && !fresh(reps[i])) sub.append(el("span", "stale", ", expired and not counted"))
     box.append(top, sub)
     if (last) {
       const det = el("details")
@@ -735,7 +805,9 @@ async function tick() {
     $("csv").onclick = exportCsv
     $("donate").onsubmit = donate
     $("json").onclick = exportJson
-    $("net").replaceChildren(`${d.network === "baseSepolia" ? "Base Sepolia" : d.network} `)
+    const netName = d.network === "baseSepolia" ? "Base Sepolia" : d.network
+    $("net").replaceChildren(`${netName} `)
+    $("donateNote").textContent = `From any browser wallet on ${netName}.${d.usdcIsCircle ? " Test USDC is free at faucet.circle.com." : ""}`
     const addr = el(d.explorer ? "a" : "span", null, short(d.naungan))
     if (d.explorer) Object.assign(addr, { href: `${d.explorer}/address/${d.naungan}`, target: "_blank", rel: "noopener" })
     $("net").append(addr)

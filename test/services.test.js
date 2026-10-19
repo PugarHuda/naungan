@@ -45,6 +45,8 @@ describe("services input validation", () => {
         expect(() => parseProof({ programId: "5", proof: { ...proof, points: [1] } })).to.throw(/malformed/)
         expect(() => parseProof({ programId: "5", proof: { ...proof, merkleTreeDepth: 99 } })).to.throw(/range/)
         expect(() => parseProof({ programId: "5", proof: { ...proof, nullifier: { x: 1 } } })).to.throw(/malformed/)
+        expect(() => parseProof({ programId: "5", proof: { ...proof, nullifier: "-1" } })).to.throw(/malformed/) // a negative never reaches ABI encoding
+        expect(() => parseProof({ programId: "5", proof: { ...proof, points: [...proof.points.slice(1), (2n ** 256n).toString()] } })).to.throw(/malformed/)
         expect(() => parseProof(null)).to.throw()
     })
 })
@@ -81,5 +83,18 @@ describe("gasless spending (EIP-3009)", () => {
         expect(() => parseTransfer({ ...ok, value: "-5" })).to.throw(/malformed/)
         expect(() => parseTransfer({ ...ok, nonce: "0x01" })).to.throw(/nonce/)
         expect(() => parseTransfer({ ...ok, signature: "0x00" })).to.throw(/signature/)
+    })
+})
+
+describe("event history from the indexer", () => {
+    const { topicsMatch } = require("../lib/chain")
+    const sig = "0xc09f7b3c1c5b70bf6d30e485a4525d625d4723aed5d319376825446ef135c7ca", p = (n) => "0x" + n.toString(16).padStart(64, "0")
+    it("keeps only logs whose indexed args match, like eth_getLogs (Claimed of program 2 is not program 1's)", () => {
+        expect(topicsMatch([sig, p(2)], [sig, p(2)])).to.equal(true)
+        expect(topicsMatch([sig, p(2)], [sig, p(1)])).to.equal(false)
+        expect(topicsMatch([sig], [sig, p(1)])).to.equal(true) // no programId pinned: every program
+        expect(topicsMatch([sig, null, p(7)], [sig, p(1), p(7)])).to.equal(true)
+        expect(topicsMatch([sig, [p(1), p(2)]], [sig, p(2)])).to.equal(true) // OR within one position
+        expect(topicsMatch([sig.toUpperCase().replace("0X", "0x"), p(2)], [sig, p(2)])).to.equal(true)
     })
 })

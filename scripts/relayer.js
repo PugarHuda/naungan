@@ -34,7 +34,7 @@ function parseProof(body) {
         scope: uint(p.scope),
         points: Array.isArray(p.points) && p.points.length === 8 ? p.points.map(uint) : null
     }
-    if (!out.points || [out.merkleTreeDepth, out.merkleTreeRoot, out.nullifier, out.message, out.scope].some((x) => typeof x !== "bigint"))
+    if (!out.points || [out.merkleTreeDepth, out.merkleTreeRoot, out.nullifier, out.message, out.scope, ...out.points].some((x) => typeof x !== "bigint" || x < 0n || x >= 2n ** 256n))
         throw new Error("malformed proof")
     if (out.merkleTreeDepth < 1n || out.merkleTreeDepth > 32n) throw new Error("merkleTreeDepth out of range")
     const pid = uint(programId)

@@ -10,6 +10,10 @@ const { ethers, run, network } = require("hardhat")
 const CIRCLE_USDC = { baseSepolia: "0x036CbD53842c5426634e7929541eC2318f3dCF7e", sepolia: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238" }
 const EXPLORER = { baseSepolia: "https://sepolia.basescan.org", sepolia: "https://sepolia.etherscan.io" }
 // Blockscout etherscan-compatible API: event history without the RPC 200-block cap (free, no key, CORS open).
+// Ethereum Attestation Service: predeployed at the same addresses on every OP-stack chain; easscan indexes it (keyless).
+const EAS = {
+    baseSepolia: { address: "0x4200000000000000000000000000000000000021", registry: "0x4200000000000000000000000000000000000020", graphql: "https://base-sepolia.easscan.org/graphql", explorer: "https://base-sepolia.easscan.org" }
+}
 const INDEXER = { baseSepolia: "https://base-sepolia.blockscout.com/api", sepolia: "https://eth-sepolia.blockscout.com/api" }
 
 async function main() {
@@ -34,6 +38,7 @@ async function main() {
         rpc: network.config.url ?? "http://127.0.0.1:8545",
         explorer: EXPLORER[network.name] ?? null,
         indexer: INDEXER[network.name] ?? null,
+        eas: EAS[network.name] ?? null,
         naungan: await naungan.getAddress(),
         usdc,
         usdcIsCircle: Boolean(CIRCLE_USDC[network.name]),
