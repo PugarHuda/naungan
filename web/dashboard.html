@@ -739,7 +739,9 @@ function renderState(p, os, reps) {
   const until = (t) => new Date(Number(t) * 1000).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
   // A demo program can be opened by a replay of a past flood; its evidence says so, and so must this page.
   const fired = current.findLast((e) => e.fragment.name === "IndexReported" && e.args.triggered)
-  const replay = fired?.args.evidence.match(/^REPLAY.*?(?:peak [\d.]+ m3\/s on |window )(\d{4}-\d{2}-\d{2})/)?.[1] ?? (fired && /^REPLAY/.test(fired.args.evidence) ? "a past date" : null)
+  // A flood replay names its peak day; a heatwave replay only its window, so fall back to the window start.
+  const ev = fired?.args.evidence ?? ""
+  const replay = !/^REPLAY/.test(ev) ? null : ev.match(/peak [\d.]+ m3\/s on (\d{4}-\d{2}-\d{2})/)?.[1] ?? ev.match(/window (\d{4}-\d{2}-\d{2})/)?.[1] ?? "a past date"
   $("statusLine").replaceChildren(
     open && replay ? `Claims are open after a labelled replay of the ${w.noun} of ${/\d/.test(replay) ? day(replay) : replay}, not a live forecast. Enrolled households can claim from a phone with their card.`
     : open && fired ? `A ${w.noun} is forecast. Enrolled households can claim now, from a phone, with their card.`
