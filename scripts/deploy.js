@@ -46,7 +46,8 @@ async function main() {
         relayer: process.env.RELAYER_URL ?? "http://localhost:8788",
         fromBlock: (await naungan.deploymentTransaction().wait()).blockNumber
     }
-    fs.writeFileSync(path.join(__dirname, "..", "web", "deployment.json"), JSON.stringify(out, null, 2) + "\n")
+    // DEPLOYMENT_OUT writes elsewhere (a local test chain) without touching the live web/deployment.json.
+    fs.writeFileSync(process.env.DEPLOYMENT_OUT ?? path.join(__dirname, "..", "web", "deployment.json"), JSON.stringify(out, null, 2) + "\n")
     console.log(out)
 }
 

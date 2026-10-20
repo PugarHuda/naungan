@@ -33,9 +33,15 @@ function precacheClaimShell() {
     }
 }
 
+/** NAUNGAN_DEPLOYMENT=path bundles another deployment (a local Hardhat chain for end-to-end tests) in place of web/deployment.json. */
+function deploymentOverride() {
+    const file = process.env.NAUNGAN_DEPLOYMENT && resolve(process.env.NAUNGAN_DEPLOYMENT)
+    return { name: "naungan-deployment", enforce: "pre", resolveId: (id) => (file && /(^|\/)deployment\.json$/.test(id) ? file : null) }
+}
+
 export default defineConfig({
     root: web,
-    plugins: [svelte(), precacheClaimShell()],
+    plugins: [deploymentOverride(), svelte(), precacheClaimShell()],
     server: { port: 5173 },
     preview: { port: 5173 },
     build: {
@@ -43,6 +49,6 @@ export default defineConfig({
         emptyOutDir: true,
         target: "es2022",
         chunkSizeWarningLimit: 4000, // the claim app carries Semaphore + snarkjs; it is proved on the phone
-        rollupOptions: { input: { index: resolve(web, "index.html"), dashboard: resolve(web, "dashboard.html"), claim: resolve(web, "claim.html") } }
+        rollupOptions: { input: { index: resolve(web, "index.html"), dashboard: resolve(web, "dashboard.html"), claim: resolve(web, "claim.html"), launch: resolve(web, "launch.html") } }
     }
 })
