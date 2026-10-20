@@ -5,6 +5,14 @@
     "api/relayer.js": {
       "includeFiles": "{web/deployment.json,artifacts/contracts/Naungan.sol/Naungan.json,artifacts/@semaphore-protocol/contracts/Semaphore.sol/Semaphore.json}",
       "maxDuration": 60
+    },
+    "api/programs.js": {
+      "includeFiles": "{web/deployment.json,artifacts/contracts/Naungan.sol/Naungan.json}",
+      "maxDuration": 60
+    },
+    "api/feed.js": {
+      "includeFiles": "{web/deployment.json,artifacts/contracts/Naungan.sol/Naungan.json}",
+      "maxDuration": 60
     }
   },
   "rewrites": [
@@ -23,6 +31,10 @@
     {
       "source": "/health",
       "destination": "/api/relayer?route=/health"
+    },
+    {
+      "source": "/feed.xml",
+      "destination": "/api/feed"
     }
   ],
   "headers": [

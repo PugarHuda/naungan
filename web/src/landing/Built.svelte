@@ -11,6 +11,7 @@
     <div class="built">
       <a class="panel card" href="dashboard.html"><h3>Live dashboard →</h3><p>Totals rebuilt from chain events only, refreshed every two seconds, with a one-click audit of every payout’s proof.</p></a>
       <a class="panel card" id="contractCard" href={contractHref} target="_blank" rel="noopener"><h3>Contract on Basescan →</h3><p class="mono" id="contract">{contract}</p></a>
+      <a class="panel card" href="/api/programs"><h3>Open data →</h3><p>Every program as JSON at <span class="mono">/api/programs</span>, and an Atom feed of triggers, funding and payouts at <span class="mono">/feed.xml</span> for any feed reader.</p></a>
       <a class="panel card" href="https://github.com/PugarHuda/naungan" target="_blank" rel="noopener"><h3>Source on GitHub →</h3><p>Contracts, PSI library, tests and the full Aceh demo. MIT licensed.</p></a>
     </div>
   </div>

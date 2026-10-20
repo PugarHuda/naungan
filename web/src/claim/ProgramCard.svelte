@@ -1,7 +1,7 @@
 <script lang="ts">
     // The program this card belongs to: amount, forecast chance, claim window and what this card may do.
     import { formatUnits } from "ethers"
-    import { ui, t, locale } from "./state.svelte"
+    import { ui, t, locale, statusOf } from "./state.svelte"
     import Money from "./Money.svelte"
     import AlertOptIn from "./AlertOptIn.svelte"
 
@@ -9,9 +9,7 @@
     const deadline = $derived(BigInt(s?.deadline ?? 0))
     const open = $derived(deadline > 0n && Date.now() / 1000 <= Number(deadline))
     const amount = $derived(s ? formatUnits(BigInt(s.amount), s.dec) : null)
-    const status = $derived(
-        !s ? "–" : deadline === 0n ? t("watching") : open ? `${t("open_")} ${t("until")} ${new Date(Number(deadline) * 1000).toLocaleString(locale(), { dateStyle: "long", timeStyle: "short" })}` : t("closed")
-    )
+    const status = $derived(statusOf(s))
 </script>
 
 <section class="card">

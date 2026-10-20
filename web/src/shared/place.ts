@@ -61,11 +61,11 @@ export async function usdRates(): Promise<Rates | null> {
     }
 }
 
-/** "≈ ৳124" for a USDC amount in a country's currency, or null for dollar countries and unknown rates. */
-export function localMoney(usdc: number, cc: string | undefined, fx: Rates | null, locale: string) {
+/** "≈ ৳124" (or, with display "name", "≈ 124 বাংলাদেশী টাকা" for reading aloud) for a USDC amount in a country's currency, or null for dollar countries and unknown rates. */
+export function localMoney(usdc: number, cc: string | undefined, fx: Rates | null, locale: string, display: "symbol" | "name" = "symbol") {
     const cur = currencyOf(cc)
     const rate = cur && fx?.rates?.[cur]
     if (!cur || cur === "USD" || !rate) return null
-    const text = new Intl.NumberFormat(locale, { style: "currency", currency: cur, maximumFractionDigits: rate > 10 ? 0 : 2 }).format(usdc * rate)
+    const text = new Intl.NumberFormat(locale, { style: "currency", currency: cur, currencyDisplay: display, maximumFractionDigits: rate > 10 ? 0 : 2 }).format(usdc * rate)
     return { text: `≈ ${text}`, currency: new Intl.DisplayNames([locale], { type: "currency" }).of(cur) ?? cur, day: new Date(fx!.day) }
 }

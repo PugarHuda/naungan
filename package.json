@@ -10,18 +10,21 @@
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.json --fail-on-warnings",
     "serve": "vite build && vite preview",
-    "test:web": "vitest run"
+    "test:web": "vitest run",
+    "e2e": "playwright test"
   },
   "keywords": [],
   "author": "Pugar Huda Mantoro",
   "license": "MIT",
   "type": "commonjs",
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
     "@ethereum-attestation-service/eas-contracts": "^1.9.0",
     "@noble/curves": "^1.9.7",
     "@noble/hashes": "^1.8.0",
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "@openzeppelin/contracts": "^5.6.1",
+    "@playwright/test": "^1.64.1",
     "@semaphore-protocol/contracts": "^4.14.4",
     "@semaphore-protocol/core": "^4.14.4",
     "@semaphore-protocol/group": "4.14.4",

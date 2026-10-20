@@ -63,6 +63,14 @@ export const card = {
 export function t(k: string): any {
     return (ui.hazard === "heat" && T[ui.lang][k + "_heat"]) || T[ui.lang][k]
 }
+/** The program's status line (watching, claims open until …, closed), shown on the card and read aloud. */
+export function statusOf(s: Snapshot | null) {
+    if (!s) return "–"
+    const deadline = BigInt(s.deadline)
+    if (deadline === 0n) return t("watching")
+    if (Date.now() / 1000 > Number(deadline)) return t("closed")
+    return `${t("open_")} ${t("until")} ${new Date(Number(deadline) * 1000).toLocaleString(locale(), { dateStyle: "long", timeStyle: "short" })}`
+}
 export const locale = () => (ui.country ? `${ui.lang}-${ui.country}` : ui.lang === "en" ? "en-GB" : ui.lang)
 
 export const store = {

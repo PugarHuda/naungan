@@ -56,7 +56,18 @@ export default defineConfig({
     root: web,
     plugins: [deploymentOverride(), svelte(), precacheClaimShell()],
     server: { port: 5173 },
-    preview: { port: 5173 },
+    preview: {
+        port: 5173,
+        // The production security headers from vercel.json, so `vite preview` (and the e2e suite on it) runs under
+        // the real CSP. HSTS and upgrade-insecure-requests are dropped: preview is plain http://localhost.
+        headers: (() => {
+            const all = JSON.parse(readFileSync(resolve(import.meta.dirname, "vercel.json"), "utf8")).headers.find((h) => h.source === "/(.*)").headers
+            const h = Object.fromEntries(all.map(({ key, value }) => [key, value]))
+            delete h["Strict-Transport-Security"]
+            h["Content-Security-Policy"] = h["Content-Security-Policy"].replace(/;\s*upgrade-insecure-requests/, "")
+            return h
+        })()
+    },
     build: {
         outDir: out,
         emptyOutDir: true,

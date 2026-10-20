@@ -37,7 +37,8 @@ export const T: Record<string, Record<string, Entry>> = {
         unknownProgram: "This card is for a program that does not exist on this network. Check that you scanned a Naungan card.",
         notCard: "That is not a Naungan card code. Paste the whole code printed under the QR.", pinFormat: "Enter the 6 digits of your PIN.",
         joinClosed: "Registration closed when the flood alert opened claims, so this phone cannot join this program now. Ask your agency about the next one.",
-        another: "Use another card", pickWallet: "Wallet"
+        another: "Use another card", pickWallet: "Wallet",
+        readAloud: "Read aloud", about: "about", readNext: (b) => `To receive the money, press “${b}”.`, readPaid: (a) => `Paid. ${a} USDC is now in your wallet.`
     },
     id: {
         title: "Klaim bantuan Anda", load: "Memuat program…", noCard: "Pindai kartu Naungan dengan kamera ponsel, atau tempel kode kartu di bawah.",
@@ -74,7 +75,8 @@ export const T: Record<string, Record<string, Entry>> = {
         unknownProgram: "Kartu ini untuk program yang tidak ada di jaringan ini. Pastikan Anda memindai kartu Naungan.",
         notCard: "Itu bukan kode kartu Naungan. Tempel seluruh kode yang tercetak di bawah QR.", pinFormat: "Masukkan 6 angka PIN Anda.",
         joinClosed: "Pendaftaran ditutup saat peringatan banjir membuka klaim, jadi ponsel ini tidak bisa ikut program ini sekarang. Tanyakan program berikutnya ke lembaga Anda.",
-        another: "Pakai kartu lain", pickWallet: "Dompet"
+        another: "Pakai kartu lain", pickWallet: "Dompet",
+        readAloud: "Bacakan", about: "sekitar", readNext: (b) => `Untuk menerima uangnya, tekan “${b}”.`, readPaid: (a) => `Terbayar. ${a} USDC sekarang ada di dompet Anda.`
     },
     bn: {
         title: "আপনার সহায়তা দাবি করুন", load: "প্রোগ্রাম লোড হচ্ছে…", noCard: "ফোনের ক্যামেরা দিয়ে আপনার নাউঙ্গান কার্ড স্ক্যান করুন, অথবা নিচে কার্ডের কোড পেস্ট করুন।",
@@ -111,7 +113,8 @@ export const T: Record<string, Record<string, Entry>> = {
         unknownProgram: "এই কার্ডটি এমন একটি প্রোগ্রামের, যা এই নেটওয়ার্কে নেই। নিশ্চিত হন যে আপনি নাউঙ্গান কার্ড স্ক্যান করেছেন।",
         notCard: "এটি নাউঙ্গান কার্ডের কোড নয়। QR-এর নিচে ছাপা পুরো কোডটি পেস্ট করুন।", pinFormat: "আপনার পিনের ৬টি সংখ্যা দিন।",
         joinClosed: "বন্যা সতর্কতায় দাবি খোলার সময় নিবন্ধন বন্ধ হয়ে গেছে, তাই এই ফোন এখন এই প্রোগ্রামে যোগ দিতে পারবে না। পরের প্রোগ্রাম সম্পর্কে আপনার সংস্থাকে জিজ্ঞেস করুন।",
-        another: "অন্য কার্ড ব্যবহার করুন", pickWallet: "ওয়ালেট"
+        another: "অন্য কার্ড ব্যবহার করুন", pickWallet: "ওয়ালেট",
+        readAloud: "জোরে পড়ে শোনান", about: "প্রায়", readNext: (b) => `টাকা পেতে “${b}” চাপুন।`, readPaid: (a) => `পরিশোধিত। ${a} USDC এখন আপনার ওয়ালেটে আছে।`
     },
     es: {
         title: "Reclame su apoyo", load: "Cargando programa…", noCard: "Escanee su tarjeta Naungan con la cámara del teléfono, o pegue el código de la tarjeta abajo.",
@@ -148,7 +151,8 @@ export const T: Record<string, Record<string, Entry>> = {
         unknownProgram: "Esta tarjeta es de un programa que no existe en esta red. Verifique que escaneó una tarjeta Naungan.",
         notCard: "Ese no es un código de tarjeta Naungan. Pegue el código completo impreso debajo del QR.", pinFormat: "Ingrese los 6 dígitos de su PIN.",
         joinClosed: "La inscripción se cerró cuando la alerta de inundación abrió los reclamos, así que este teléfono no puede unirse a este programa ahora. Pregunte a su organización por el próximo.",
-        another: "Usar otra tarjeta", pickWallet: "Billetera"
+        another: "Usar otra tarjeta", pickWallet: "Billetera",
+        readAloud: "Leer en voz alta", about: "unos", readNext: (b) => `Para recibir el dinero, toque “${b}”.`, readPaid: (a) => `Pagado. Ya tiene ${a} USDC en su billetera.`
     },
     sw: {
         title: "Pokea msaada wako", load: "Inapakia mpango…", noCard: "Changanua kadi yako ya Naungan kwa kamera ya simu, au bandika msimbo wa kadi hapa chini.",
@@ -185,7 +189,8 @@ export const T: Record<string, Record<string, Entry>> = {
         unknownProgram: "Kadi hii ni ya mpango ambao haupo kwenye mtandao huu. Hakikisha umechanganua kadi ya Naungan.",
         notCard: "Huo si msimbo wa kadi ya Naungan. Bandika msimbo wote uliochapishwa chini ya QR.", pinFormat: "Weka tarakimu 6 za PIN yako.",
         joinClosed: "Usajili ulifungwa tahadhari ya mafuriko ilipofungua madai, kwa hiyo simu hii haiwezi kujiunga na mpango huu sasa. Uliza shirika lako kuhusu mpango ujao.",
-        another: "Tumia kadi nyingine", pickWallet: "Pochi"
+        another: "Tumia kadi nyingine", pickWallet: "Pochi",
+        readAloud: "Nisomee kwa sauti", about: "takriban", readNext: (b) => `Ili kupokea pesa, bonyeza “${b}”.`, readPaid: (a) => `Imelipwa. USDC ${a} sasa iko kwenye pochi yako.`
     }
 }
 /**

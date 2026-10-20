@@ -116,15 +116,30 @@ async function tick() {
     for (next = Math.max(from, (next ?? from) - 10); next <= head; ) {
         const spans: [number, number][] = []
         for (let b = next; b <= head && spans.length < 5; b += 200) spans.push([b, Math.min(b + 199, head)])
-        for (const got of await Promise.all(spans.map(([f, t]) => c.queryFilter("*", f, t))))
+        for (const got of await paced(() => Promise.all(spans.map(([f, t]) => c.queryFilter("*", f, t)))))
             for (const e of got as unknown as Ev[]) if (!have.has(e.transactionHash + e.index)) have.add(e.transactionHash + e.index), events.push(e)
         next = spans.at(-1)![1] + 1
+        if (next <= head) await sleep(250) // 5 windows per 250 ms stays under the public RPC's 25 requests/s
     }
     if (id !== dash.pid) return
     const mine = events.filter((e) => e.fragment && e.args?.programId === id).sort((x, y) => x.blockNumber - y.blockNumber || x.index - y.index)
     // Only hand panels a new array when something changed, so the ledger and oracles do not re-render every 2 s.
     const cur = dash.current
     if (!cur || cur.length !== mine.length || cur.at(-1) !== mine.at(-1)) dash.current = mine
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+/** Base Sepolia's public RPC answers -32007 ("25/second request limit") or 429 under bursts: back off and retry. */
+const limited = (e: unknown) => /-32007|request limit|429|Too Many/i.test(JSON.stringify((e as { error?: unknown })?.error ?? "") + String((e as Error)?.message ?? e))
+async function paced<T>(run: () => Promise<T>): Promise<T> {
+    for (let wait = 1000; ; wait *= 2) {
+        try {
+            return await run()
+        } catch (e) {
+            if (!limited(e) || wait > 8000) throw e
+            await sleep(wait)
+        }
+    }
 }
 
 export async function start() {

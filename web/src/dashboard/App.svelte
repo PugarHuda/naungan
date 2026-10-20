@@ -66,5 +66,6 @@
             </article>
         </section>
     </main>
-    <footer>Contract {d.naungan} on chain {d.chainId}. This page reads it every 2 seconds and keeps no data of its own.</footer>
+    <footer>Contract {d.naungan} on chain {d.chainId}. This page reads it every 2 seconds and keeps no data of its own.
+        {#if dash.pid !== undefined}<a href="/feed.xml?program={dash.pid}">Follow this program (Atom feed)</a> · {/if}<a href="/api/programs">Open data: /api/programs</a></footer>
 </div>

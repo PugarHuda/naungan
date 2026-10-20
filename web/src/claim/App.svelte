@@ -9,6 +9,7 @@
     import PayChoice from "./PayChoice.svelte"
     import Paid from "./Paid.svelte"
     import Wallet from "./Wallet.svelte"
+    import ReadAloud from "./ReadAloud.svelte"
 
     $effect(() => {
         document.documentElement.lang = ui.lang
@@ -27,6 +28,7 @@
         </select>
     </header>
     <h1>{t("title")}</h1>
+    <ReadAloud />
 
     {#if ui.nocard}<CardEntry />{/if}
     {#if ui.pin}<PinBox />{/if}

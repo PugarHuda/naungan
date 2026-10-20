@@ -10,3 +10,5 @@ cards/
 .vercel
 .env*
 dist/
+playwright-report/
+test-results/
