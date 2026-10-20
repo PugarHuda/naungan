@@ -14,7 +14,7 @@ const path = require("path")
 const { ethers, run, network } = require("hardhat")
 const { Identity, Group, generateProof } = require("@semaphore-protocol/core")
 const { Agency, privateDedup } = require("../lib/psi")
-const hazard = require("../lib/hazard")
+const hazard = require("../lib/hazard.mjs")
 
 const LOCAL = ["hardhat", "localhost"].includes(network.name)
 const PER_HOUSEHOLD = process.env.AMOUNT ?? (LOCAL ? "50" : "2")

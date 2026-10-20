@@ -10,7 +10,7 @@
 //   --names id|basic picks how names are normalised before matching (default id: Indonesian/Malay titles
 //   and spelling; basic: accents, case and common honorifics only). Both agencies must use the same one.
 //   --pin locks each card with a 6-digit PIN printed on a separate slip (cards/zakat.pins.html). The key also
-//   needs the relayer's OPRF (lib/cardlock.js v2), so a stolen card cannot be brute-forced offline;
+//   needs the relayer's OPRF (lib/cardlock.mjs v2), so a stolen card cannot be brute-forced offline;
 //   --pin-server overrides deployment.json's relayer.
 //
 // CSV columns: name,birthYear,village (quotes allowed), optional commitment. Cards hold claim secrets: keep them offline.
@@ -25,7 +25,7 @@ const http = require("http")
 const { parseArgs } = require("util")
 const { ethers } = require("ethers")
 const QRCode = require("qrcode")
-const { lockV2, newPin } = require("../lib/cardlock")
+const { lockV2, newPin } = require("../lib/cardlock.mjs")
 const { Identity } = require("@semaphore-protocol/core")
 const { Agency, DST, PROFILES, DEFAULT_PROFILE } = require("../lib/psi")
 const { connect, explain } = require("../lib/chain")

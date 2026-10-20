@@ -2,7 +2,7 @@ const { expect } = require("chai")
 const { ethers, run, network } = require("hardhat")
 const { Identity, Group, generateProof } = require("@semaphore-protocol/core")
 const { poseidon2 } = require("poseidon-lite")
-const { auditClaims } = require("../lib/audit")
+const { auditClaims } = require("../lib/audit.mjs")
 
 const USDC = (n) => BigInt(n) * 10n ** 6n
 const DAY = 24 * 3600

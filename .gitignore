@@ -6,9 +6,7 @@ typechain-types/
 .env
 
 cards/
-web/claim.js
-web/verify.js
-web/audit.js
 
 .vercel
 .env*
+dist/

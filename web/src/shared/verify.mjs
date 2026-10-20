@@ -1,7 +1,7 @@
 // In-browser oracle audit: re-run an oracle's computation from the public data source with the exact
 // code the oracle runs (lib/hazard.js) and compare it with the value it put on-chain. No trust in us,
 // the oracle key or our servers: only Open-Meteo's public API and the chain.
-import hazard from "../../lib/hazard.js"
+import * as hazard from "../../../lib/hazard.mjs"
 
 /**
  * Which computation produced an evidence string, and with what inputs. Replays name their window and

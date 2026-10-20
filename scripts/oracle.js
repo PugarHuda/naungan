@@ -12,7 +12,7 @@
 //   node scripts/oracle.js --program 4 --source rain --dry-run
 const { parseArgs } = require("util")
 const { connect, programMeta, explain } = require("../lib/chain")
-const hazard = require("../lib/hazard")
+const hazard = require("../lib/hazard.mjs")
 const { ethers } = require("ethers")
 
 const { values: a } = parseArgs({

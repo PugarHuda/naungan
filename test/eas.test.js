@@ -1,7 +1,7 @@
 // Independent audits on EAS, against the real EAS and SchemaRegistry bytecode (the same contracts Base predeploys).
 const { expect } = require("chai")
 const { ethers } = require("hardhat")
-const eas = require("../lib/eas")
+const eas = require("../lib/eas.mjs")
 const REG = require("@ethereum-attestation-service/eas-contracts/artifacts/contracts/SchemaRegistry.sol/SchemaRegistry.json")
 const EAS = require("@ethereum-attestation-service/eas-contracts/artifacts/contracts/EAS.sol/EAS.json")
 

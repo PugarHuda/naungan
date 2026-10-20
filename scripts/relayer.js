@@ -8,13 +8,13 @@
 //        EIP-3009 transferWithAuthorization: a paid household moves its USDC (to a cash-out agent or
 //        shop) without ever holding ETH. Only sponsored for addresses Naungan has paid.
 //   POST /pin { programId, card, point } → { evaluated, left }
-//        OPRF for PIN-locked v2 cards (lib/cardlock.js): evaluates a blinded point, at most MAX_TRIES
+//        OPRF for PIN-locked v2 cards (lib/cardlock.mjs): evaluates a blinded point, at most MAX_TRIES
 //        times per card. The server never sees the PIN, and the phone cannot test one without it.
 //   GET  /health                       → relayer address, balance, chain
 const http = require("http")
 const { ethers } = require("ethers")
 const { connect, explain, logs } = require("../lib/chain")
-const { oprfKey, evaluate, MAX_TRIES } = require("../lib/cardlock")
+const { oprfKey, evaluate, MAX_TRIES } = require("../lib/cardlock.mjs")
 
 const PORT = Number(process.env.PORT || 8788)
 const PER_MINUTE = Number(process.env.RATE_LIMIT || 10)

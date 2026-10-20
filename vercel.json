@@ -1,6 +1,6 @@
 {
   "buildCommand": "npx hardhat compile && npm run build",
-  "outputDirectory": "web",
+  "outputDirectory": "dist",
   "functions": {
     "api/relayer.js": {
       "includeFiles": "{web/deployment.json,artifacts/contracts/Naungan.sol/Naungan.json,artifacts/@semaphore-protocol/contracts/Semaphore.sol/Semaphore.json}",
@@ -8,9 +8,21 @@
     }
   },
   "rewrites": [
-    { "source": "/relay", "destination": "/api/relayer?route=/relay" },
-    { "source": "/transfer", "destination": "/api/relayer?route=/transfer" },
-    { "source": "/pin", "destination": "/api/relayer?route=/pin" },
-    { "source": "/health", "destination": "/api/relayer?route=/health" }
+    {
+      "source": "/relay",
+      "destination": "/api/relayer?route=/relay"
+    },
+    {
+      "source": "/transfer",
+      "destination": "/api/relayer?route=/transfer"
+    },
+    {
+      "source": "/pin",
+      "destination": "/api/relayer?route=/pin"
+    },
+    {
+      "source": "/health",
+      "destination": "/api/relayer?route=/health"
+    }
   ]
 }

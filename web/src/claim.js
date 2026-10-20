@@ -5,7 +5,7 @@ import { ethers } from "ethers"
 import { Identity, Group, generateProof } from "@semaphore-protocol/core"
 import { poseidon2 } from "poseidon-lite"
 import QRCode from "qrcode"
-import { unlock, unlockV2 } from "../../lib/cardlock.js"
+import { unlock, unlockV2 } from "../../lib/cardlock.mjs"
 
 const T = {
     en: {

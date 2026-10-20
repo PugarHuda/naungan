@@ -1,20 +1,20 @@
 #!/usr/bin/env node
-// Independent payout audits on EAS (lib/eas.js). Anyone can run these with their own key; the auditor's
+// Independent payout audits on EAS (lib/eas.mjs). Anyone can run these with their own key; the auditor's
 // address, not ours, signs the result.
 //
 //   node scripts/eas.js register                     register the audit schema once per chain (idempotent)
-//   node scripts/eas.js audit --program 2            re-verify every payout (lib/audit.js), then attest the result
+//   node scripts/eas.js audit --program 2            re-verify every payout (lib/audit.mjs), then attest the result
 //   node scripts/eas.js audit --program 2 --dry-run  verify and print, send nothing
 //   node scripts/eas.js list  --program 2            audits other people published for the program
 const { parseArgs } = require("util")
 const { ethers } = require("ethers")
 const { connect, logs, explain } = require("../lib/chain")
-const { auditClaims, groupRoot } = require("../lib/audit")
-const eas = require("../lib/eas")
+const { auditClaims, groupRoot } = require("../lib/audit.mjs")
+const eas = require("../lib/eas.mjs")
 
 const { values: a, positionals: [cmd] } = parseArgs({ allowPositionals: true, options: { program: { type: "string" }, "dry-run": { type: "boolean" } } })
 
-/** Everything lib/audit.js needs, read at one block so the counts and the group belong together. */
+/** Everything lib/audit.mjs needs, read at one block so the counts and the group belong together. */
 async function collect({ naungan, provider, d }, pid) {
     const atBlock = await provider.getBlockNumber()
     const [members, p] = await Promise.all([naungan.members(pid, { blockTag: atBlock }), naungan.programs(pid, { blockTag: atBlock })])

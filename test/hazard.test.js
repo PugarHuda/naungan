@@ -1,5 +1,5 @@
 const { expect } = require("chai")
-const { annualMaxima, returnLevel, exceedance, rolling, assessRain, episodes, agree, longestRun, assessHeat, replayHeat } = require("../lib/hazard")
+const { annualMaxima, returnLevel, exceedance, rolling, assessRain, episodes, agree, longestRun, assessHeat, replayHeat } = require("../lib/hazard.mjs")
 
 describe("hazard (GloFAS trigger math)", () => {
     it("takes yearly peaks from complete years only", () => {
@@ -95,7 +95,7 @@ describe("hazard (GloFAS trigger math)", () => {
     })
 
     it("the dashboard re-check reads which pipeline, run and replay window produced a report", async () => {
-        const { parseEvidence } = await import("../web/src/verify.mjs")
+        const { parseEvidence } = await import("../web/src/shared/verify.mjs")
         expect(parseEvidence("GloFAS v4 via Open-Meteo | cell 5.575,95.325 | run 2026-10-18 | lead 10d")).to.deep.equal({ pipeline: "glofas", replay: null, run: "2026-10-18" })
         expect(parseEvidence("NOAA GEFS 0.25 rainfall via Open-Meteo | catchment mean of 5 cells | run 2026-10-17")).to.deep.equal({ pipeline: "rain", replay: null, run: "2026-10-17" })
         expect(parseEvidence("REPLAY of GloFAS v4 reanalysis via Open-Meteo (not a live forecast) | cell 1,2 | window 2025-11-20..2025-11-29")).to.include({ pipeline: "glofas", replay: "2025-11-20" })

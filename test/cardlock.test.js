@@ -1,5 +1,5 @@
 const { expect } = require("chai")
-const { lock, unlock, newPin } = require("../lib/cardlock")
+const { lock, unlock, newPin } = require("../lib/cardlock.mjs")
 
 describe("PIN-locked claim cards", () => {
     it("opens only with the right PIN and for the right program", async () => {
@@ -19,7 +19,7 @@ describe("PIN-locked claim cards", () => {
 })
 
 describe("PIN cards v2: server-checked PIN (OPRF)", () => {
-    const { lockV2, unlockV2, oprfKey, evaluate, MAX_TRIES } = require("../lib/cardlock")
+    const { lockV2, unlockV2, oprfKey, evaluate, MAX_TRIES } = require("../lib/cardlock.mjs")
     const { parsePin, sharedStore } = require("../scripts/relayer")
     const secret = "mtVmjtzdGv7EMx4T2Z0D8SYEnZbCdUr4+tLEXGL7/LA="
 
