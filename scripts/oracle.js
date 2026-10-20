@@ -15,7 +15,9 @@
 //                                                           hourly schedule survives dropped runs without reporting more often
 const { parseArgs } = require("util")
 const { connect, programMeta, explain } = require("../lib/chain")
-const hazard = require("../lib/hazard.mjs")
+// lib/hazard.mjs is an ES module shared with the browser: import() loads it on any Node version (require() of ESM
+// needs 22.12+, and the Vercel runtime that runs GET /oracle is older).
+const hazardModule = import("../lib/hazard.mjs")
 const { ethers } = require("ethers")
 
 /**
@@ -29,6 +31,7 @@ async function once({ naungan, wallet, send }, pid, a = {}) {
     if (!a["dry-run"] && !(await naungan.isOracle(pid, wallet.address))) throw new Error(`this key (${wallet.address}) is not an oracle of program ${pid}`)
     const m = await programMeta(naungan, pid)
     const source = a.source ?? Object.entries(m.pipelines ?? {}).find(([o]) => o.toLowerCase() === wallet.address.toLowerCase())?.[1] ?? (m.hazard === "heat" ? "heat" : "glofas")
+    const hazard = await hazardModule
     const run = { glofas: [hazard.assess, hazard.replay], rain: [hazard.assessRain, hazard.replayRain], heat: [hazard.assessHeat, hazard.replayHeat] }[source]
     if (!run) throw new Error(`unknown pipeline "${source}" (glofas, rain or heat)`)
     const r = a.replay ? await run[1]({ ...m, date: a.replay }) : await run[0](m)
