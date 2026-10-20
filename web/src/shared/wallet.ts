@@ -1,7 +1,7 @@
 // Donations and audit signatures from any EIP-1193 wallet. EIP-6963 lists every installed wallet (MetaMask,
 // Coinbase, Rabby…) without them fighting over window.ethereum; the first one announced is used, window.ethereum otherwise.
 import { BrowserProvider, type Eip1193Provider } from "ethers"
-import { deployment as d } from "../shared/chain"
+import { deployment as d } from "./chain"
 
 type Announced = { info: { name: string }; provider: Eip1193Provider }
 const wallets: Announced[] = []

@@ -3,7 +3,7 @@
     import { deployment as d, ERC20_ABI, isOver, type Program } from "../shared/chain"
     import { c, dash } from "./state.svelte"
     import { netName, short, txUrl, usd, type Part } from "./format"
-    import { browserWallet, cancelled, walletSigner, why } from "./wallet"
+    import { browserWallet, cancelled, walletSigner, why } from "../shared/wallet"
     import Message from "./Message.svelte"
 
     let amount = $state<number | null>(1) // bind:value on a number input yields a number (null when empty)

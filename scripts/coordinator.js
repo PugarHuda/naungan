@@ -6,12 +6,15 @@
 //        [--pipelines glofas,rain --rain-cells "5.5,95.5;5.25,95.5" --rain-return-period 2]   one pipeline per oracle
 //   node scripts/coordinator.js create --hazard heat --name "Dhaka heatwave" --lat 23.81 --lon 90.41 --tmax 38 --heat-days 2 [--tmin 30]
 //        --lead-days 7 --trigger 50 --amount 1 --claim-days 7 --season-days 180     (heatwave: NOAA GEFS max temperature)
+//   node scripts/coordinator.js create --preset urcs-flood --snap --name "Mpologoma river flood · Butaleja, Uganda" --lat 0.93 --lon 33.95 //        --amount 0.5 --claim-days 7 --season-days 223     (trigger from a society's EAP; --snap moves to the river's main cell)
 //   node scripts/coordinator.js add-agency    --program 1 --agency 0x..
 //   node scripts/coordinator.js remove-agency --program 1 --agency 0x..
 //   node scripts/coordinator.js fund          --program 1 --amount 10        (USDC, approves first)
 //   node scripts/coordinator.js refund        --program 1        (this key's own pro-rata share, once claims are over)
 //   node scripts/coordinator.js status        --program 1
 const { parseArgs } = require("util")
+const { PRESETS, buildMeta } = require("../lib/program.mjs")
+const hazard = require("../lib/hazard.mjs")
 const { ethers } = require("ethers")
 const { connect, abi, explain } = require("../lib/chain")
 
@@ -23,7 +26,7 @@ const { values: a, positionals: [cmd] } = parseArgs({
     args,
     allowPositionals: true,
     options: Object.fromEntries(
-        ["program", "agency", "amount", "name", "lat", "lon", "hazard", "tmax", "tmin", "heat-days", "return-period", "lead-days", "trigger", "claim-days", "season-days", "oracles", "quorum", "pipelines", "rain-cells", "rain-return-period"].map((k) => [k, { type: "string" }])
+        ["program", "agency", "amount", "name", "lat", "lon", "hazard", "tmax", "tmin", "heat-days", "return-period", "lead-days", "trigger", "claim-days", "season-days", "oracles", "quorum", "pipelines", "rain-cells", "rain-return-period", "preset", "country"].map((k) => [k, { type: "string" }]).concat([["snap", { type: "boolean" }]])
     )
 })
 const need = (...k) => k.forEach((x) => { if (a[x] === undefined) throw new Error(`--${x} is required`) })
@@ -44,48 +47,29 @@ const wait = async (txp) => {
     const dec = await usdc.decimals()
 
     if (cmd === "create") {
-        const heat = a.hazard === "heat"
-        if (a.hazard && !heat && a.hazard !== "flood") throw new Error("--hazard is flood (default) or heat")
-        need("name", "lat", "lon", ...(heat ? ["tmax", "heat-days"] : ["return-period"]), "lead-days", "trigger", "amount", "claim-days", "season-days")
-        const meta = heat
-            ? {
-                  name: a.name,
-                  hazard: "heat",
-                  source: "NOAA GEFS daily maximum temperature via Open-Meteo",
-                  lat: num("lat", -90, 90),
-                  lon: num("lon", -180, 180),
-                  leadDays: num("lead-days", 1, 16), // GEFS 0.25 runs 16 days out
-                  heat: { tmax: num("tmax", 25, 60), ...(a.tmin != null && { tmin: num("tmin", 10, 45) }), days: num("heat-days", 1, 10), cells: [[Number(a.lat), Number(a.lon)]] },
-                  unit: "% of ensemble members forecasting a heatwave"
-              }
-            : {
-                  name: a.name,
-                  hazard: "flood",
-                  source: "GloFAS v4 river discharge via Open-Meteo",
-                  lat: num("lat", -90, 90),
-                  lon: num("lon", -180, 180),
-                  returnPeriod: num("return-period", 1.1, 100),
-                  leadDays: num("lead-days", 1, 30),
-                  unit: "% of ensemble members above the return-period flood"
-              }
-        const oracleList = (a.oracles ?? wallet.address).split(",").map((x) => ethers.getAddress(x.trim()))
-        if (a.pipelines) {
-            // Which forecast each oracle runs, on-chain so anyone can audit that a quorum mixes independent sources.
-            const ps = a.pipelines.split(",").map((x) => x.trim())
-            if (ps.length !== oracleList.length || ps.some((x) => !["glofas", "rain", "heat"].includes(x))) throw new Error("--pipelines needs one of glofas|rain|heat per oracle")
-            meta.pipelines = Object.fromEntries(oracleList.map((o, i) => [o, ps[i]]))
-            if (ps.includes("rain")) {
-                meta.source += " + NOAA GEFS catchment rainfall vs ERA5"
-                meta.rain = {
-                    returnPeriod: a["rain-return-period"] ? num("rain-return-period", 1.1, 100) : meta.returnPeriod,
-                    cells: (a["rain-cells"] ?? `${meta.lat},${meta.lon}`).split(";").map((c) => {
-                        const [lat, lon] = c.split(",").map(Number)
-                        if (!(Math.abs(lat) <= 90 && Math.abs(lon) <= 180)) throw new Error(`bad --rain-cells entry "${c}"`)
-                        return [lat, lon]
-                    })
-                }
-            }
+        // --preset fills the trigger from a society's Early Action Protocol (lib/program.mjs); flags override it.
+        const preset = a.preset ? PRESETS.find((x) => x.id === a.preset) : {}
+        if (!preset) throw new Error(`--preset is one of ${PRESETS.map((x) => x.id).join(", ")}`)
+        const pick = (flag, key) => a[flag] ?? preset[key]
+        const hazardName = a.hazard ?? preset.hazard ?? "flood"
+        need("name", "lat", "lon", "amount", "claim-days", "season-days")
+        let lat = Number(a.lat), lon = Number(a.lon)
+        if (a.snap && hazardName === "flood") {
+            // The oracle reads one GloFAS cell: move to the river's main channel near the place, not a side cell.
+            const cell = await hazard.riverCell(lat, lon)
+            console.log(`snapped to the river cell ${cell.lat},${cell.lon} (${cell.km.toFixed(1)} km away, mean ${Math.round(cell.flow)} m3/s)`)
+            ;({ lat, lon } = cell)
         }
+        const oracleList = (a.oracles ?? wallet.address).split(",").map((x) => ethers.getAddress(x.trim()))
+        const meta = buildMeta({
+            name: a.name, hazard: hazardName, lat, lon, country: a.country,
+            returnPeriod: pick("return-period", "returnPeriod"), leadDays: pick("lead-days", "leadDays"),
+            tmax: pick("tmax", "tmax"), tmin: pick("tmin", "tmin"), days: pick("heat-days", "days"),
+            oracles: oracleList, pipelines: a.pipelines?.split(",").map((x) => x.trim()),
+            rainReturnPeriod: a["rain-return-period"], rainCells: a["rain-cells"]?.split(";").map((c) => c.split(",").map(Number))
+        })
+        a.trigger ??= preset.trigger
+        need("trigger")
         const quorum = a.quorum ? num("quorum", 1, oracleList.length) : 1
         const now = (await wallet.provider.getBlock("latest")).timestamp
         // Read the id from the receipt: a load-balanced public RPC can answer programCount() from a stale node.

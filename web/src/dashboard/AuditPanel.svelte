@@ -5,7 +5,7 @@
     import { deployment as d } from "../shared/chain"
     import { c, dash } from "./state.svelte"
     import { short, txUrl, type Part } from "./format"
-    import { browserWallet, cancelled, walletSigner, why } from "./wallet"
+    import { browserWallet, cancelled, walletSigner, why } from "../shared/wallet"
     import Message from "./Message.svelte"
 
     type Row = { ok: boolean; hash: string; failed: string[] }
