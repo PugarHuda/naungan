@@ -25,7 +25,8 @@ async function networkFirst(req) {
         if (res.ok) (await caches.open(SHELL)).put(req, res.clone())
         return res
     } catch {
-        const hit = await caches.match(req, { ignoreSearch: true })
+        // ignoreVary: module scripts are fetched with an Origin header, and a "Vary: Origin" answer would miss offline
+        const hit = await caches.match(req, { ignoreSearch: true, ignoreVary: true })
         if (hit) return hit
         throw new Error("offline and not cached")
     }
