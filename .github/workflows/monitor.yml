@@ -1,0 +1,43 @@
+# Hourly production check (scripts/monitor.js): pages, relayer gas and shared store, open data, CAP alerts, push key,
+# and whether every watching program still gets oracle reports. While something is wrong, an issue labelled
+# "monitor" stays open (commented only when the list of problems changes); it closes when everything passes again.
+name: Monitor
+on:
+  schedule: [{ cron: "41 * * * *" }]
+  workflow_dispatch:
+permissions: { contents: read, issues: write }
+concurrency: { group: monitor, cancel-in-progress: true }
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Check production
+        id: run
+        run: |
+          set +e
+          node scripts/monitor.js | tee out.txt
+          echo "code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+      - name: Open, update or close the monitor issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CODE: ${{ steps.run.outputs.code }}
+        run: |
+          run="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          n=$(gh issue list --label monitor --state open --json number -q '.[0].number')
+          if [ "$CODE" = 0 ]; then
+            if [ -n "$n" ]; then gh issue close "$n" --comment "All checks pass again: $run"; fi
+            exit 0
+          fi
+          problems=$(grep '^::error::' out.txt | sed 's/^::error::/- /')
+          body=$(printf 'The hourly production check found:\n\n%s\n\nRun: %s\n' "$problems" "$run")
+          if [ -z "$n" ]; then
+            gh label create monitor --color B60205 --description "Opened by the production monitor" 2>/dev/null || true
+            gh issue create --title "Production monitor: something is wrong" --label monitor --body "$body"
+          else
+            last=$(gh issue view "$n" --json body,comments -q '(.comments | last | .body) // .body' | grep '^- ')
+            if [ "$last" != "$problems" ]; then gh issue comment "$n" --body "$body"; fi
+          fi
+          exit 1

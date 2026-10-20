@@ -187,7 +187,7 @@
                     </select>
                 </label>
                 {#if chosen}
-                    <p class="fine">{enrolled.size} household{enrolled.size === 1 ? "" : "s"} enrolled so far. Registration link for phones: <code>{location.origin}/claim.html#join={chosen.id}</code></p>
+                    <p class="fine">{enrolled.size} household{enrolled.size === 1 ? "" : "s"} enrolled so far. Registration link for phones: <code>{location.origin}/claim.html#join={chosen.id}</code> · <a href="poster.html?program={chosen.id}" target="_blank" rel="noopener">Print a registration poster</a></p>
                 {/if}
             {/if}
         </article>

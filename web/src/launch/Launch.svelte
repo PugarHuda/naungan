@@ -98,7 +98,7 @@
             <li>
                 Households register with their own phones at this link, and agency staff <a href="enroll.html?program={done.id}">enroll their codes</a> by scanning them:
                 <div class="joinqr" aria-hidden="true">{@html done.qr}</div>
-                <code class="joinurl">{done.join}</code>
+                <code class="joinurl">{done.join}</code> <a href="poster.html?program={done.id}" target="_blank" rel="noopener">Print a poster with this code</a>
             </li>
             <li>
                 {#if oracleList().some((o) => o.toLowerCase() === HOSTED_ORACLE.toLowerCase())}

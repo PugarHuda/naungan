@@ -11,13 +11,15 @@
 //   node scripts/oracle.js --program 1 --dry-run            compute and print, send nothing
 //   node scripts/oracle.js --program 4 --source rain --dry-run
 //   node scripts/oracle.js --all                            every live program this key is an oracle of (no watch list to keep)
+//   node scripts/oracle.js --all --every 5.5                ...skipping programs it reported on in the last 5.5 hours, so an
+//                                                           hourly schedule survives dropped runs without reporting more often
 const { parseArgs } = require("util")
 const { connect, programMeta, explain } = require("../lib/chain")
 const hazard = require("../lib/hazard.mjs")
 const { ethers } = require("ethers")
 
 const { values: a } = parseArgs({
-    options: { all: { type: "boolean" }, program: { type: "string" }, watch: { type: "string" }, replay: { type: "string" }, "dry-run": { type: "boolean" }, source: { type: "string" } }
+    options: { all: { type: "boolean" }, program: { type: "string" }, watch: { type: "string" }, replay: { type: "string" }, "dry-run": { type: "boolean" }, source: { type: "string" }, every: { type: "string" } }
 })
 
 async function once({ naungan, wallet }, pid) {
@@ -42,14 +44,16 @@ async function once({ naungan, wallet }, pid) {
 /**
  * Programs this key should report on now: it is one of their oracles, and they are neither triggered nor
  * past their season. Read from the chain, so a program launched from the browser is picked up on the next
- * run with no list to edit.
+ * run with no list to edit. With `every` (hours), a program this key reported on more recently is left for later.
  */
-async function mine({ naungan, wallet }) {
+async function mine({ naungan, wallet }, every = 0) {
     const n = Number(await naungan.programCount()), now = Date.now() / 1000, out = []
     for (let pid = 1n; pid <= BigInt(n); pid++) {
         const p = await naungan.programs(pid)
         if (p.claimDeadline > 0n || now > Number(p.seasonEnd)) continue
-        if (await naungan.isOracle(pid, wallet.address)) out.push(pid)
+        if (!(await naungan.isOracle(pid, wallet.address))) continue
+        if (every > 0 && now - Number((await naungan.reports(pid, wallet.address))[1]) < every * 3600) continue // [1]: Report.at
+        out.push(pid)
     }
     return out
 }
@@ -64,8 +68,10 @@ async function gasCheck({ wallet }) {
 ;(async () => {
     if (a.all) {
         const ctx = await connect()
-        const pids = await mine(ctx)
-        console.log(`${ctx.wallet.address} is an oracle of ${pids.length} live program(s): ${pids.join(", ") || "none"}`)
+        const every = Number(a.every ?? 0)
+        if (!(every >= 0)) throw new Error("--every takes a number of hours")
+        const pids = await mine(ctx, every)
+        console.log(`${ctx.wallet.address} reports now on ${pids.length} live program(s)${every ? ` not reported on in the last ${every} h` : ""}: ${pids.join(", ") || "none"}`)
         let failed = 0
         for (const pid of pids) await once(ctx, pid).catch((e) => (failed++, console.log(`::warning::program ${pid}: ${explain(e)}`)))
         await gasCheck(ctx)
