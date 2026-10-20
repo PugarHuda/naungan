@@ -5,6 +5,8 @@ name: Monitor
 on:
   schedule: [{ cron: "41 * * * *" }]
   workflow_dispatch:
+    inputs:
+      base: { description: "Site to check (default production; another base checks a preview, or proves the issue path)", required: false }
 permissions: { contents: read, issues: write }
 concurrency: { group: monitor, cancel-in-progress: true }
 jobs:
@@ -16,9 +18,11 @@ jobs:
         with: { node-version: 22 }
       - name: Check production
         id: run
+        env:
+          BASE: ${{ inputs.base }}
         run: |
           set +e
-          node scripts/monitor.js | tee out.txt
+          node scripts/monitor.js --base "${BASE:-https://naungan.vercel.app}" | tee out.txt
           echo "code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
       - name: Open, update or close the monitor issue
         env:
