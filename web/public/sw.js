@@ -1,6 +1,6 @@
 // Offline support for the household claim app. Signal drops exactly when floods hit, so the app,
 // the Semaphore proving keys and the last deployment info are served from cache when offline.
-const SHELL = "naungan-shell-v8"
+const SHELL = "naungan-shell-v9"
 const ARTIFACTS = "naungan-artifacts-v1" // proving keys are immutable per version: cache forever
 const WATCH = "naungan-watch" // programs this phone waits on: chain address + program id only, no identity
 const PRECACHE = ["claim.html", "claim.js", "manifest.webmanifest", "icon.svg", "deployment.json"]
@@ -32,9 +32,9 @@ async function networkFirst(req) {
     }
 }
 
-// Flood alerts without a push server: the phone itself polls the chain in the background (Periodic
-// Background Sync) and shows a local notification when claims open. Web Push would need a server
-// that keeps every enrolled phone's subscription and lets the push service know who is a beneficiary.
+// Flood alerts, two ways to wake: Periodic Background Sync (the phone polls the chain itself, no server; only
+// installed Chromium apps, at a rate the browser picks) and a payload-free Web Push from the relayer's /notify
+// (any browser with push). Either way the notification is written here, from the chain, in the phone's language.
 const NOTE = {
     en: (name, heat) => ({ title: `${heat ? "Heatwave" : "Flood"} alert: claims are open`, body: `${name}: open Naungan and tap Claim before the window closes.` }),
     id: (name, heat) => ({ title: `Peringatan ${heat ? "gelombang panas" : "banjir"}: klaim dibuka`, body: `${name}: buka Naungan dan tekan Klaim sebelum masa klaim berakhir.` }),
@@ -53,6 +53,7 @@ async function deadline(w) {
 }
 
 async function checkWatches() {
+    let shown = 0
     const cache = await caches.open(WATCH)
     const now = BigInt(Math.floor(Date.now() / 1000))
     for (const req of await cache.keys()) {
@@ -67,8 +68,19 @@ async function checkWatches() {
             await self.registration.showNotification(n.title, { body: n.body, tag: watchKey(w), icon: "icon.svg", badge: "icon.svg", requireInteraction: true, data: { url: "claim.html" } })
         } catch { continue } // permission revoked: leave it un-notified so a later grant still alerts, and check the rest
         await cache.put(req, new Response(JSON.stringify({ ...w, notified: true })))
+        shown++
     }
+    return shown
 }
+
+// The relayer pushes only when a watched program's claims opened. Browsers require a notification for every push,
+// so if the chain read failed (no signal, a lagging RPC node), say so in general terms rather than show nothing.
+self.addEventListener("push", (e) => e.waitUntil((async () => {
+    if (await checkWatches().catch(() => 0)) return
+    const w = await (async () => { const c = await caches.open(WATCH); const k = (await c.keys())[0]; return k && (await c.match(k)).json() })().catch(() => null)
+    const n = (NOTE[w?.lang] ?? NOTE.en)(w?.name ?? "Naungan", w?.hazard === "heat")
+    await self.registration.showNotification(n.title, { body: n.body, tag: "naungan-push", icon: "icon.svg", badge: "icon.svg", data: { url: "claim.html" } })
+})()))
 
 self.addEventListener("periodicsync", (e) => { if (e.tag === "naungan-watch") e.waitUntil(checkWatches()) })
 

@@ -1,0 +1,5 @@
+Contact: https://github.com/PugarHuda/naungan/security/advisories/new
+Expires: 2027-10-20T00:00:00.000Z
+Preferred-Languages: en, id
+Canonical: https://naungan.vercel.app/.well-known/security.txt
+Policy: https://github.com/PugarHuda/naungan/blob/main/SECURITY.md

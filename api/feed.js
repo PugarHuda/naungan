@@ -8,6 +8,8 @@ const { baseOf, CACHE } = require("./programs")
 const MAX = 100
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" })[c]).replace(/[^\x09\x0A\x0D\x20-퟿-�\u{10000}-\u{10FFFF}]/gu, "")
 const iso = (unix) => new Date(Number(unix) * 1000).toISOString()
+// Donors are shortened, not hidden: funding is public accountability, but a feed need not broadcast full addresses.
+const short = (a) => `${String(a).slice(0, 6)}…${String(a).slice(-4)}`
 const name = (meta) => { try { return JSON.parse(meta).name || null } catch { return null } }
 
 /**
@@ -38,9 +40,9 @@ function buildFeed({ events, base, explorer, program = null, decimals = 6, now =
             const what = e.args.triggered ? `quorum reached, ${oracles} ${n == 1n ? "agrees" : "agree"}` : `${oracles} at or above the trigger`
             entries.push({ id, at, link, tx, title: `${head}${label(pid)}: ${e.args.value}% (${what})`, text: `Oracle ${e.args.oracle} reported ${e.args.value}%. Evidence: ${e.args.evidence}` })
         } else if (e.name === "Funded") {
-            entries.push({ id, at, link, tx, title: `${label(pid)} funded: ${usdc(e.args.amount)} USDC`, text: `${e.args.donor} added ${usdc(e.args.amount)} USDC to the program's pool.` })
+            entries.push({ id, at, link, tx, title: `${label(pid)} funded: ${usdc(e.args.amount)} USDC`, text: `Donor ${short(e.args.donor)} added ${usdc(e.args.amount)} USDC to the program's pool.` })
         } else if (e.name === "Refunded") {
-            entries.push({ id, at, link, tx, title: `${label(pid)}: ${usdc(e.args.amount)} USDC refunded`, text: `Claims are over; ${e.args.donor} took back its pro-rata share of what was not claimed.` })
+            entries.push({ id, at, link, tx, title: `${label(pid)}: ${usdc(e.args.amount)} USDC refunded`, text: `Claims are over; donor ${short(e.args.donor)} took back its pro-rata share of what was not claimed.` })
         }
     }
     for (const c of claims.values()) {

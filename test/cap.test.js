@@ -2,7 +2,7 @@ const { expect } = require("chai")
 const { spawnSync } = require("child_process")
 const path = require("path")
 const { capAlert, capIndex, triggered } = require("../api/cap")
-const { hxlCsv, HXL, summarise } = require("../api/programs")
+const { hxlCsv, HXL, summarise, geojson } = require("../api/programs")
 
 // Validates XML against the official OASIS CAP 1.2 schema (test/fixtures/CAP-v1.2.xsd) with Python's lxml.
 const py = ["python3", "python"].find((c) => spawnSync(c, ["-c", "import lxml"]).status === 0)
@@ -51,5 +51,17 @@ describe("CAP 1.2 alerts and HXL open data", () => {
         for (const tag of rows[1].split(",")) expect(tag).to.match(/^#[a-z][a-z0-9_]*(\+[a-z][a-z0-9_]*)*$/) // HXL hashtag syntax
         expect(rows[2]).to.match(/^1,"?'=cmd/) // a spreadsheet shows the text instead of running it
         expect(rows[2]).to.include(",ID,5.575,95.325,claims open,")
+    })
+
+    it("GeoJSON (RFC 7946): one Point per located program, [lon, lat], with the HXL columns as properties", () => {
+        const xs = summarise({ programs: [{ id: 1, p, meta }, { id: 2, p, meta: { name: "nowhere" } }], events: [], base: "https://n.app", now: 1792424698, countries: { 1: "ID" } })
+        const g = JSON.parse(JSON.stringify(geojson(xs)))
+        expect(g.type).to.equal("FeatureCollection")
+        expect(g.features).to.have.length(1) // program 2 has no coordinates
+        const [f] = g.features
+        expect(f).to.include({ type: "Feature", id: 1 })
+        expect(f.geometry).to.deep.equal({ type: "Point", coordinates: [95.325, 5.575] }) // longitude first
+        expect(f.properties).to.include({ "Program id": 1, "Country (ISO 3166)": "ID", State: "claims open", "USDC per household": 2 })
+        expect(f.properties).to.not.have.property("Latitude")
     })
 })

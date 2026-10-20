@@ -33,6 +33,18 @@
       "destination": "/api/relayer?route=/pin"
     },
     {
+      "source": "/push-key",
+      "destination": "/api/relayer?route=/push-key"
+    },
+    {
+      "source": "/subscribe",
+      "destination": "/api/relayer?route=/subscribe"
+    },
+    {
+      "source": "/notify",
+      "destination": "/api/relayer?route=/notify"
+    },
+    {
       "source": "/health",
       "destination": "/api/relayer?route=/health"
     },
@@ -43,6 +55,10 @@
     {
       "source": "/cap.xml",
       "destination": "/api/cap"
+    },
+    {
+      "source": "/programs.geojson",
+      "destination": "/api/programs?format=geojson"
     },
     {
       "source": "/programs.csv",

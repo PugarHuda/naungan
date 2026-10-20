@@ -101,13 +101,34 @@ const cell = (v) => {
 }
 const hxlCsv = (programs) => [HXL.map((c) => c[0]), HXL.map((c) => c[1]), ...programs.map((x) => HXL.map((c) => c[2](x)))].map((r) => r.map(cell).join(",")).join("\r\n") + "\r\n"
 
+/**
+ * GeoJSON (RFC 7946): one Point per program, [lon, lat] in WGS 84, with flat properties so QGIS, geojson.io,
+ * uMap and HDX map previews show every field. Programs without coordinates are left out.
+ */
+const geojson = (programs) => ({
+    type: "FeatureCollection",
+    features: programs
+        .filter((x) => Number.isFinite(x.lat) && Number.isFinite(x.lon))
+        .map((x) => ({
+            type: "Feature",
+            id: x.id,
+            geometry: { type: "Point", coordinates: [x.lon, x.lat] },
+            properties: Object.fromEntries(HXL.filter(([, tag]) => !tag.startsWith("#geo")).map(([label, , get]) => [label, get(x) ?? null]))
+        }))
+})
+
 const baseOf = (req, d) => (req.headers?.host ? `https://${req.headers["x-forwarded-host"] ?? req.headers.host}` : d.relayer ?? "")
 
 module.exports = async (req, res) => {
     try {
         const data = await load()
         const programs = summarise({ ...data, base: baseOf(req, data.d) })
-        if (new URL(req.url, "http://x").searchParams.get("format") === "csv") {
+        const format = new URL(req.url, "http://x").searchParams.get("format")
+        if (format === "geojson") {
+            res.writeHead(200, { "content-type": "application/geo+json; charset=utf-8", "access-control-allow-origin": "*", "cache-control": CACHE })
+            return res.end(JSON.stringify(geojson(programs)))
+        }
+        if (format === "csv") {
             res.writeHead(200, { "content-type": "text/csv; charset=utf-8; header=present", "content-disposition": 'inline; filename="naungan-programs.csv"', "access-control-allow-origin": "*", "cache-control": CACHE })
             return res.end(hxlCsv(programs))
         }
@@ -123,6 +144,7 @@ module.exports = async (req, res) => {
 module.exports.summarise = summarise
 module.exports.hxlCsv = hxlCsv
 module.exports.HXL = HXL
+module.exports.geojson = geojson
 module.exports.rule = rule
 module.exports.load = load
 module.exports.baseOf = baseOf

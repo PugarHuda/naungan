@@ -10,10 +10,16 @@
 //   POST /pin { programId, card, point } → { evaluated, left }
 //        OPRF for PIN-locked v2 cards (lib/cardlock.mjs): evaluates a blinded point, at most MAX_TRIES
 //        times per card. The server never sees the PIN, and the phone cannot test one without it.
+//   GET  /push-key → { key }       POST /subscribe { programId, endpoint } → { ok }
+//   POST /notify → { programs, sent }
+//        Web Push "claims are open" (lib/push.js): a phone leaves only its push endpoint per program; when a
+//        trigger fires, /notify wakes those phones once and forgets them. Idempotent, so anyone may call it
+//        (the oracle workflow does after every run).
 //   GET  /health                       → relayer address, balance, chain
 const http = require("http")
 const { ethers } = require("ethers")
 const { connect, explain, logs } = require("../lib/chain")
+const push = require("../lib/push")
 
 const PORT = Number(process.env.PORT || 8788)
 const PER_MINUTE = Number(process.env.RATE_LIMIT || 10)
@@ -91,7 +97,9 @@ function sharedStore(env = process.env) {
             claim: async (k, v, ttl) => (await run(["SET", k, v, "NX", "EX", String(ttl)]))[0] === "OK", // true only for the first caller
             set: async (k, v, ttl) => void (await run(["SET", k, v, "EX", String(ttl)])),
             get: async (k) => (await run(["GET", k]))[0],
-            del: async (k) => void (await run(["DEL", k]))
+            del: async (k) => void (await run(["DEL", k])),
+            add: async (k, v, ttl) => void (await run(["SADD", k, v], ["EXPIRE", k, String(ttl)])),
+            members: async (k) => (await run(["SMEMBERS", k]))[0] ?? []
         }
     }
     const m = new Map() // ponytail: one process's memory; expired entries are dropped when read
@@ -103,7 +111,9 @@ function sharedStore(env = process.env) {
         claim: async (k, v, ttl) => (live(k) ? false : (put(k, v, ttl), true)),
         set: async (k, v, ttl) => void put(k, v, ttl),
         get: async (k) => live(k)?.v ?? null,
-        del: async (k) => void m.delete(k)
+        del: async (k) => void m.delete(k),
+        add: async (k, v, ttl) => void put(k, new Set(live(k)?.v).add(v), ttl),
+        members: async (k) => [...(live(k)?.v ?? [])]
     }
 }
 const YEAR = 31536000, MONTH = 2592000
@@ -181,6 +191,8 @@ async function createRelayer({ store = sharedStore() } = {}) {
     const hits = new Map()
 
     const submit = serialSender(store, provider, wallet.address)
+    const vapid = push.vapidKeys(wallet.privateKey)
+    const pushKey = (pid) => `naungan:push:${d.naungan}:${pid}`
 
     // Per-minute window in the shared store, so a client cannot multiply its quota by landing on more
     // instances; if the store is unreachable, this instance's own sliding window still applies.
@@ -230,6 +242,56 @@ async function createRelayer({ store = sharedStore() } = {}) {
             const bal = await provider.getBalance(wallet.address)
             // lowGas: under ~50 sponsored claims left; uptime monitors can alert on it.
             return [200, { relayer: wallet.address, balance: ethers.formatEther(bal), lowGas: bal < ethers.parseEther("0.01"), chainId: d.chainId, naungan: d.naungan, pinStore: store.store, pinTries: MAX_TRIES }]
+        }
+        if (method === "GET" && url === "/push-key") return [200, { key: vapid.publicKey }]
+        if (method === "POST" && url === "/subscribe") {
+            if (await limited(`sub:${ip}`)) return [429, { error: "too many requests, try again in a minute" }]
+            if (raw.length > 2e3) return [413, { error: "body too large" }]
+            let b
+            try {
+                b = JSON.parse(raw)
+            } catch {
+                return [400, { error: "body must be JSON" }]
+            }
+            if (typeof b?.programId !== "string" || !/^[1-9][0-9]{0,8}$/.test(b.programId)) return [400, { error: "programId must be a program id" }]
+            if (!push.validEndpoint(b.endpoint)) return [400, { error: "endpoint must be a browser push service URL" }]
+            const p = await naungan.programs(b.programId)
+            if (p.amountPerHousehold === 0n) return [404, { error: "UnknownProgram" }]
+            if (p.claimDeadline > 0n) return [409, { error: "claims are already open for this program" }]
+            await store.add(pushKey(b.programId), b.endpoint, Number(p.seasonEnd) - Math.floor(Date.now() / 1000) + MONTH)
+            return [200, { ok: true }]
+        }
+        // Wakes every phone waiting on a program whose claims are open, then forgets them: a phone gets one push
+        // per opt-in, so calling this again (by anyone) sends nothing new.
+        if ((method === "POST" || method === "GET") && url === "/notify") {
+            if (await limited(`notify:${ip}`, 6)) return [429, { error: "too many requests, try again in a minute" }]
+            const now = BigInt(Math.floor(Date.now() / 1000))
+            const n = Number(await naungan.programCount())
+            const open = []
+            for (let pid = 1; pid <= n; pid++) {
+                const p = await naungan.programs(pid)
+                if (p.claimDeadline > 0n && now <= p.claimDeadline) open.push(pid)
+            }
+            // One sender at a time across instances, so two callers never both read a list before it is forgotten.
+            const lock = `naungan:notifying:${d.naungan}`
+            if (!(await store.claim(lock, "1", 60))) return [409, { error: "already notifying, try again in a minute" }]
+            let sent = 0
+            try {
+                for (const pid of open) {
+                    const subs = await store.members(pushKey(pid))
+                    if (!subs.length) continue
+                    await store.del(pushKey(pid))
+                    let woke = 0
+                    // ponytail: 50 at a time inside one 60 s function; queue them if a program grows past ~10k phones
+                    for (let i = 0; i < subs.length; i += 50)
+                        woke += (await Promise.all(subs.slice(i, i + 50).map((e) => push.wake(e, vapid, "https://naungan.vercel.app").catch(() => 0)))).filter((c) => c >= 200 && c < 300).length
+                    console.log(`${new Date().toISOString()} program ${pid}: woke ${woke} of ${subs.length} phones`)
+                    sent += woke
+                }
+            } finally {
+                await store.del(lock).catch(() => {})
+            }
+            return [200, { programs: open, sent }]
         }
         // A loose per-IP limit (an agency issues hundreds of cards at once); the per-card cap is the real bound.
         if (method === "POST" && url === "/pin") {

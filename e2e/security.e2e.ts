@@ -34,3 +34,15 @@ test("security headers: present, and the CSP allows every host the pages actuall
     expect(fetched.size).toBeGreaterThanOrEqual(5) // RPC, indexer, Open-Meteo, BigDataCloud, exchange rates…
     expect([...fetched].filter((o) => !connect.includes(o)), "origins fetched but missing from connect-src").toEqual([])
 })
+
+test("security.txt (RFC 9116) and link previews on every page @desktop", async ({ request }) => {
+    const txt = await (await request.get("/.well-known/security.txt")).text()
+    expect(txt).toMatch(/^Contact: https:\/\//m)
+    const expires = new Date(txt.match(/^Expires: (.+)$/m)![1])
+    expect(expires.getTime() - Date.now()).toBeGreaterThan(30 * 864e5) // renew it before it lapses
+    for (const p of ["/", "/dashboard.html", "/claim.html", "/launch.html"]) {
+        const html = await (await request.get(p)).text()
+        for (const m of ['name="description"', 'property="og:title"', 'property="og:description"', 'property="og:image" content="https://'])
+            expect(html, `${p} ${m}`).toContain(m)
+    }
+})

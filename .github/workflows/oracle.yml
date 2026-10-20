@@ -2,7 +2,8 @@
 # an oracle of, found on-chain (`oracle.js --all`), so a program launched from launch.html needs no setup
 # here. Each oracle runs the pipeline its program's metadata assigns it (GloFAS, GEFS rainfall or heatwave).
 # Setup: repository secrets ORACLE_KEY and, for 2-of-2 programs, RAIN_ORACLE_KEY (each with a little gas).
-# A key running low on gas shows up as a warning on the run.
+# A key running low on gas shows up as a warning on the run. Each run ends by asking the relayer to push
+# "claims are open" to phones that opted in (POST /notify: idempotent, each phone is woken once).
 name: Oracle
 on:
   schedule: [{ cron: "17 */6 * * *" }]
@@ -32,3 +33,6 @@ jobs:
         run: |
           if [ -z "$PRIVATE_KEY" ]; then echo "no RAIN_ORACLE_KEY secret: skipping"; exit 0; fi
           node scripts/oracle.js --all
+      - name: Wake phones waiting on programs whose claims opened (Web Push)
+        if: ${{ always() }}
+        run: curl -fsS -X POST https://naungan.vercel.app/notify
