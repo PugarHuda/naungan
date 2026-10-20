@@ -20,8 +20,8 @@ test("embed: a partner site on another origin shows a program's live status in a
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark")
     await expect(page.getByRole("heading", { level: 1 })).toContainText("Mpologoma")
     await check(page)
-    await page.goto("/embed.html?program=999")
-    await expect(page.getByText("There is no program #999.")).toBeVisible()
+    await page.goto("/embed.html?program=999&lang=es")
+    await expect(page.getByText("No existe el programa #999.")).toBeVisible()
 })
 
 test("embed: only the widget may be framed; every other page refuses @desktop", async ({ request }) => {

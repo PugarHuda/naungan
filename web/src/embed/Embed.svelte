@@ -1,9 +1,10 @@
 <script lang="ts">
     // Embeddable status card: <iframe src="https://naungan.vercel.app/embed.html?program=N">. It reads the edge-cached
     // /api/programs (one CDN answer serves every site that embeds it, so no RPC load), refreshes every 5 minutes,
-    // and links to the dashboard where every payout can be re-verified. ?theme=dark|light, else the visitor's.
+    // and links to the dashboard where every payout can be re-verified. ?theme=dark|light, else the visitor's;
+    // ?lang=en|id|bn|es|sw, else the visitor's browser language (see i18n.ts).
     import { onMount } from "svelte"
-    import { flagOf } from "../shared/place"
+    import { E, embedLang } from "./i18n"
 
     type P = {
         id: number; name: string; hazard: "flood" | "heat"; country: string | null; state: "watching" | "claims open" | "over"
@@ -16,22 +17,27 @@
     const id = Number(q.get("program"))
     const theme = q.get("theme")
     if (theme === "dark" || theme === "light") document.documentElement.dataset.theme = theme
+    const lang = embedLang(q.get("lang"), navigator.languages)
+    const s = E[lang]
+    document.documentElement.lang = lang
 
     let p = $state<P | null>(null)
     let err = $state<string | null>(null)
-    const day = (iso?: string) => (iso ? new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : "")
-    const money = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: 2 })
+    const day = (iso?: string) => (iso ? new Date(iso).toLocaleDateString(lang, { day: "numeric", month: "short", year: "numeric" }) : "")
+    const money = (n: number) => n.toLocaleString(lang, { maximumFractionDigits: 2 })
+    // Regional-indicator flag (as shared/place.ts draws it), inlined so partner sites do not load the currency tables.
+    const flag = (cc: string | null) => (cc && /^[A-Z]{2}$/.test(cc) ? String.fromCodePoint(...[...cc].map((ch) => 0x1f1a5 + ch.charCodeAt(0))) : "")
 
     async function load() {
-        if (!Number.isInteger(id) || id < 1) return (err = "Add ?program=<id> to the address.")
+        if (!Number.isInteger(id) || id < 1) return (err = s.noId)
         try {
             const r = await fetch("/api/programs")
             if (!r.ok) throw new Error()
             const found = ((await r.json()).programs as P[]).find((x) => x.id === id)
-            if (!found) return (err = `There is no program #${id}.`)
+            if (!found) return (err = s.none(id))
             ;(p = found), (err = null)
         } catch {
-            if (!p) err = "Program data is unavailable right now; retrying."
+            if (!p) err = s.down
         }
     }
     onMount(() => {
@@ -44,29 +50,30 @@
 <main aria-live="polite">
     {#if p}
         <header>
-            <span class="flag" aria-hidden="true">{flagOf(p.country ?? undefined)}</span>
+            <span class="flag" aria-hidden="true">{flag(p.country)}</span>
             <h1>{p.name}</h1>
         </header>
         <p class="state {p.state.replace(' ', '-')}">
-            {#if p.state === "claims open"}{p.hazard === "heat" ? "Heatwave" : "Flood"} trigger fired: claims open until {day(p.until)}
-            {:else if p.state === "watching"}Watching the forecast until {day(p.seasonEnds)}
-            {:else}Claims closed {day(p.since)}{/if}
+            {#if p.state === "claims open"}{s.open(p.hazard === "heat", day(p.until))}
+            {:else if p.state === "watching"}{s.watching(day(p.seasonEnds))}
+            {:else}{s.closed(day(p.since))}{/if}
         </p>
-        <div class="meter" role="img" aria-label="Latest forecast {p.trigger.lastIndexPercent}% against a trigger of {p.trigger.thresholdPercent}%">
+        <div class="meter" role="img" aria-label={s.meter(p.trigger.lastIndexPercent, p.trigger.thresholdPercent)}>
             <div class="fill" style="width:{Math.min(100, p.trigger.lastIndexPercent)}%"></div>
             <div class="mark" style="left:{p.trigger.thresholdPercent}%"></div>
         </div>
-        <p class="small">Latest forecast <b>{p.trigger.lastIndexPercent}%</b> · trigger {p.trigger.thresholdPercent}%{p.latestReport ? ` · reported ${day(p.latestReport.at)}` : ""}</p>
+        <p class="small">{s.latest} <b>{p.trigger.lastIndexPercent}%</b> · {s.trigger} {p.trigger.thresholdPercent}%{p.latestReport ? ` · ${s.reported} ${day(p.latestReport.at)}` : ""}</p>
         <dl>
-            <div><dt>Pool</dt><dd>{money(p.usdc.funded)} USDC</dd></div>
-            <div><dt>Paid out</dt><dd>{money(p.usdc.paidOut)} USDC</dd></div>
-            <div><dt>Households paid</dt><dd>{p.households.paid} of {p.households.enrolled}</dd></div>
-            <div><dt>Each household</dt><dd>{money(p.usdc.perHousehold)} USDC</dd></div>
+            <div><dt>{s.pool}</dt><dd>{money(p.usdc.funded)} USDC</dd></div>
+            <div><dt>{s.paid}</dt><dd>{money(p.usdc.paidOut)} USDC</dd></div>
+            <div><dt>{s.households}</dt><dd>{p.households.paid} {s.of} {p.households.enrolled}</dd></div>
+            <div><dt>{s.each}</dt><dd>{money(p.usdc.perHousehold)} USDC</dd></div>
         </dl>
-        <p class="small rule">{p.trigger.rule}</p>
-        <a href={p.links.dashboard} target="_blank" rel="noopener">Verify every payout on Naungan ↗</a>
+        <!-- The rule's wording comes from the open-data API in English. -->
+        <p class="small rule" lang="en">{p.trigger.rule}</p>
+        <a href={p.links.dashboard} target="_blank" rel="noopener">{s.verify}</a>
     {:else}
-        <p class="small">{err ?? "Loading program…"}</p>
+        <p class="small">{err ?? s.loading}</p>
     {/if}
 </main>
 

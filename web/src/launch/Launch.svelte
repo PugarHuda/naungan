@@ -96,7 +96,7 @@
         <ol class="next">
             <li><a class="btn dark" href="dashboard.html?program={done.id}#fund">Fund program #{done.id}</a> so it can pay.</li>
             <li>
-                Households register with their own phones at this link (agency staff then enroll their codes):
+                Households register with their own phones at this link, and agency staff <a href="enroll.html?program={done.id}">enroll their codes</a> by scanning them:
                 <div class="joinqr" aria-hidden="true">{@html done.qr}</div>
                 <code class="joinurl">{done.join}</code>
             </li>
