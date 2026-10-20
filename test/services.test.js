@@ -73,6 +73,17 @@ describe("services input validation", () => {
         const tx = await serialSender(store, ahead, "0xother")(async ({ nonce }) => { if (!tries++) throw Object.assign(new Error("nonce too low"), { code: "NONCE_EXPIRED" }); return { nonce } })
         expect(tx.nonce).to.equal(20)
     })
+
+    it("a caller whose lock expired cannot release the next holder's lock", async () => {
+        const store = sharedStore({})
+        expect(await store.claim("naungan:oracle:x", "slow", 0.01)).to.equal(true)
+        await new Promise((r) => setTimeout(r, 20)) // the slow run outlives its TTL
+        expect(await store.claim("naungan:oracle:x", "next", 300)).to.equal(true)
+        await store.release("naungan:oracle:x", "slow") // the slow run's finally
+        expect(await store.get("naungan:oracle:x")).to.equal("next")
+        await store.release("naungan:oracle:x", "next")
+        expect(await store.get("naungan:oracle:x")).to.equal(null)
+    })
 })
 
 describe("gasless spending (EIP-3009)", () => {
@@ -120,5 +131,34 @@ describe("event history from the indexer", () => {
         expect(topicsMatch([sig, null, p(7)], [sig, p(1), p(7)])).to.equal(true)
         expect(topicsMatch([sig, [p(1), p(2)]], [sig, p(2)])).to.equal(true) // OR within one position
         expect(topicsMatch([sig.toUpperCase().replace("0X", "0x"), p(2)], [sig, p(2)])).to.equal(true)
+    })
+})
+
+describe("steady RPC reads", () => {
+    const http = require("http")
+    const { ethers } = require("ethers")
+    const { SteadyProvider } = require("../lib/chain")
+    // A node that answers the first `flaky` reads with empty data, as sepolia.base.org's load balancer sometimes does.
+    const node = (flaky) => {
+        const seen = []
+        const server = http.createServer((req, res) => {
+            let body = ""
+            req.on("data", (c) => (body += c)).on("end", () => {
+                const out = [JSON.parse(body)].flat().map((p) => (seen.push(p.method), { jsonrpc: "2.0", id: p.id, result: p.method === "eth_call" ? (flaky-- > 0 ? "0x" : ethers.toBeHex(7, 32)) : "0xabc" }))
+                res.end(JSON.stringify(Array.isArray(JSON.parse(body)) ? out : out[0]))
+            })
+        })
+        return new Promise((r) => server.listen(0, () => r({ server, seen, url: `http://127.0.0.1:${server.address().port}` })))
+    }
+    const read = (url) => new ethers.Contract(ethers.ZeroAddress, ["function programCount() view returns (uint256)"], new SteadyProvider(url, 84532, { staticNetwork: true })).programCount()
+
+    it("asks again when a read comes back empty, and gives up after two retries", async () => {
+        const a = await node(2)
+        expect(await read(a.url)).to.equal(7n)
+        expect(a.seen.filter((m) => m === "eth_call")).to.have.length(3)
+        a.server.close()
+        const b = await node(3)
+        await expect(read(b.url)).to.be.rejectedWith(/missing revert data|could not decode/)
+        b.server.close()
     })
 })

@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /relay
+Disallow: /transfer
+Disallow: /pin
+Disallow: /subscribe
+Disallow: /notify
+Disallow: /oracle
+
+Sitemap: https://naungan.vercel.app/sitemap.xml

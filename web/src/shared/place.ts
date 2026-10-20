@@ -18,20 +18,30 @@ const write = (k: string, v: unknown) => {
     } catch {} // private window or storage blocked: works, just without the offline copy
 }
 
-/** Country of a point, or null when offline and never looked up before. */
-export async function placeOf(lat: number, lon: number): Promise<Place | null> {
+// Several programs often share a river gauge: one lookup per point, not one per program card.
+const pending = new Map<string, Promise<Place | null>>()
+
+/** Country of a point, or null when offline and never looked up before. A failed lookup is tried once more. */
+export function placeOf(lat: number, lon: number): Promise<Place | null> {
     const k = `naungan-place:${lat},${lon}`
     const saved = read<Place>(k)
-    if (saved?.code) return saved
-    try {
-        const j = await (await fetch(`https://api-bdc.io/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`)).json()
-        if (!/^[A-Z]{2}$/.test(j.countryCode ?? "")) return null
-        const p: Place = { code: j.countryCode, name: j.countryName?.replace(/ \(the\)$/, ""), continent: j.continent }
-        write(k, p)
-        return p
-    } catch {
+    if (saved?.code) return Promise.resolve(saved)
+    const look = async (): Promise<Place | null> => {
+        for (let i = 0; i < 2; i++) {
+            try {
+                const j = await (await fetch(`https://api-bdc.io/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`, { signal: AbortSignal.timeout(8000) })).json()
+                if (!/^[A-Z]{2}$/.test(j.countryCode ?? "")) return null // open sea: no country, not a failure
+                const p: Place = { code: j.countryCode, name: j.countryName?.replace(/ \(the\)$/, ""), continent: j.continent }
+                write(k, p)
+                return p
+            } catch {
+                await new Promise((r) => setTimeout(r, 1500))
+            }
+        }
         return null
     }
+    if (!pending.has(k)) pending.set(k, look().finally(() => pending.delete(k)))
+    return pending.get(k)!
 }
 
 /** ISO 3166 country → ISO 4217 currency (datasets/country-codes). */

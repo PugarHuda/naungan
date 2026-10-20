@@ -1,6 +1,6 @@
 // What every page reads from the chain: the deployment (web/deployment.json, written by scripts/deploy.js
 // and bundled at build time), a provider, the contract's public surface and the program list.
-import { Contract, JsonRpcProvider, type ContractRunner } from "ethers"
+import { Contract, JsonRpcProvider, type ContractRunner, type JsonRpcPayload, type JsonRpcResult } from "ethers"
 import raw from "../../deployment.json"
 
 export type Deployment = {
@@ -84,8 +84,23 @@ export const ERC20_ABI = [
     "function approve(address,uint256) returns (bool)"
 ]
 
+// A load-balanced public RPC (sepolia.base.org) now and then answers a contract read with empty data, which
+// ethers reports as "missing revert data" though nothing reverted. Our reads always return data, so ask again,
+// twice at most. Batches that send a transaction are never repeated. lib/chain.js has the same.
+export class SteadyProvider extends JsonRpcProvider {
+    async _send(payload: JsonRpcPayload | JsonRpcPayload[]): Promise<JsonRpcResult[]> {
+        const list = [payload].flat()
+        for (let i = 0; ; i++) {
+            const out = await super._send(payload)
+            const empty = out.some((r) => r.result === "0x" && list.find((p) => p.id === r.id)?.method === "eth_call")
+            if (!empty || i >= 2 || list.some((p) => p.method === "eth_sendRawTransaction")) return out
+            await new Promise((r) => setTimeout(r, 300 * (i + 1)))
+        }
+    }
+}
+
 /** staticNetwork: one chain id request less per page, and no retry storm when the RPC is down. */
-export const provider = (d: Deployment = deployment) => new JsonRpcProvider(d.rpc, d.chainId, { staticNetwork: true })
+export const provider = (d: Deployment = deployment) => new SteadyProvider(d.rpc, d.chainId, { staticNetwork: true })
 export const naungan = (runner: ContractRunner = provider(), d: Deployment = deployment) => new Contract(d.naungan, NAUNGAN_ABI, runner)
 
 /** Metadata is free text on-chain: anything that does not parse reads as an unnamed program. */

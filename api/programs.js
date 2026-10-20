@@ -3,7 +3,8 @@
 const { ethers } = require("ethers")
 const { readOnly, allEvents } = require("../lib/chain")
 
-const CACHE = "public, s-maxage=300, stale-while-revalidate=600"
+// stale-if-error: when the public RPC fails a refresh, the CDN keeps serving the last good copy for a day instead of a 503.
+const CACHE = "public, s-maxage=300, stale-while-revalidate=600, stale-if-error=86400"
 
 /** The trigger in words, as the landing page and dashboard state it. */
 function rule(m, threshold) {

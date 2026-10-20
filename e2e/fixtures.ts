@@ -7,9 +7,10 @@ export const MONEY = /\/(relay|transfer|pin)(\?|$)/
 
 // Noise from free public services under load, not from our code: rate limits (HTTP 429, the public RPC's
 // JSON-RPC -32007 "request limit reached") and the indexer's retries, and the browser's own log line when a
-// test deliberately takes the network away.
+// test deliberately takes the network away, or Open-Meteo not answering at all (the page then says so).
 const ignorable = (text: string, url: string) =>
-    /blockscout/.test(url + text) || /\b429\b|request limit reached|ERR_INTERNET_DISCONNECTED/.test(text) || MONEY.test(url)
+    /blockscout/.test(url + text) || /\b429\b|request limit reached|ERR_INTERNET_DISCONNECTED/.test(text) || MONEY.test(url) ||
+    (/open-meteo\.com/.test(url) && /ERR_TIMED_OUT|ERR_CONNECTION/.test(text))
 
 export const test = base.extend<{ check: (page: Page) => Promise<void>; errors: string[] }>({
     errors: [

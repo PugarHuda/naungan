@@ -1,10 +1,21 @@
-import { describe, expect, it } from "vitest"
-import { currencyOf, languageOf, flagOf, localMoney, type Rates } from "./place"
+import { describe, expect, it, vi } from "vitest"
+import { currencyOf, languageOf, flagOf, localMoney, placeOf, type Rates } from "./place"
 import { compare, type GoEvent } from "./ifrc"
 import { isOver, parseMeta, type Program } from "./chain"
 import { canBatch, batchOutcome } from "./wallet"
 
 describe("place", () => {
+    it("looks a shared point up once for every card, and tries a failed lookup once more", async () => {
+        let calls = 0
+        vi.stubGlobal("fetch", async () => {
+            if (calls++ === 0) throw new TypeError("Failed to fetch") // the free geocoder dropped one request
+            return { json: async () => ({ countryCode: "ID", countryName: "Indonesia", continent: "Asia" }) }
+        })
+        const four = await Promise.all([1, 2, 3, 4].map(() => placeOf(5.575, 95.325)))
+        vi.unstubAllGlobals()
+        expect(four.map((p) => p?.code)).toEqual(["ID", "ID", "ID", "ID"])
+        expect(calls).toBe(2)
+    }, 10e3)
     it("maps countries to currencies and likely languages", () => {
         expect([currencyOf("BD"), currencyOf("ID"), currencyOf("HN"), currencyOf("UG"), currencyOf("US"), currencyOf(undefined)]).toEqual(["BDT", "IDR", "HNL", "UGX", "USD", undefined])
         expect([languageOf("BD"), languageOf("HN"), languageOf("ID"), languageOf("UG"), languageOf("KE")]).toEqual(["bn", "es", "id", "sw", "sw"])

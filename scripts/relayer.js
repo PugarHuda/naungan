@@ -103,6 +103,8 @@ function sharedStore(env = process.env) {
             set: async (k, v, ttl) => void (await run(["SET", k, v, "EX", String(ttl)])),
             get: async (k) => (await run(["GET", k]))[0],
             del: async (k) => void (await run(["DEL", k])),
+            // Delete only while we still hold it: a lock that outlived its TTL may belong to the next caller now.
+            release: async (k, v) => void (await run(["EVAL", "if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) end return 0", "1", k, v])),
             add: async (k, v, ttl) => void (await run(["SADD", k, v], ["EXPIRE", k, String(ttl)])),
             members: async (k) => (await run(["SMEMBERS", k]))[0] ?? []
         }
@@ -117,6 +119,7 @@ function sharedStore(env = process.env) {
         set: async (k, v, ttl) => void put(k, v, ttl),
         get: async (k) => live(k)?.v ?? null,
         del: async (k) => void m.delete(k),
+        release: async (k, v) => void (live(k)?.v === v && m.delete(k)),
         add: async (k, v, ttl) => void put(k, new Set(live(k)?.v).add(v), ttl),
         members: async (k) => [...(live(k)?.v ?? [])]
     }
@@ -159,8 +162,7 @@ function serialSender(store, provider, address) {
             await store.set(NONCE, String(nonce + 1), 120)
             return tx
         } finally {
-            // ponytail: get-then-del is not atomic; the 30 s lock TTL bounds what a lost race can cost
-            if ((await store.get(LOCK).catch(() => null)) === me) await store.del(LOCK).catch(() => {})
+            await store.release(LOCK, me).catch(() => {})
         }
     }
 }
@@ -279,7 +281,8 @@ async function createRelayer({ store = sharedStore() } = {}) {
             }
             // One sender at a time across instances, so two callers never both read a list before it is forgotten.
             const lock = `naungan:notifying:${d.naungan}`
-            if (!(await store.claim(lock, "1", 60))) return [409, { error: "already notifying, try again in a minute" }]
+            const me = ethers.hexlify(ethers.randomBytes(8))
+            if (!(await store.claim(lock, me, 300))) return [409, { error: "already notifying, try again in a minute" }]
             let sent = 0
             try {
                 for (const pid of open) {
@@ -287,26 +290,27 @@ async function createRelayer({ store = sharedStore() } = {}) {
                     if (!subs.length) continue
                     await store.del(pushKey(pid))
                     let woke = 0
-                    // ponytail: 50 at a time inside one 60 s function; queue them if a program grows past ~10k phones
+                    // ponytail: 50 at a time inside one 300 s function; queue them if a program grows past ~10k phones
                     for (let i = 0; i < subs.length; i += 50)
                         woke += (await Promise.all(subs.slice(i, i + 50).map((e) => push.wake(e, vapid, "https://naungan.vercel.app").catch(() => 0)))).filter((c) => c >= 200 && c < 300).length
                     console.log(`${new Date().toISOString()} program ${pid}: woke ${woke} of ${subs.length} phones`)
                     sent += woke
                 }
             } finally {
-                await store.del(lock).catch(() => {})
+                await store.release(lock, me).catch(() => {})
             }
             return [200, { programs: open, sent }]
         }
         if (method === "GET" && url === "/oracle") {
             if (await limited(`oracle:${ip}`, 2)) return [429, { error: "too many requests, try again in a minute" }]
             const lock = `naungan:oracle:${d.naungan}`
-            if (!(await store.claim(lock, "1", 300))) return [409, { error: "an oracle run is in progress" }]
+            const me = ethers.hexlify(ethers.randomBytes(8))
+            if (!(await store.claim(lock, me, 300))) return [409, { error: "an oracle run is in progress" }]
             try {
                 const { reportAll } = require("./oracle")
                 return [200, { reported: await reportAll({ naungan, wallet, send: submit }, ORACLE_EVERY) }]
             } finally {
-                await store.del(lock).catch(() => {})
+                await store.release(lock, me).catch(() => {})
             }
         }
         // A loose per-IP limit (an agency issues hundreds of cards at once); the per-card cap is the real bound.
