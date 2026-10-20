@@ -9,8 +9,9 @@ const py = ["python3", "python"].find((c) => spawnSync(c, ["-c", "import lxml"])
 const capValid = (xml) => {
     const xsd = path.join(__dirname, "fixtures", "CAP-v1.2.xsd")
     const code = `import sys\nfrom lxml import etree\ns = etree.XMLSchema(etree.parse(sys.argv[1]))\nd = etree.fromstring(sys.stdin.buffer.read())\nok = s.validate(d)\nprint("ok" if ok else s.error_log)`
-    const r = spawnSync(py, ["-I", "-c", code, xsd], { input: xml })
-    return r.stdout.toString().trim()
+    // No -I: CI installs lxml with pip --user, which isolated mode would hide. The script and inputs are our own.
+    const r = spawnSync(py, ["-c", code, xsd], { input: xml })
+    return r.stdout.toString().trim() || r.stderr.toString().trim()
 }
 
 const d = { chainId: 84532, naungan: "0x00E9E8F7a9E8Dd4923Eb92eC5536f70ecD0C70f4" }
