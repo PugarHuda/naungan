@@ -22,7 +22,7 @@
 <main>
     <header>
         <a class="logo" href="./"><svg width="20" height="20" viewBox="0 0 16 16" aria-hidden="true"><path d="M1 9 8 2l7 7v6H1z" fill="var(--accent)" /></svg>Naungan</a>
-        <select class="link" id="lang" aria-label="Language / Bahasa / ভাষা / Idioma" value={ui.lang} onchange={setLang}>
+        <select class="link" id="lang" aria-label="Language / Bahasa / ভাষা / Idioma / Lugha" value={ui.lang} onchange={setLang}>
             {#each Object.keys(T) as l (l)}<option value={l}>{NATIVE[l]}</option>{/each}
         </select>
     </header>

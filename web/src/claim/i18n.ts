@@ -1,4 +1,4 @@
-// Every string the household sees, in English, Bahasa Indonesia, Bengali and Spanish. A key ending in
+// Every string the household sees, in English, Bahasa Indonesia, Bengali, Spanish and Swahili. A key ending in
 // "_heat" is the heatwave wording of the same message; t() in state.svelte.ts falls back to the shared one.
 type Entry = string | ((...a: any[]) => string)
 export const T: Record<string, Record<string, Entry>> = {
@@ -149,6 +149,53 @@ export const T: Record<string, Record<string, Entry>> = {
         notCard: "Ese no es un código de tarjeta Naungan. Pegue el código completo impreso debajo del QR.", pinFormat: "Ingrese los 6 dígitos de su PIN.",
         joinClosed: "La inscripción se cerró cuando la alerta de inundación abrió los reclamos, así que este teléfono no puede unirse a este programa ahora. Pregunte a su organización por el próximo.",
         another: "Usar otra tarjeta", pickWallet: "Billetera"
+    },
+    sw: {
+        title: "Pokea msaada wako", load: "Inapakia mpango…", noCard: "Changanua kadi yako ya Naungan kwa kamera ya simu, au bandika msimbo wa kadi hapa chini.",
+        paste: "Msimbo wa kadi", open: "Fungua kadi", program: "Mpango", amount: "Kiasi", status: "Hali",
+        watching: "Tunafuatilia mto. Madai yatafunguliwa yenyewe utabiri wa mafuriko ukifikia kiwango cha kuanzisha.",
+        open_: "Tahadhari ya mafuriko: madai yamefunguliwa", until: "hadi", closed: "Muda wa kudai umekwisha.",
+        notEnrolled: "Kadi hii haijasajiliwa katika mpango huu. Wasiliana na shirika lako la misaada.",
+        claimed: "Kadi hii imeshatumika kudai. Kila kaya inaweza kudai mara moja tu.",
+        enrolled: "Kadi yako ni halali kwa mpango huu.", payTo: "Pesa zitumwe wapi?",
+        newWallet: "Fungua pochi kwenye simu hii", ownWallet: "Tumia anwani yangu mwenyewe", addr: "Anwani ya pochi (0x…)",
+        backup: "Andika ufunguo huu wa akiba na uuweke mahali salama. Yeyote mwenye ufunguo huu anamiliki pesa.", showKey: "Onyesha ufunguo wa akiba",
+        watching_heat: "Tunafuatilia utabiri wa joto. Madai yatafunguliwa yenyewe wimbi la joto likitabiriwa.",
+        open__heat: "Tahadhari ya wimbi la joto: madai yamefunguliwa", chance_heat: "Uwezekano wa wimbi la joto",
+        alertNo_heat: "Simu hii haiwezi kukagua ikiwa imefungwa. Fungua ukurasa huu wakati wa tahadhari za joto kali, au sikiliza shirika lako.",
+        joinClosed_heat: "Usajili ulifungwa tahadhari ya wimbi la joto ilipofungua madai, kwa hiyo simu hii haiwezi kujiunga na mpango huu sasa. Uliza shirika lako kuhusu mpango ujao.",
+        chance: "Uwezekano wa mafuriko", chanceOf: (a, b) => `${a}% (madai yanafunguliwa ikifika ${b}%)`,
+        joinTitle: "Jisajili kwa simu yako mwenyewe",
+        joinHow: "Mwonyeshe mfanyakazi wa shirika msimbo huu. Hauna jina lolote na hauwezi kutumika kudai. Siri yako inabaki kwenye simu hii tu, kwa hiyo hata shirika haliwezi kujua unadai lini.",
+        joinWait: "Bado hujasajiliwa. Onyesha shirika msimbo ulio hapa chini, kisha fungua ukurasa huu tena.",
+        joinBackupBtn: "Onyesha kadi yangu ya akiba", joinBackupWarn: "Hii ndiyo kadi yako ya kudai. Ichapishe au hifadhi picha yake mahali salama: simu hii ikipotea, hii ndiyo njia pekee ya kudai. Yeyote atakayeishika anaweza kudai kwa niaba yako.",
+        claim: "Dai sasa", proving: "Inatengeneza uthibitisho wako wa siri kwenye simu hii…", sending: "Inatuma kupitia relayer…",
+        done: "Imelipwa", balance: "Imelipwa kwa", tx: "Tazama muamala", err: "Kuna hitilafu imetokea", underfunded: "Mpango hauna fedha kwa sasa. Jaribu tena baadaye.",
+        offline: "Hakuna mtandao. Tunaonyesha mpango kama ulivyohifadhiwa kwenye simu hii saa", queued: "Dai lako liko tayari na limehifadhiwa kwenye simu hii. Litatumwa lenyewe mtandao ukirudi.",
+        privacy: "Jina lako, kitambulisho na mahali ulipo havitoki kwenye simu hii. Blockchain inajua tu kwamba kaya moja iliyosajiliwa imedai.",
+        wallet: "Pochi kwenye simu hii", spend: "Tuma kwa wakala wa kutoa pesa au dukani. Hakuna ada: huhitaji sarafu nyingine yoyote.",
+        to: "Anwani ya mpokeaji (0x…)", amt: "Kiasi kwa USDC", send: "Tuma", sent: "Imetumwa", badAmt: "Weka kiasi kisichozidi salio lako",
+        scan: "Changanua msimbo wa QR wa duka", scanNo: "Kivinjari hiki hakiwezi kuchanganua. Omba duka likuonyeshe anwani yake kisha uiandike au uibandike.", scanBad: "Msimbo huo wa QR hauna anwani ya pochi.", scanDenied: "Ruhusa ya kamera imezuiwa. Iruhusu kwenye mipangilio ya kivinjari, au andika anwani.",
+        fxNote: (d, c) => `Thamani kwa ${c} kwa kiwango cha dola ya Marekani cha ${d} (exchangerate-api.com); USDC 1 ni sawa na dola 1 ya Marekani.`,
+        pinTitle: "Kadi hii imefungwa. Weka PIN ya tarakimu 6 uliyopewa na shirika lako.", unlock: "Fungua kadi", checking: "Inakagua PIN…", pinBad: "PIN hiyo haifungui kadi hii. Angalia karatasi uliyopewa na shirika lako.", pinLeft: (n) => `Umebakiza majaribio ${n} kabla kadi hii haijafungwa.`, pinLocked: "Kadi hii imefungwa kwa sababu ya PIN zisizo sahihi mara nyingi. Omba kadi mpya kwa shirika lako.", pinOffline: "Kukagua PIN kunahitaji mtandao. Jaribu tena ukipata mtandao.",
+        alertBtn: "Nijulishe madai yakifunguliwa", alertOn: "Simu hii itakujulisha madai yakifunguliwa, hata programu ikiwa imefungwa. Inakumbuka kadi yako ili taarifa iifungue moja kwa moja.",
+        alertNo: "Simu hii haiwezi kukagua ikiwa imefungwa. Fungua ukurasa huu wakati wa tahadhari za mafuriko, au sikiliza shirika lako.",
+        alertDenied: "Arifa zimezuiwa kwa tovuti hii. Ziruhusu kwenye mipangilio ya kivinjari ili upate tahadhari.",
+        alertInstall: "Kwanza ongeza Naungan kwenye skrini ya mwanzo (menyu ya kivinjari → Sakinisha programu), kisha bonyeza tena.",
+        unknownProgram: "Kadi hii ni ya mpango ambao haupo kwenye mtandao huu. Hakikisha umechanganua kadi ya Naungan.",
+        notCard: "Huo si msimbo wa kadi ya Naungan. Bandika msimbo wote uliochapishwa chini ya QR.", pinFormat: "Weka tarakimu 6 za PIN yako.",
+        joinClosed: "Usajili ulifungwa tahadhari ya mafuriko ilipofungua madai, kwa hiyo simu hii haiwezi kujiunga na mpango huu sasa. Uliza shirika lako kuhusu mpango ujao.",
+        another: "Tumia kadi nyingine", pickWallet: "Pochi"
     }
 }
-export const NATIVE: Record<string, string> = { en: "English", id: "Bahasa Indonesia", bn: "বাংলা", es: "Español" }
+/**
+ * The language to show: the household's own saved choice, else the phone's language when we have it (an
+ * English phone does not count, so the program's local language can still win), else the language of the
+ * program's country once it is known, else English.
+ */
+export function pickLang(saved: string | null, phone: readonly string[] | undefined, country?: string | null): string {
+    if (saved && T[saved]) return saved
+    const p = phone?.map((l) => l.slice(0, 2)).find((l) => T[l] && l !== "en")
+    return p ?? (country && T[country] ? country : "en")
+}
+export const NATIVE: Record<string, string> = { en: "English", id: "Bahasa Indonesia", bn: "বাংলা", es: "Español", sw: "Kiswahili" }

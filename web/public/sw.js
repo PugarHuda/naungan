@@ -39,7 +39,8 @@ const NOTE = {
     en: (name, heat) => ({ title: `${heat ? "Heatwave" : "Flood"} alert: claims are open`, body: `${name}: open Naungan and tap Claim before the window closes.` }),
     id: (name, heat) => ({ title: `Peringatan ${heat ? "gelombang panas" : "banjir"}: klaim dibuka`, body: `${name}: buka Naungan dan tekan Klaim sebelum masa klaim berakhir.` }),
     bn: (name, heat) => ({ title: `${heat ? "তাপপ্রবাহ" : "বন্যা"} সতর্কতা: দাবি খোলা হয়েছে`, body: `${name}: নাউঙ্গান খুলুন এবং সময় শেষ হওয়ার আগে "দাবি করুন" চাপুন।` }),
-    es: (name, heat) => ({ title: `Alerta de ${heat ? "ola de calor" : "inundación"}: reclamos abiertos`, body: `${name}: abra Naungan y toque Reclamar antes de que termine el plazo.` })
+    es: (name, heat) => ({ title: `Alerta de ${heat ? "ola de calor" : "inundación"}: reclamos abiertos`, body: `${name}: abra Naungan y toque Reclamar antes de que termine el plazo.` }),
+    sw: (name, heat) => ({ title: `Tahadhari ya ${heat ? "wimbi la joto" : "mafuriko"}: madai yamefunguliwa`, body: `${name}: fungua Naungan na ubonyeze Dai kabla muda haujaisha.` })
 }
 const watchKey = (w) => `/__watch__/${w.naungan}/${w.pid}`
 

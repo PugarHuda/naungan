@@ -24,7 +24,7 @@ export async function placeOf(lat: number, lon: number): Promise<Place | null> {
     const saved = read<Place>(k)
     if (saved?.code) return saved
     try {
-        const j = await (await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`)).json()
+        const j = await (await fetch(`https://api-bdc.io/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`)).json()
         if (!/^[A-Z]{2}$/.test(j.countryCode ?? "")) return null
         const p: Place = { code: j.countryCode, name: j.countryName?.replace(/ \(the\)$/, ""), continent: j.continent }
         write(k, p)

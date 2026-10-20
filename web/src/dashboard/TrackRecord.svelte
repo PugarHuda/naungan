@@ -2,41 +2,40 @@
     // Track record: when this program's trigger would have fired over the reanalysis (lib/hazard.mjs via verify.mjs).
     import { dash } from "./state.svelte"
     import { day } from "./format"
+    import { record, loadRecord } from "./record.svelte"
 
-    type Episode = { start: string; end: string; peak: number; peakDate: string }
-    type History = { flood: { from: string; to: string; threshold: number }; rain: { threshold: number } | null; paid: Episode[]; rainOnly: Episode[] }
-
-    let busy = $state(false)
-    let msg = $state<{ cls: string; text: string } | null>(null)
-    let rec = $state.raw<{ r: History; heat: boolean; note: string } | null>(null)
-
+    let early = $state<string | null>(null)
     $effect(() => {
         void dash.pid
-        msg = null
-        rec = null
+        early = null
     })
+    const heat = $derived(dash.meta.hazard === "heat")
+    const mine = $derived(record.pid === dash.pid)
+    const msg = $derived.by(() => {
+        if (early) return { cls: "verdict", text: early }
+        if (!mine) return null
+        if (record.busy) return { cls: "verdict", text: heat ? "Fetching about 40 years of daily maximum temperature from Open-Meteo…" : "Fetching about 30 years of river discharge and rainfall from Open-Meteo…" }
+        if (record.error) return { cls: "verdict bad", text: `Could not load the record (${record.error}). Try again in a minute.` }
+        return null
+    })
+    const rec = $derived.by(() => {
+        const r = mine ? record.r : null, m = dash.meta
+        if (!r) return null
+        const tail = " This replays a perfect forecast: it shows how often the program pays, not how skilful forecasts are."
+        const note = heat
+            ? `Pays when ERA5 records ${m.heat?.days ?? 2} or more consecutive days above ${r.flood.threshold} °C${m.heat?.tmin == null ? "" : ` with nights above ${m.heat.tmin} °C`}.${tail}`
+            : `Pays when the river passes the 1-in-${m.returnPeriod}-year flood (${Math.round(r.flood.threshold)} m³/s)` +
+              (r.rain && m.rain ? ` and catchment rain passes its 1-in-${m.rain.returnPeriod}-year ${m.leadDays}-day total (${Math.round(r.rain.threshold)} mm) within ${m.leadDays} days.` : ".") + tail
+        return { r, heat, note }
+    })
+    const busy = $derived(mine && record.busy)
 
     async function replay() {
-        const id = dash.pid, m = dash.meta
-        if (id === undefined || !m.name) return (msg = { cls: "verdict", text: "Still connecting to the chain. Try again in a few seconds." })
-        const heat = m.hazard === "heat"
-        busy = true
-        rec = null
-        msg = { cls: "verdict", text: heat ? "Fetching about 40 years of daily maximum temperature from Open-Meteo…" : "Fetching about 30 years of river discharge and rainfall from Open-Meteo…" }
+        early = null
         try {
-            const r: History = await (await import("../shared/verify.mjs")).trackRecord(m)
-            if (id !== dash.pid) return
-            const tail = " This replays a perfect forecast: it shows how often the program pays, not how skilful forecasts are."
-            const note = heat
-                ? `Pays when ERA5 records ${m.heat?.days ?? 2} or more consecutive days above ${r.flood.threshold} °C${m.heat?.tmin == null ? "" : ` with nights above ${m.heat.tmin} °C`}.${tail}`
-                : `Pays when the river passes the 1-in-${m.returnPeriod}-year flood (${Math.round(r.flood.threshold)} m³/s)` +
-                  (r.rain && m.rain ? ` and catchment rain passes its 1-in-${m.rain.returnPeriod}-year ${m.leadDays}-day total (${Math.round(r.rain.threshold)} mm) within ${m.leadDays} days.` : ".") + tail
-            msg = null
-            rec = { r, heat, note }
+            await loadRecord()
         } catch (e) {
-            if (id === dash.pid) msg = { cls: "verdict bad", text: `Could not load the record (${(e as Error).message}). Try again in a minute.` }
-        } finally {
-            busy = false
+            early = (e as Error).message
         }
     }
 

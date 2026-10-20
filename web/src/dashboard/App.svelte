@@ -9,6 +9,7 @@
     import DonatePanel from "./DonatePanel.svelte"
     import AuditPanel from "./AuditPanel.svelte"
     import TrackRecord from "./TrackRecord.svelte"
+    import IfrcPanel from "./IfrcPanel.svelte"
     import Ledger from "./Ledger.svelte"
 
     start()
@@ -27,6 +28,7 @@
         </div>
         <div class="navlinks">
             <span class="net">{netName} {#if d.explorer}<a href="{d.explorer}/address/{d.naungan}" target="_blank" rel="noopener">{short(d.naungan)}</a>{:else}{short(d.naungan)}{/if}</span>
+            <a class="btn ghost" href="launch.html">Launch a program</a>
             <a class="btn ghost" href="claim.html">Claim with a card</a>
             <a class="btn dark" href="#fund">Fund this program</a>
         </div>
@@ -47,6 +49,7 @@
         <section class="proofs" aria-label="Checks you can run">
             <AuditPanel />
             <TrackRecord />
+            <IfrcPanel />
         </section>
 
         <section class="bottom">

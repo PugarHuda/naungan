@@ -1,10 +1,10 @@
 // The claim app's state. `ui` is reactive (components render from it); `card` holds the card being shown
 // and its secret, which never needs to re-render anything and so stays a plain object.
-import type { Identity } from "@semaphore-protocol/core"
+import type { Identity } from "@semaphore-protocol/identity"
 import type { Wallet, HDNodeWallet } from "ethers"
 import type { ProgramMeta } from "../shared/chain"
 import type { Rates } from "../shared/place"
-import { T } from "./i18n"
+import { T, pickLang } from "./i18n"
 
 /** Program state saved on the phone so the card still works when the signal is gone (same shape as before the port). */
 export type Snapshot = {
@@ -21,14 +21,13 @@ export type Snapshot = {
 }
 export type Funded = { wallet: Wallet; bal: bigint }
 
-const savedLang = (() => { try { return localStorage.getItem("naungan-lang") } catch { return null } })()
-export const chosenLang = savedLang && T[savedLang] ? savedLang : null
-export const phoneLang = navigator.languages?.map((l) => l.slice(0, 2)).find((l) => T[l] && l !== "en") ?? null
+/** The household's saved language choice, read fresh: the select may have changed it during this visit. */
+export const savedLang = () => { try { return localStorage.getItem("naungan-lang") } catch { return null } }
 
 export const ui = $state({
     // Language: the household's own choice, else the phone's language if we have it, else (once the program's
     // country is known) that country's main language, else English.
-    lang: chosenLang ?? phoneLang ?? "en",
+    lang: pickLang(savedLang(), navigator.languages),
     hazard: undefined as string | undefined,
     country: undefined as string | undefined,
     fx: null as Rates | null,

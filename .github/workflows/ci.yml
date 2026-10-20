@@ -10,6 +10,7 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run check
+      - run: npm run test:web
       - run: npm run build
   slither:
     runs-on: ubuntu-latest

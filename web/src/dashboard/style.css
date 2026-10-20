@@ -108,6 +108,16 @@ h1 { font-size: clamp(34px, 4.4vw, 58px); line-height: 1.02; letter-spacing: -0.
 .result li a { text-decoration: none; font: 12.5px "JetBrains Mono", monospace; }
 .result li.rain { color: var(--muted); }
 .result li.bad { color: var(--warn); background: var(--warn-soft); }
+.proofs .wide { grid-column: 1 / -1; }
+.go { list-style: none; padding: 0; margin: 14px 0 0; display: grid; gap: 6px; }
+.go li { display: grid; grid-template-columns: auto 92px minmax(0, 1fr); gap: 4px 12px; align-items: baseline; font-size: 13.5px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.go li:not(:has(.mark)) { grid-template-columns: 92px minmax(0, 1fr); }
+.go .mark { width: 18px; text-align: center; color: var(--muted); font-weight: 700; }
+.go .mark.hit { color: var(--accent); }
+.go .when { color: var(--muted); white-space: nowrap; }
+.go a { overflow-wrap: anywhere; }
+.go .meta { grid-column: -2; color: var(--muted); font-size: 12.5px; }
+.go .meta:empty { display: none; }
 .result .head { display: flex; align-items: baseline; gap: 12px; margin-top: 16px; }
 .result .head b { white-space: nowrap; font-size: 40px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; }
 .result svg { display: block; width: 100%; height: auto; margin-top: 14px; }

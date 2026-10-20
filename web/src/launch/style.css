@@ -1,0 +1,42 @@
+/* Launch page: the dashboard's tokens and panels (imported first), laid out as five numbered steps. */
+.launch { display: grid; gap: 22px; padding-top: 18px; max-width: 900px; }
+.launch header .say { margin-bottom: 4px; }
+.step h2 { display: flex; align-items: center; gap: 12px; margin: 0 0 14px; font-size: 22px; letter-spacing: -0.02em; }
+.step h2 .n { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--ink); color: #fff; font-size: 15px; flex: none; }
+.step h3 { font-size: 16px; margin: 22px 0 6px; }
+.sr { position: absolute; left: -9999px; }
+.search { display: flex; gap: 10px; flex-wrap: wrap; }
+.launch input, .launch select, .launch textarea { font: 500 15px "Plus Jakarta Sans", sans-serif; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; width: 100%; min-width: 0; }
+.search input { flex: 1 1 220px; width: auto; }
+.launch select { margin-top: 6px; }
+.launch label { display: block; font-size: 13.5px; font-weight: 600; color: var(--muted); }
+.launch label input, .launch label textarea { margin-top: 6px; }
+.hits { display: flex; flex-wrap: wrap; gap: 8px; padding: 0; margin: 12px 0 0; }
+.hits li { list-style: none; max-width: 100%; }
+.hits .btn { white-space: normal; text-align: left; }
+.placecard { margin-top: 14px; background: var(--frame); border-radius: 18px; padding: 16px 18px; }
+.placecard .big { font-size: 19px; font-weight: 700; margin: 0; }
+.placecard .fine { margin-top: 6px; }
+.seg { border: 0; padding: 0; margin: 0 0 14px; display: flex; gap: 18px; flex-wrap: wrap; }
+.seg label { display: flex; align-items: center; gap: 8px; font-size: 15px; color: var(--ink); }
+.seg input { width: auto; }
+.fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; margin-top: 14px; }
+.fields .wide { grid-column: 1 / -1; }
+.facts { display: grid; grid-template-columns: max-content 1fr; gap: 8px 18px; margin: 18px 0 0; }
+.facts dt { font-weight: 700; }
+.facts dd { margin: 0; }
+.warnbox { background: var(--warn-soft); color: var(--warn); border-radius: 14px; padding: 12px 14px; font-weight: 600; margin: 16px 0 0; }
+.goev { padding: 0; margin: 8px 0 0; }
+.goev li { list-style: none; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.goev li span { display: inline-block; width: 16px; color: var(--muted); font-weight: 700; }
+.goev li.caught span { color: var(--accent); }
+.goev small { color: var(--muted); }
+.link { background: none; border: 0; padding: 0; color: var(--accent); font-weight: 600; text-decoration: underline; cursor: pointer; }
+.launch code { font: 12.5px "JetBrains Mono", monospace; word-break: break-all; }
+.launch pre.evidence { white-space: pre-wrap; background: var(--frame); border-radius: 12px; padding: 12px; }
+.launch details { margin-top: 14px; }
+.launch summary { cursor: pointer; font-weight: 600; }
+.next { padding-left: 20px; display: grid; gap: 14px; }
+.joinqr { width: 180px; max-width: 100%; margin: 10px 0 6px; background: #fff; }
+.joinqr svg { display: block; width: 100%; height: auto; }
+@media (max-width: 640px) { .facts { grid-template-columns: 1fr; } .facts dd { margin-bottom: 6px; } }

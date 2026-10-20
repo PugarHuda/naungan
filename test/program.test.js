@@ -44,7 +44,7 @@ describe("program metadata and river snapping", () => {
             const c = await riverCell(1, 30)
             expect(c).to.include({ lat: 1, lon: 30.05, flow: 500 })
             expect(c.km).to.be.closeTo(5.56, 0.05)
-            expect(asked).to.match(/start_date=\d{4}-01-01&end_date=\d{4}-12-31/) // a whole year, not one season
+            expect(asked).to.match(/past_days=92&/) // ~160 of Open-Meteo's free calls for 25 cells, not ~650
         } finally {
             global.fetch = real
         }

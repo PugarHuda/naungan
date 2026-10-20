@@ -2,6 +2,7 @@
     // Any river: Open-Meteo's geocoder finds the place, then the same GloFAS code the oracle runs gives its
     // flood level, forecast and 30-year record. Nothing is stored; each search is a few public API calls.
     import { trackRecord } from "../shared/verify.mjs"
+    import { riverCell } from "../../../lib/hazard.mjs" // the same river snap the coordinator CLI and launch page use
     import ForecastChart from "./ForecastChart.svelte"
     import { fmt, forecast, years, type Forecast, type TrackRecord } from "./record"
 
@@ -36,25 +37,13 @@
 
     // A town's centre usually sits on a side stream, not the river that floods it. GloFAS answers 25 points in
     // one request, so look about 10 km around and take the cell with the largest recent mean flow.
-    async function riverCell(lat: number, lon: number): Promise<Cell> {
-        const steps = [-0.1, -0.05, 0, 0.05, 0.1], lats: string[] = [], lons: string[] = []
-        for (const a of steps) for (const b of steps) lats.push((lat + a).toFixed(3)), lons.push((lon + b).toFixed(3))
-        const res = await fetch(`https://flood-api.open-meteo.com/v1/flood?latitude=${lats}&longitude=${lons}&daily=river_discharge&past_days=92&forecast_days=1`)
-        if (!res.ok) throw new Error(`GloFAS ${res.status}`)
-        type Point = { latitude: number; longitude: number; daily: { river_discharge: (number | null)[] } }
-        const mean = (x: Point) => { const v = x.daily.river_discharge.filter((y): y is number => y != null); return v.length ? v.reduce((s, y) => s + y, 0) / v.length : -1 }
-        const best = ([] as Point[]).concat(await res.json()).map((x) => ({ lat: Number(x.latitude.toFixed(3)), lon: Number(x.longitude.toFixed(3)), flow: mean(x) })).sort((a, b) => b.flow - a.flow)[0]
-        const km = 6371 * 2 * Math.asin(Math.sqrt(Math.sin(((best.lat - lat) * Math.PI) / 360) ** 2 + Math.cos((lat * Math.PI) / 180) * Math.cos((best.lat * Math.PI) / 180) * Math.sin(((best.lon - lon) * Math.PI) / 360) ** 2))
-        return { ...best, km }
-    }
-
     async function check(p: Hit) {
         picked = p
         cell = r = f = null
         fNote = error = ""
         fFailed = false
         try {
-            const c = await riverCell(p.latitude, p.longitude)
+            const c: Cell = await riverCell(p.latitude, p.longitude)
             const meta = { name: p.name, lat: c.lat, lon: c.lon, returnPeriod: 5, leadDays: 10 }
             const rec: TrackRecord = await trackRecord(meta)
             if (picked !== p) return // another place was picked meanwhile

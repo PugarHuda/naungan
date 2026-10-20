@@ -2,13 +2,16 @@
 // Components call into this module and render `ui`. The identity secret arrives in the URL fragment from
 // a QR card; fragments are never sent to any server, and we strip it from the address bar right away.
 import { ethers } from "ethers"
-import { Identity, Group, generateProof } from "@semaphore-protocol/core"
-import { poseidon2 } from "poseidon-lite"
-import { unlock, unlockV2 } from "../../../lib/cardlock.mjs"
+// Only what reading a card needs loads up front. The identity package is small; proving (snarkjs, about
+// 480 KB) loads when a claim becomes possible, and the PIN code only for a locked card. The service worker
+// precaches those chunks too (vite.config.mjs), so a phone that opened the app once can still prove offline.
+import { Identity } from "@semaphore-protocol/identity"
+import { poseidon2 } from "poseidon-lite/poseidon2" // the package root bundles every arity's constants (~530 KB)
+const proving = () => Promise.all([import("@semaphore-protocol/proof"), import("@semaphore-protocol/group")])
 import { deployment as d, naungan, provider, parseMeta, ERC20_ABI } from "../shared/chain"
 import { placeOf, languageOf, usdRates } from "../shared/place"
-import { ui, card, store, t, chosenLang, phoneLang, type Snapshot } from "./state.svelte"
-import { T } from "./i18n"
+import { ui, card, store, t, savedLang, type Snapshot } from "./state.svelte"
+import { pickLang } from "./i18n"
 
 export const RELAYER = d.relayer ?? "http://localhost:8788"
 const PENDING = "naungan-pending"
@@ -107,6 +110,7 @@ export function openCard(v: string): "notCard" | null {
 export async function tryPin(pin: string): Promise<{ why: string; left: number | null } | null> {
     let secret: string, left: number | null = null
     try {
+        const { unlock, unlockV2 } = await import("../../../lib/cardlock.mjs")
         if (!card.v2) secret = await unlock(card.locked, pin, card.pid)
         else {
             // v2: the relayer evaluates a blinded point (it never sees the PIN) and counts tries per card.
@@ -179,7 +183,7 @@ async function place(meta: Snapshot["meta"]) {
     if (!cc) return // offline: amounts stay in USDC until the next visit
     ui.country = cc
     const local = languageOf(cc) // CLDR likely language: BD → bn, HN → es
-    if (!chosenLang && !phoneLang && T[local]) ui.lang = local
+    ui.lang = pickLang(savedLang(), navigator.languages, local)
 }
 
 function showPaid(body: { txHash: string; payout: string }, amount: bigint, dec: number) {
@@ -240,6 +244,7 @@ async function load() {
     if (enrolled && !snap.claimed && deadline === 0n) ui.alerts = true
     if (!enrolled || snap.claimed || !open) return
     ui.pay = { wallet: wallet() }
+    proving().catch(() => {}) // warm the prover while the household chooses where the money goes
 
     claimHandler = async (payout: string) => {
         ui.error = ""
@@ -249,6 +254,7 @@ async function load() {
             // Re-read the group when online (it may have grown); offline, the saved group is still valid
             // because enrollment freezes when the trigger fires.
             const members = navigator.onLine ? (await snapshot()).members : snap.members
+            const [{ generateProof }, { Group }] = await proving()
             const proof = await generateProof(card.identity!, new Group(members.map(BigInt)), BigInt(payout), card.pid!)
             job = { pid: card.pid!.toString(), proof, payout }
             ui.step = "sending"
