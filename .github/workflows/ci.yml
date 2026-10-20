@@ -8,6 +8,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
       - run: npm ci
+      - run: python3 -m pip install --quiet lxml # validates CAP alerts against the OASIS schema in npm test
       - run: npm test
       - run: npm run check
       - run: npm run test:web

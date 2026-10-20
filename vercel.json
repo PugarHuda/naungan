@@ -13,6 +13,10 @@
     "api/feed.js": {
       "includeFiles": "{web/deployment.json,artifacts/contracts/Naungan.sol/Naungan.json}",
       "maxDuration": 60
+    },
+    "api/cap.js": {
+      "includeFiles": "{web/deployment.json,artifacts/contracts/Naungan.sol/Naungan.json}",
+      "maxDuration": 60
     }
   },
   "rewrites": [
@@ -35,6 +39,14 @@
     {
       "source": "/feed.xml",
       "destination": "/api/feed"
+    },
+    {
+      "source": "/cap.xml",
+      "destination": "/api/cap"
+    },
+    {
+      "source": "/programs.csv",
+      "destination": "/api/programs?format=csv"
     }
   ],
   "headers": [

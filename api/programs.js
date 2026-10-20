@@ -71,12 +71,47 @@ async function load() {
     return { d, programs, events, decimals: Number(decimals), countries }
 }
 
+/**
+ * HXL (Humanitarian Exchange Language, hxlstandard.org): the CSV convention OCHA's HDX and humanitarian data
+ * tools read. Row 1 is for people, row 2 the HXL hashtags tools key on; then one row per program.
+ */
+const HXL = [
+    ["Program id", "#activity+id", (x) => x.id],
+    ["Program", "#activity+name", (x) => x.name],
+    ["Hazard", "#crisis+type", (x) => x.hazard],
+    ["Country (ISO 3166)", "#country+code", (x) => x.country],
+    ["Latitude", "#geo+lat", (x) => x.lat],
+    ["Longitude", "#geo+lon", (x) => x.lon],
+    ["State", "#status", (x) => x.state],
+    ["Trigger rule", "#indicator+trigger+text", (x) => x.trigger.rule],
+    ["Trigger %", "#indicator+threshold+pct", (x) => x.trigger.thresholdPercent],
+    ["Last forecast %", "#indicator+value+pct", (x) => x.trigger.lastIndexPercent],
+    ["USDC per household", "#value+transfer+usd", (x) => x.usdc.perHousehold],
+    ["USDC funded", "#value+funding+usd", (x) => x.usdc.funded],
+    ["USDC paid out", "#value+disbursed+usd", (x) => x.usdc.paidOut],
+    ["Households enrolled", "#targeted+hh+num", (x) => x.households.enrolled],
+    ["Households paid", "#reached+hh+num", (x) => x.households.paid],
+    ["Dashboard", "#meta+url", (x) => x.links.dashboard]
+]
+/** RFC 4180 cell; a leading = + - @ is prefixed so a spreadsheet never runs on-chain text as a formula. */
+const cell = (v) => {
+    let s = v == null ? "" : String(v)
+    if (/^[=+\-@\t\r]/.test(s) && typeof v !== "number") s = "'" + s
+    return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+}
+const hxlCsv = (programs) => [HXL.map((c) => c[0]), HXL.map((c) => c[1]), ...programs.map((x) => HXL.map((c) => c[2](x)))].map((r) => r.map(cell).join(",")).join("\r\n") + "\r\n"
+
 const baseOf = (req, d) => (req.headers?.host ? `https://${req.headers["x-forwarded-host"] ?? req.headers.host}` : d.relayer ?? "")
 
 module.exports = async (req, res) => {
     try {
         const data = await load()
-        const body = { contract: data.d.naungan, chainId: data.d.chainId, generatedAt: new Date().toISOString(), programs: summarise({ ...data, base: baseOf(req, data.d) }) }
+        const programs = summarise({ ...data, base: baseOf(req, data.d) })
+        if (new URL(req.url, "http://x").searchParams.get("format") === "csv") {
+            res.writeHead(200, { "content-type": "text/csv; charset=utf-8; header=present", "content-disposition": 'inline; filename="naungan-programs.csv"', "access-control-allow-origin": "*", "cache-control": CACHE })
+            return res.end(hxlCsv(programs))
+        }
+        const body = { contract: data.d.naungan, chainId: data.d.chainId, generatedAt: new Date().toISOString(), programs }
         res.writeHead(200, { "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*", "cache-control": CACHE })
         res.end(JSON.stringify(body, null, 2))
     } catch (e) {
@@ -86,6 +121,8 @@ module.exports = async (req, res) => {
     }
 }
 module.exports.summarise = summarise
+module.exports.hxlCsv = hxlCsv
+module.exports.HXL = HXL
 module.exports.rule = rule
 module.exports.load = load
 module.exports.baseOf = baseOf

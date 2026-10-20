@@ -1,0 +1,713 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Naungan public API",
+    "version": "1.0.0",
+    "summary": "Anticipatory humanitarian cash programs, read from the chain, plus the gas relayer households claim through.",
+    "description": "Everything here is public and needs no key. Program data is rebuilt from the Naungan contract on Base Sepolia (testnet) and cached at the edge for 5 minutes. The relayer endpoints submit zero-knowledge claims and gasless transfers for households; the payout address is bound inside each proof, so the relayer cannot redirect money. No endpoint needs authentication (security: []).",
+    "license": {
+      "name": "MIT",
+      "identifier": "MIT"
+    },
+    "contact": {
+      "url": "https://github.com/PugarHuda/naungan"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://naungan.vercel.app"
+    }
+  ],
+  "security": [],
+  "tags": [
+    {
+      "name": "Open data",
+      "description": "Programs, events and alerts, for dashboards, newsrooms, HDX and alert aggregators"
+    },
+    {
+      "name": "Relayer",
+      "description": "Used by the household claim app"
+    }
+  ],
+  "paths": {
+    "/api/programs": {
+      "get": {
+        "operationId": "listPrograms",
+        "tags": [
+          "Open data"
+        ],
+        "summary": "Every program with its trigger, state, money and latest oracle report",
+        "parameters": [
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "description": "csv returns the same rows as HXL-tagged CSV (row 2 holds the HXL hashtags), the format OCHA's HDX reads",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "csv"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Programs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Programs"
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "Program id,Program,…\r\n#activity+id,#activity+name,…\r\n1,Krueng Aceh flood · Banda Aceh,…"
+              }
+            }
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        }
+      }
+    },
+    "/programs.csv": {
+      "get": {
+        "operationId": "listProgramsCsv",
+        "tags": [
+          "Open data"
+        ],
+        "summary": "The programs as HXL-tagged CSV (same as /api/programs?format=csv)",
+        "responses": {
+          "200": {
+            "description": "HXL CSV",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        }
+      }
+    },
+    "/feed.xml": {
+      "get": {
+        "operationId": "getFeed",
+        "tags": [
+          "Open data"
+        ],
+        "summary": "Atom 1.0 feed of program events, newest first",
+        "description": "Program creations, oracle readings (headed CLAIMS OPEN when the trigger fires), funding and refunds. Claims are grouped per program per day and never name a payout address.",
+        "parameters": [
+          {
+            "name": "program",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Atom feed",
+            "content": {
+              "application/atom+xml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "program is not an id"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        }
+      }
+    },
+    "/cap.xml": {
+      "get": {
+        "operationId": "getCapIndex",
+        "tags": [
+          "Open data"
+        ],
+        "summary": "Atom index of CAP 1.2 alerts, one per program whose trigger fired",
+        "responses": {
+          "200": {
+            "description": "Atom index; each entry links its CAP message (type application/cap+xml)",
+            "content": {
+              "application/atom+xml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        }
+      }
+    },
+    "/api/cap": {
+      "get": {
+        "operationId": "getCapAlert",
+        "tags": [
+          "Open data"
+        ],
+        "summary": "The Common Alerting Protocol 1.2 message for one program",
+        "description": "Valid against the OASIS CAP 1.2 schema. Testnet deployments and triggers fired by a replay of a past event are status Exercise, never Actual. Without program, returns the same Atom index as /cap.xml.",
+        "parameters": [
+          {
+            "name": "program",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CAP 1.2 alert",
+            "content": {
+              "application/cap+xml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "program is not an id"
+          },
+          "404": {
+            "description": "This program's trigger has not fired"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "getHealth",
+        "tags": [
+          "Relayer"
+        ],
+        "summary": "Relayer status",
+        "responses": {
+          "200": {
+            "description": "Status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "relayer",
+                    "balance",
+                    "lowGas",
+                    "chainId",
+                    "naungan"
+                  ],
+                  "properties": {
+                    "relayer": {
+                      "type": "string",
+                      "description": "Address paying gas"
+                    },
+                    "balance": {
+                      "type": "string",
+                      "description": "ETH left for gas"
+                    },
+                    "lowGas": {
+                      "type": "boolean",
+                      "description": "Under 0.01 ETH: about 50 sponsored claims left"
+                    },
+                    "chainId": {
+                      "type": "integer"
+                    },
+                    "naungan": {
+                      "type": "string"
+                    },
+                    "pinStore": {
+                      "type": "string",
+                      "enum": [
+                        "upstash-redis",
+                        "memory"
+                      ]
+                    },
+                    "pinTries": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/relay": {
+      "post": {
+        "operationId": "relayClaim",
+        "tags": [
+          "Relayer"
+        ],
+        "summary": "Submit a household's Semaphore v4 claim proof",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "programId",
+                  "proof"
+                ],
+                "properties": {
+                  "programId": {
+                    "type": "string"
+                  },
+                  "proof": {
+                    "$ref": "#/components/schemas/Proof"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Paid (already: true when this relayer had sent the same claim before)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "txHash": {
+                      "type": "string"
+                    },
+                    "payout": {
+                      "type": "string"
+                    },
+                    "amount": {
+                      "type": "string"
+                    },
+                    "already": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed proof: final, drop it"
+          },
+          "409": {
+            "description": "The same proof is being submitted: retry later"
+          },
+          "422": {
+            "description": "The contract refuses it (AlreadyClaimed, Underfunded, NotTriggered…): final"
+          },
+          "429": {
+            "description": "Rate limited: retry later"
+          },
+          "503": {
+            "description": "RPC trouble: keep the proof and retry"
+          }
+        }
+      }
+    },
+    "/transfer": {
+      "post": {
+        "operationId": "relayTransfer",
+        "tags": [
+          "Relayer"
+        ],
+        "summary": "Gasless USDC transfer (EIP-3009 transferWithAuthorization) from a wallet Naungan paid",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "from",
+                  "to",
+                  "value",
+                  "validAfter",
+                  "validBefore",
+                  "nonce",
+                  "signature"
+                ],
+                "properties": {
+                  "from": {
+                    "type": "string"
+                  },
+                  "to": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "type": "string",
+                    "description": "USDC base units, at least 10000 (0.01 USDC)"
+                  },
+                  "validAfter": {
+                    "type": "string"
+                  },
+                  "validBefore": {
+                    "type": "string"
+                  },
+                  "nonce": {
+                    "type": "string",
+                    "description": "32 bytes hex"
+                  },
+                  "signature": {
+                    "type": "string",
+                    "description": "65 bytes hex"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sent",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "txHash": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed, or under 0.01 USDC"
+          },
+          "403": {
+            "description": "Not a wallet Naungan paid"
+          },
+          "422": {
+            "description": "USDC refuses the authorization"
+          },
+          "429": {
+            "description": "3 per minute or 20 per day per wallet"
+          },
+          "503": {
+            "description": "RPC trouble: retry"
+          }
+        }
+      }
+    },
+    "/pin": {
+      "post": {
+        "operationId": "evaluatePin",
+        "tags": [
+          "Relayer"
+        ],
+        "summary": "OPRF evaluation for PIN-locked cards (at most 20 tries per card, ever)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "programId",
+                  "card",
+                  "point"
+                ],
+                "properties": {
+                  "programId": {
+                    "type": "string"
+                  },
+                  "card": {
+                    "type": "string",
+                    "description": "16 bytes hex"
+                  },
+                  "point": {
+                    "type": "string",
+                    "description": "Blinded Ristretto255 point"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Evaluated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "evaluated": {
+                      "type": "string"
+                    },
+                    "left": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed"
+          },
+          "429": {
+            "description": "Card locked after too many tries, or rate limited"
+          },
+          "503": {
+            "description": "No shared store: the try cap cannot be enforced"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "responses": {
+      "Unavailable": {
+        "description": "The chain or indexer is unreachable; retry shortly"
+      }
+    },
+    "schemas": {
+      "Proof": {
+        "type": "object",
+        "required": [
+          "merkleTreeDepth",
+          "merkleTreeRoot",
+          "nullifier",
+          "message",
+          "scope",
+          "points"
+        ],
+        "properties": {
+          "merkleTreeDepth": {
+            "type": "string"
+          },
+          "merkleTreeRoot": {
+            "type": "string"
+          },
+          "nullifier": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string",
+            "description": "The payout address as a number: bound inside the proof"
+          },
+          "scope": {
+            "type": "string",
+            "description": "Must equal programId"
+          },
+          "points": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 8,
+            "maxItems": 8
+          }
+        }
+      },
+      "Programs": {
+        "type": "object",
+        "required": [
+          "contract",
+          "chainId",
+          "generatedAt",
+          "programs"
+        ],
+        "properties": {
+          "contract": {
+            "type": "string"
+          },
+          "chainId": {
+            "type": "integer"
+          },
+          "generatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "programs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Program"
+            }
+          }
+        }
+      },
+      "Program": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "hazard",
+          "trigger",
+          "state",
+          "usdc",
+          "households",
+          "links"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "hazard": {
+            "type": "string",
+            "enum": [
+              "flood",
+              "heat"
+            ]
+          },
+          "country": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ISO 3166-1 alpha-2"
+          },
+          "lat": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "lon": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "trigger": {
+            "type": "object",
+            "properties": {
+              "rule": {
+                "type": "string"
+              },
+              "thresholdPercent": {
+                "type": "integer"
+              },
+              "lastIndexPercent": {
+                "type": "integer"
+              },
+              "quorum": {
+                "type": "integer"
+              }
+            }
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "watching",
+              "claims open",
+              "over"
+            ]
+          },
+          "until": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "since": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "seasonEnds": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "usdc": {
+            "type": "object",
+            "properties": {
+              "perHousehold": {
+                "type": "number"
+              },
+              "funded": {
+                "type": "number"
+              },
+              "paidOut": {
+                "type": "number"
+              }
+            }
+          },
+          "households": {
+            "type": "object",
+            "properties": {
+              "enrolled": {
+                "type": "integer"
+              },
+              "paid": {
+                "type": "integer"
+              }
+            }
+          },
+          "latestReport": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "valuePercent": {
+                "type": "integer"
+              },
+              "agreeing": {
+                "type": "integer"
+              },
+              "triggered": {
+                "type": "boolean"
+              },
+              "evidence": {
+                "type": "string"
+              },
+              "at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "tx": {
+                "type": "string"
+              }
+            }
+          },
+          "links": {
+            "type": "object",
+            "properties": {
+              "dashboard": {
+                "type": "string"
+              },
+              "join": {
+                "type": "string"
+              },
+              "feed": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
