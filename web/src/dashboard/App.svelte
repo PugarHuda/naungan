@@ -1,4 +1,5 @@
 <script lang="ts">
+    import EmbedCode from "./EmbedCode.svelte"
     import { deployment as d } from "../shared/chain"
     import { dash, select, start } from "./state.svelte"
     import { netName, short } from "./format"
@@ -67,5 +68,6 @@
         </section>
     </main>
     <footer>Contract {d.naungan} on chain {d.chainId}. This page reads it every 2 seconds and keeps no data of its own.
-        {#if dash.pid !== undefined}<a href="/feed.xml?program={dash.pid}">Follow this program (Atom feed)</a> · {/if}Open data: <a href="/api/programs">JSON</a> · <a href="/programs.csv">HXL CSV</a> · <a href="/programs.geojson">GeoJSON</a> · <a href="/cap.xml">CAP alerts</a> · <a href="/openapi.json">OpenAPI</a></footer>
+        {#if dash.pid !== undefined}<a href="/feed.xml?program={dash.pid}">Follow this program (Atom feed)</a> · {/if}Open data: <a href="/api/programs">JSON</a> · <a href="/programs.csv">HXL CSV</a> · <a href="/programs.geojson">GeoJSON</a> · <a href="/cap.xml">CAP alerts</a> · <a href="/openapi.json">OpenAPI</a>
+        {#if dash.pid !== undefined}<EmbedCode pid={dash.pid} />{/if}</footer>
 </div>

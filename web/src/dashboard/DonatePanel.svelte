@@ -3,7 +3,7 @@
     import { deployment as d, ERC20_ABI, isOver, type Program } from "../shared/chain"
     import { c, dash } from "./state.svelte"
     import { netName, short, txUrl, usd, type Part } from "./format"
-    import { browserWallet, cancelled, walletSigner, why } from "../shared/wallet"
+    import { browserWallet, cancelled, sendBatch, walletSigner, why } from "../shared/wallet"
     import Message from "./Message.svelte"
 
     let amount = $state<number | null>(1) // bind:value on a number input yields a number (null when empty)
@@ -31,7 +31,15 @@
             const usdc = new Contract(await c.token(), ERC20_ABI, signer)
             const bal: bigint = await usdc.balanceOf(me)
             if (bal < amt) return void (msg = [`${short(me)} has ${usd(bal)} USDC. Get free testnet USDC at `, { href: "https://faucet.circle.com", label: "faucet.circle.com" }, " (Base Sepolia), then try again."])
+            const done = (h: string) => say(`Thank you: ${usd(amt)} USDC is in program #${pid}'s pool. It appears in the ledger as soon as the block is indexed.`, txUrl(h))
             if ((await usdc.allowance(me, d.naungan)) < amt) {
+                // Smart wallets (EIP-5792) take approve + fund as one atomic batch: one confirmation, and no allowance left behind.
+                say("Confirm in your wallet…")
+                const batched = await sendBatch(eth, me, [
+                    { to: usdc.target as string, data: usdc.interface.encodeFunctionData("approve", [d.naungan, amt]) },
+                    { to: d.naungan, data: c.interface.encodeFunctionData("fund", [pid, amt]) }
+                ])
+                if (batched) return done(batched)
                 say("Step 1 of 2: approve the program contract to take exactly this amount…")
                 await (await usdc.approve(d.naungan, amt)).wait()
             }
@@ -41,7 +49,7 @@
             say("Funding sent, waiting for the block…", txUrl(tx.hash))
             const r = await tx.wait()
             if (r.status !== 1) throw new Error("the funding transaction reverted")
-            say(`Thank you: ${usd(amt)} USDC is in program #${pid}'s pool. It appears in the ledger as soon as the block is indexed.`, txUrl(tx.hash))
+            done(tx.hash)
         } catch (e) {
             say(cancelled(e) ? "Cancelled in the wallet." : `Could not fund: ${why(e)}`)
         } finally {

@@ -46,6 +46,25 @@ function precacheClaimShell() {
     }
 }
 
+/**
+ * vercel.json's headers on `vite preview` (and so on the e2e suite), applied as Vercel does: every rule whose
+ * source matches the path, in order, a later rule overriding a header an earlier one set. HSTS and
+ * upgrade-insecure-requests are dropped: preview is plain http://localhost.
+ */
+function vercelHeaders() {
+    const rules = JSON.parse(readFileSync(resolve(import.meta.dirname, "vercel.json"), "utf8")).headers.map((r) => ({ re: new RegExp(`^${r.source}$`), headers: r.headers }))
+    return {
+        name: "naungan-vercel-headers",
+        configurePreviewServer(server) {
+            server.middlewares.use((req, res, next) => {
+                const path = new URL(req.url, "http://x").pathname
+                for (const r of rules) if (r.re.test(path)) for (const { key, value } of r.headers) if (key !== "Strict-Transport-Security") res.setHeader(key, key === "Content-Security-Policy" ? value.replace(/;\s*upgrade-insecure-requests/, "") : value)
+                next()
+            })
+        }
+    }
+}
+
 /** NAUNGAN_DEPLOYMENT=path bundles another deployment (a local Hardhat chain for end-to-end tests) in place of web/deployment.json. */
 function deploymentOverride() {
     const file = process.env.NAUNGAN_DEPLOYMENT && resolve(process.env.NAUNGAN_DEPLOYMENT)
@@ -54,25 +73,14 @@ function deploymentOverride() {
 
 export default defineConfig({
     root: web,
-    plugins: [deploymentOverride(), svelte(), precacheClaimShell()],
+    plugins: [deploymentOverride(), svelte(), precacheClaimShell(), vercelHeaders()],
     server: { port: 5173 },
-    preview: {
-        port: 5173,
-        // The production security headers from vercel.json, so `vite preview` (and the e2e suite on it) runs under
-        // the real CSP. HSTS and upgrade-insecure-requests are dropped: preview is plain http://localhost.
-        headers: (() => {
-            const all = JSON.parse(readFileSync(resolve(import.meta.dirname, "vercel.json"), "utf8")).headers.find((h) => h.source === "/(.*)").headers
-            const h = Object.fromEntries(all.map(({ key, value }) => [key, value]))
-            delete h["Strict-Transport-Security"]
-            h["Content-Security-Policy"] = h["Content-Security-Policy"].replace(/;\s*upgrade-insecure-requests/, "")
-            return h
-        })()
-    },
+    preview: { port: 5173 },
     build: {
         outDir: out,
         emptyOutDir: true,
         target: "es2022",
         chunkSizeWarningLimit: 4000, // the claim app carries Semaphore + snarkjs; it is proved on the phone
-        rollupOptions: { input: { index: resolve(web, "index.html"), dashboard: resolve(web, "dashboard.html"), claim: resolve(web, "claim.html"), launch: resolve(web, "launch.html") } }
+        rollupOptions: { input: { index: resolve(web, "index.html"), dashboard: resolve(web, "dashboard.html"), claim: resolve(web, "claim.html"), launch: resolve(web, "launch.html"), embed: resolve(web, "embed.html") } }
     }
 })

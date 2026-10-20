@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import { currencyOf, languageOf, flagOf, localMoney, type Rates } from "./place"
 import { compare, type GoEvent } from "./ifrc"
 import { isOver, parseMeta, type Program } from "./chain"
+import { canBatch, batchOutcome } from "./wallet"
 
 describe("place", () => {
     it("maps countries to currencies and likely languages", () => {
@@ -62,5 +63,27 @@ describe("chain helpers", () => {
         expect(parseMeta("not json")).toEqual({})
         expect(parseMeta("null")).toEqual({})
         expect(parseMeta("42")).toEqual({})
+    })
+})
+
+describe("EIP-5792 batched calls", () => {
+    it("batches only where the wallet says atomic calls work on our chain (v2 or v1 shape, or every chain)", () => {
+        expect(canBatch({ "0x14a34": { atomic: { status: "supported" } } }, "0x14a34")).toBe(true)
+        expect(canBatch({ "0x14a34": { atomic: { status: "ready" } } }, "0x14a34")).toBe(true) // EIP-7702 account that upgrades on first use
+        expect(canBatch({ "0x14a34": { atomic: { status: "unsupported" } } }, "0x14a34")).toBe(false)
+        expect(canBatch({ "0x14a34": { atomicBatch: { supported: true } } }, "0x14a34")).toBe(true)
+        expect(canBatch({ "0x0": { atomic: { status: "supported" } } }, "0x14a34")).toBe(true)
+        expect(canBatch({ "0x2105": { atomic: { status: "supported" } } }, "0x14a34")).toBe(false) // another chain only
+        expect(canBatch(undefined, "0x14a34")).toBe(false)
+    })
+    it("reads the batch status: pending, the hash once landed, an error when it failed or reverted", () => {
+        expect(batchOutcome({ status: 100 })).toBeNull()
+        expect(batchOutcome({ status: "PENDING" })).toBeNull()
+        expect(batchOutcome({ status: 200, receipts: [{ transactionHash: "0xab", status: "0x1" }] })).toBe("0xab")
+        expect(batchOutcome({ status: "CONFIRMED", receipts: [{ transactionHash: "0x1" }, { transactionHash: "0x2" }] })).toBe("0x2") // non-atomic v1 wallets: the fund() call is last
+        expect(() => batchOutcome({ status: 200, receipts: [{ transactionHash: "0xab", status: "0x0" }] })).toThrow("reverted")
+        expect(() => batchOutcome({ status: 500 })).toThrow("reverted")
+        expect(() => batchOutcome({ status: 400 })).toThrow("did not send")
+        expect(() => batchOutcome({ status: 200, receipts: [] })).toThrow("without a receipt")
     })
 })

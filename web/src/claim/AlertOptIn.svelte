@@ -36,6 +36,10 @@
 
     async function go() {
         const reg: any = await navigator.serviceWorker?.ready
+        // iOS Safari offers push only to a home-screen app (iOS 16.4+), and its Share sheet is the only way to add one.
+        const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+        const standalone = matchMedia("(display-mode: standalone)").matches || (navigator as { standalone?: boolean }).standalone === true
+        if (ios && !standalone && !reg?.pushManager) return (msg = "alertIos")
         if (!reg || !("Notification" in window) || !(reg.pushManager || "periodicSync" in reg)) return (msg = "alertNo")
         if ((await Notification.requestPermission()) !== "granted") return (msg = "alertDenied")
         const pushed = await subscribePush(reg)
