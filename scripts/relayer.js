@@ -14,7 +14,6 @@
 const http = require("http")
 const { ethers } = require("ethers")
 const { connect, explain, logs } = require("../lib/chain")
-const { oprfKey, evaluate, MAX_TRIES } = require("../lib/cardlock.mjs")
 
 const PORT = Number(process.env.PORT || 8788)
 const PER_MINUTE = Number(process.env.RATE_LIMIT || 10)
@@ -156,6 +155,9 @@ function serialSender(store, provider, address) {
  * Served by the Node http server below and by the Vercel function in api/relayer.js.
  */
 async function createRelayer({ store = sharedStore() } = {}) {
+    // lib/cardlock.mjs is an ES module shared with the browser: import() loads it on any Node version
+    // (require() of ESM needs 22.12+, and the serverless runtime may be older).
+    const { oprfKey, evaluate, MAX_TRIES } = await import("../lib/cardlock.mjs")
     const { naungan: reader, wallet, provider, d } = await connect()
     // Sends go out from the bare wallet with an explicit nonce (see `submit`), never through the NonceManager.
     const naungan = reader.connect(wallet)
