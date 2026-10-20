@@ -18,7 +18,7 @@
         const eth = browserWallet()
         if (!eth) return say("No browser wallet found. Install one (e.g. MetaMask or Coinbase Wallet), or fund with scripts/coordinator.js.")
         const pid = dash.pid
-        if (pid === undefined) return
+        if (pid === undefined) return say("The program is still loading from the chain; try again in a moment.")
         busy = true
         try {
             const p: Program = await c.programs(pid)
