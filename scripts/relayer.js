@@ -119,25 +119,66 @@ function parsePin(body) {
     return { programId: b.programId, card: b.card, point: b.point }
 }
 
+// One nonce sequence for the relayer key, shared by every instance: a store lock serialises
+// submissions, and the next nonce is kept in the store as well, because a load-balanced public RPC can
+// still report the pending count from before our last send. The stored nonce expires after two
+// minutes, so a transaction the network dropped leaves a gap for at most that long.
+function serialSender(store, provider, address) {
+    const NONCE = `naungan:nonce:${address}`, LOCK = `naungan:sendlock:${address}`
+    return async (send) => {
+        const me = ethers.hexlify(ethers.randomBytes(8))
+        for (let t = 0; !(await store.claim(LOCK, me, 30)); t++) {
+            if (t >= 50) throw Object.assign(new Error("relayer busy, try again shortly"), { status: 503 })
+            await new Promise((r) => setTimeout(r, 200 + Math.random() * 200))
+        }
+        try {
+            const next = async () => Math.max(await provider.getTransactionCount(address, "pending"), Number((await store.get(NONCE)) ?? 0))
+            let nonce = await next(), tx
+            try {
+                tx = await send({ nonce })
+            } catch (e) {
+                // Someone else (a CLI run with the same key) moved the chain's nonce: drop ours and resync once.
+                if (e?.code !== "NONCE_EXPIRED" && !/nonce/i.test(e?.message ?? "")) throw e
+                await store.del(NONCE)
+                tx = await send({ nonce: (nonce = await next()) })
+            }
+            await store.set(NONCE, String(nonce + 1), 120)
+            return tx
+        } finally {
+            // ponytail: get-then-del is not atomic; the 30 s lock TTL bounds what a lost race can cost
+            if ((await store.get(LOCK).catch(() => null)) === me) await store.del(LOCK).catch(() => {})
+        }
+    }
+}
+
 /**
  * The relayer core, independent of the transport: `handle(method, path, ip, raw)` → [status, body].
  * Served by the Node http server below and by the Vercel function in api/relayer.js.
  */
 async function createRelayer({ store = sharedStore() } = {}) {
-    const { naungan, wallet, signer, provider, d } = await connect()
+    const { naungan: reader, wallet, provider, d } = await connect()
+    // Sends go out from the bare wallet with an explicit nonce (see `submit`), never through the NonceManager.
+    const naungan = reader.connect(wallet)
     const pinSeed = wallet.privateKey // rotating the relayer key invalidates v2 cards
-    const usdc = new ethers.Contract(d.usdc, ["function transferWithAuthorization(address,address,uint256,uint256,uint256,bytes32,uint8,bytes32,bytes32)"], signer)
+    const usdc = new ethers.Contract(d.usdc, ["function transferWithAuthorization(address,address,uint256,uint256,uint256,bytes32,uint8,bytes32,bytes32)"], wallet)
+    // Payout wallets are remembered in the shared store as they are found, so a cold serverless instance
+    // answers a known payee from one store read instead of rescanning every Claimed log since deployment.
     const payees = new Set()
     let scanned = (d.fromBlock ?? 0) - 1
-    const isPayee = async (a) => { // incremental scan: each Claimed log is read once per relayer run
+    const payeeKey = (a) => `naungan:payee:${d.naungan}:${a}`
+    const isPayee = async (a) => {
         if (payees.has(a)) return true
-        const head = await provider.getBlockNumber()
-        for (const l of await logs(naungan, naungan.filters.Claimed(), scanned + 1, head)) payees.add(ethers.getAddress(l.args.payout))
+        if (await store.get(payeeKey(a)).catch(() => null)) return payees.add(a), true
+        const head = await provider.getBlockNumber() // incremental scan: each Claimed log is read once per instance
+        const found = (await logs(naungan, naungan.filters.Claimed(), scanned + 1, head)).map((l) => ethers.getAddress(l.args.payout))
+        for (const p of found) payees.add(p)
+        await Promise.all(found.map((p) => store.set(payeeKey(p), "1", 10 * YEAR))).catch(() => {})
         scanned = head
         return payees.has(a)
     }
     const hits = new Map()
-    let queue = Promise.resolve() // serialise sends: concurrent claims would otherwise reuse a nonce
+
+    const submit = serialSender(store, provider, wallet.address)
 
     // Per-minute window in the shared store, so a client cannot multiply its quota by landing on more
     // instances; if the store is unreachable, this instance's own sliding window still applies.
@@ -157,7 +198,7 @@ async function createRelayer({ store = sharedStore() } = {}) {
     // that has not seen our last claim yet, which would let a replayed proof through to revert on-chain.
     // Both sets live in the shared store too: another instance may hold the same proof right now.
     const inFlight = new Set(), settled = new Map()
-    const send = async (key, submit, spentError) => {
+    const send = async (key, build, spentError) => {
         if (settled.has(key)) throw Object.assign(new Error(spentError), { status: 422 })
         if (inFlight.has(key)) throw Object.assign(new Error("already being submitted"), { status: 409 })
         const lock = `naungan:relay:${key}`
@@ -166,23 +207,11 @@ async function createRelayer({ store = sharedStore() } = {}) {
             throw /^0x/.test(v ?? "") ? Object.assign(new Error(spentError), { status: 422 }) : Object.assign(new Error("already being submitted"), { status: 409 })
         }
         inFlight.add(key)
-        const job = queue.then(async () => {
-            let tx
-            try {
-                tx = await submit()
-            } catch (e) {
-                // Another process using this key moved the on-chain nonce: resync once and resend.
-                if (e?.code !== "NONCE_EXPIRED" && !/nonce/i.test(e?.message ?? "")) throw e
-                signer.reset()
-                tx = await submit()
-            }
+        try {
+            const tx = await submit(build) // only the submission holds the lock; mining is awaited outside it
             const rcpt = await tx.wait()
             if (rcpt.status !== 1) throw new Error("transaction reverted")
-            return tx.hash
-        })
-        queue = job.catch(() => signer.reset()) // a failed send leaves the local nonce ahead of the chain
-        try {
-            const h = await job
+            const h = tx.hash
             settled.set(key, h) // ponytail: in-memory copy, grows by one entry per payout
             await store.set(lock, h, MONTH).catch(() => {}) // the chain itself rejects a replay after this anyway
             return h
@@ -236,7 +265,7 @@ async function createRelayer({ store = sharedStore() } = {}) {
                 return [transferStatus(e), { error: e.reason ?? revertName(e) }]
             }
             try {
-                const txHash = await send(`auth:${a.from}:${a.nonce}`, () => usdc.transferWithAuthorization(...args), "authorization is used or canceled")
+                const txHash = await send(`auth:${a.from}:${a.nonce}`, (o) => usdc.transferWithAuthorization(...args, o), "authorization is used or canceled")
                 console.log(`${new Date().toISOString()} transfer ${a.from} → ${a.to} ${ethers.formatUnits(a.value, 6)} USDC · ${txHash}`)
                 return [200, { txHash }]
             } catch (e) {
@@ -269,8 +298,10 @@ async function createRelayer({ store = sharedStore() } = {}) {
             return paid ? [200, paid] : [claimStatus(name), { error: name }]
         }
         try {
-            const txHash = await send(key, () => naungan.claim(pid, proof), "AlreadyClaimed")
-            payees.add(ethers.getAddress(ethers.toBeHex(proof.message, 20)))
+            const txHash = await send(key, (o) => naungan.claim(pid, proof, o), "AlreadyClaimed")
+            const payout = ethers.getAddress(ethers.toBeHex(proof.message, 20))
+            payees.add(payout)
+            await store.set(payeeKey(payout), "1", 10 * YEAR).catch(() => {})
             const p = await naungan.programs(pid)
             console.log(`${new Date().toISOString()} program ${pid} paid ${ethers.getAddress(ethers.toBeHex(proof.message, 20))} · ${txHash}`)
             return [200, { txHash, payout: ethers.getAddress(ethers.toBeHex(proof.message, 20)), amount: p.amountPerHousehold.toString() }]
@@ -298,4 +329,4 @@ async function main() {
 }
 
 if (require.main === module) main().catch((e) => (console.error(e.message), process.exit(1)))
-module.exports = { parseProof, parseTransfer, parsePin, sharedStore, createRelayer, claimStatus, transferStatus, HEADERS, MAX_BODY }
+module.exports = { parseProof, parseTransfer, parsePin, sharedStore, createRelayer, serialSender, claimStatus, transferStatus, HEADERS, MAX_BODY }

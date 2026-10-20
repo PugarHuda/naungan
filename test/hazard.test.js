@@ -66,6 +66,9 @@ describe("hazard (GloFAS trigger math)", () => {
         expect(longestRun([37, 38.5, 39, 37.9, 40, 41, 42], 38)).to.equal(3)
         expect(longestRun([38, 38, 38], 38)).to.equal(0) // "above 38 °C", as the Bangladesh Red Crescent protocol reads
         expect(longestRun([39, null, 39], 38)).to.equal(1)
+        // Karachi's rule also needs warm nights: the cool second night breaks the run.
+        expect(longestRun([43, 44, 45], 42, [31, 29, 32], 30)).to.equal(1)
+        expect(longestRun([43, 44, 45], 42, [31, 30.5, 32], 30)).to.equal(3)
     })
 
     it("heat trigger counts the GEFS members that forecast the heatwave, and replays ERA5 the same way", async () => {
@@ -73,7 +76,7 @@ describe("hazard (GloFAS trigger math)", () => {
         global.fetch = async (url) => ({
             ok: true,
             json: async () => url.includes("archive")
-                ? { daily: { time: ["2024-04-19", "2024-04-20", "2024-04-21"], temperature_2m_max: [39.0, 39.8, 37.5] } }
+                ? { daily: { time: ["2024-04-19", "2024-04-20", "2024-04-21"], temperature_2m_max: [39.0, 39.8, 37.5], temperature_2m_min: [27, 28, 26] } }
                 // 3 members over 4 days: member01 has two hot days in a row, member02 two separate hot days, member03 none.
                 : { latitude: 23.75, longitude: 90.5, daily: { time: ["d0", "d1", "d2", "d3"], temperature_2m_max: [36, 37, 36, 35],
                     temperature_2m_max_member01: [37, 38.4, 39.1, 36], temperature_2m_max_member02: [38.5, 37, 38.6, 36] } }

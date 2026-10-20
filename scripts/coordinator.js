@@ -4,7 +4,8 @@
 //   node scripts/coordinator.js create --name "Krueng Aceh flood · Banda Aceh" --lat 5.55 --lon 95.32 \
 //        --return-period 5 --lead-days 10 --trigger 60 --amount 2 --claim-days 14 --season-days 180 [--oracles 0xA,0xB,0xC --quorum 2]
 //        [--pipelines glofas,rain --rain-cells "5.5,95.5;5.25,95.5" --rain-return-period 2]   one pipeline per oracle
-//   node scripts/coordinator.js create --hazard heat --name "Dhaka heatwave" --lat 23.81 --lon 90.41 --tmax 38 --heat-days 2 //        --lead-days 7 --trigger 50 --amount 1 --claim-days 7 --season-days 180     (heatwave: NOAA GEFS max temperature)
+//   node scripts/coordinator.js create --hazard heat --name "Dhaka heatwave" --lat 23.81 --lon 90.41 --tmax 38 --heat-days 2 [--tmin 30]
+//        --lead-days 7 --trigger 50 --amount 1 --claim-days 7 --season-days 180     (heatwave: NOAA GEFS max temperature)
 //   node scripts/coordinator.js add-agency    --program 1 --agency 0x..
 //   node scripts/coordinator.js remove-agency --program 1 --agency 0x..
 //   node scripts/coordinator.js fund          --program 1 --amount 10        (USDC, approves first)
@@ -14,10 +15,15 @@ const { parseArgs } = require("util")
 const { ethers } = require("ethers")
 const { connect, abi, explain } = require("../lib/chain")
 
+// parseArgs reads "--lon -85.9" as two flags; a negative number after a flag is its value (the Americas, the
+// southern hemisphere), so join it as "--lon=-85.9".
+const argv = process.argv.slice(2), isNum = (x) => /^-\d/.test(x ?? "")
+const args = argv.flatMap((x, i) => (isNum(argv[i + 1]) && /^--[^=]+$/.test(x) ? [`${x}=${argv[i + 1]}`] : isNum(x) && /^--[^=]+$/.test(argv[i - 1] ?? "") ? [] : [x]))
 const { values: a, positionals: [cmd] } = parseArgs({
+    args,
     allowPositionals: true,
     options: Object.fromEntries(
-        ["program", "agency", "amount", "name", "lat", "lon", "hazard", "tmax", "heat-days", "return-period", "lead-days", "trigger", "claim-days", "season-days", "oracles", "quorum", "pipelines", "rain-cells", "rain-return-period"].map((k) => [k, { type: "string" }])
+        ["program", "agency", "amount", "name", "lat", "lon", "hazard", "tmax", "tmin", "heat-days", "return-period", "lead-days", "trigger", "claim-days", "season-days", "oracles", "quorum", "pipelines", "rain-cells", "rain-return-period"].map((k) => [k, { type: "string" }])
     )
 })
 const need = (...k) => k.forEach((x) => { if (a[x] === undefined) throw new Error(`--${x} is required`) })
@@ -49,7 +55,7 @@ const wait = async (txp) => {
                   lat: num("lat", -90, 90),
                   lon: num("lon", -180, 180),
                   leadDays: num("lead-days", 1, 16), // GEFS 0.25 runs 16 days out
-                  heat: { tmax: num("tmax", 25, 60), days: num("heat-days", 1, 10), cells: [[Number(a.lat), Number(a.lon)]] },
+                  heat: { tmax: num("tmax", 25, 60), ...(a.tmin != null && { tmin: num("tmin", 10, 45) }), days: num("heat-days", 1, 10), cells: [[Number(a.lat), Number(a.lon)]] },
                   unit: "% of ensemble members forecasting a heatwave"
               }
             : {

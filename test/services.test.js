@@ -3,7 +3,7 @@ const fs = require("fs")
 const os = require("os")
 const path = require("path")
 const { parseLine, readHouseholds } = require("../lib/csv")
-const { parseProof, claimStatus, transferStatus } = require("../scripts/relayer")
+const { parseProof, claimStatus, transferStatus, serialSender, sharedStore } = require("../scripts/relayer")
 
 describe("services input validation", () => {
     it("parses quoted CSV cells and validates household rows", () => {
@@ -56,6 +56,22 @@ describe("services input validation", () => {
         for (const v of ["Semaphore__MerkleTreeRootIsNotPartOfTheGroup", "request timeout", "transaction reverted without a reason (CALL_EXCEPTION)"]) expect(claimStatus(v)).to.equal(503)
         expect(transferStatus({ reason: "FiatTokenV2: invalid signature" })).to.equal(422)
         expect(transferStatus(new Error("fetch failed"))).to.equal(503)
+    })
+
+    it("relayer instances sharing a store never reuse a nonce, even when the RPC reports a stale pending count", async () => {
+        const store = sharedStore({}) // the same object stands in for Redis shared by two serverless instances
+        const stale = { getTransactionCount: async () => 3 } // a lagging node: never sees our own sends
+        const a = serialSender(store, stale, "0xrelayer"), b = serialSender(store, stale, "0xrelayer")
+        const used = []
+        const send = async ({ nonce }) => (await new Promise((r) => setTimeout(r, Math.random() * 5)), used.push(nonce), { nonce })
+        await Promise.all([...Array(8)].map((_, i) => (i % 2 ? a : b)(send)))
+        expect(used.sort((x, y) => x - y)).to.deep.equal([3, 4, 5, 6, 7, 8, 9, 10])
+        // Another process moved the chain past us: one "nonce too low" resyncs from the chain.
+        const ahead = { getTransactionCount: async () => 20 }
+        await store.del("naungan:nonce:0xother")
+        let tries = 0
+        const tx = await serialSender(store, ahead, "0xother")(async ({ nonce }) => { if (!tries++) throw Object.assign(new Error("nonce too low"), { code: "NONCE_EXPIRED" }); return { nonce } })
+        expect(tx.nonce).to.equal(20)
     })
 })
 

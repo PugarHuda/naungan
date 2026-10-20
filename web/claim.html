@@ -21,7 +21,7 @@
   main { max-width: 480px; margin: 0 auto; padding: 20px 16px 48px; }
   header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
   .logo { display: flex; gap: 8px; align-items: center; font: 700 20px "Plus Jakarta Sans", system-ui, sans-serif; color: inherit; text-decoration: none; }
-  button.link { background: none; border: 1px solid var(--line); color: var(--muted); border-radius: 99px; padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+  button.link, select.link { background: none; border: 1px solid var(--line); color: var(--muted); border-radius: 99px; padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer; }
   h1 { font: 700 26px/1.25 "Plus Jakarta Sans", system-ui, sans-serif; margin: 0 0 16px; }
   .card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 18px; margin-bottom: 14px; }
   dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; }
@@ -61,7 +61,7 @@
 <main>
   <header>
     <a class="logo" href="./"><svg width="20" height="20" viewBox="0 0 16 16" aria-hidden="true"><path d="M1 9 8 2l7 7v6H1z" fill="var(--accent)"/></svg>Naungan</a>
-    <button class="link" id="lang" type="button">Bahasa Indonesia</button>
+    <select class="link" id="lang" aria-label="Language / Bahasa / ভাষা / Idioma"><option value="en">English</option></select>
   </header>
   <h1 data-t="title">Claim your support</h1>
 

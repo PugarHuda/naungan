@@ -114,6 +114,18 @@
 
   .demo { display: block; width: 100%; border-radius: 24px; background: var(--ink); margin: 0 0 18px; aspect-ratio: 16 / 9; }
   .anyform { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+  .world { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; padding: 0; margin: 0; }
+  .world li { list-style: none; }
+  .world a { display: flex; flex-direction: column; gap: 8px; height: 100%; padding: 22px; color: inherit; text-decoration: none; transition: transform .15s; }
+  .world a:hover { transform: translateY(-2px); }
+  .world .where { font-size: 13px; color: var(--muted); font-weight: 600; }
+  .world h3 { margin: 0; font-size: 19px; letter-spacing: -0.01em; }
+  .world .rule { font-size: 13px; color: var(--muted); margin: 0; flex: 1; }
+  .world .meta { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--muted); }
+  .world .st { font-weight: 700; color: var(--green-ink); }
+  .world .st.open { color: var(--warn); }
+  .world .st.over { color: var(--muted); }
+  #worldSum { font-weight: 600; color: var(--ink); }
   .anyform input { flex: 1 1 260px; min-width: 0; font: 500 17px "Plus Jakarta Sans", sans-serif; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; }
   .hits { list-style: none; padding: 0; margin: 14px 0 0; display: flex; flex-wrap: wrap; gap: 8px; }
   .hits button { font: 600 14px "Plus Jakarta Sans", sans-serif; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px; cursor: pointer; }
@@ -189,7 +201,7 @@
 <nav aria-label="Main">
   <div class="wrap">
     <a class="logo" href="#"><svg width="26" height="26" viewBox="0 0 16 16" aria-hidden="true"><path d="M1 8.5 8 2l7 6.5" fill="none" stroke="#3DD27B" stroke-width="2.4" stroke-linejoin="round"/><path d="M3.5 9.5V15h9V9.5" fill="#0A0B0F"/></svg>NAUNGAN</a>
-    <div class="links"><a href="#how">How it works</a><a href="#record">Track record</a><a href="#privacy">Privacy</a><a href="#built">Proof</a><a href="claim.html">Claim</a></div>
+    <div class="links"><a href="#programs">Programs</a><a href="#how">How it works</a><a href="#record">Track record</a><a href="#privacy">Privacy</a><a href="#built">Proof</a><a href="claim.html">Claim</a></div>
     <a class="btn dark" href="dashboard.html">Live dashboard</a>
   </div>
 </nav>
@@ -200,9 +212,9 @@
   <div class="scene-fade" aria-hidden="true"></div>
   <div class="wrap">
     <div class="copy">
-      <div class="eyebrow">Anticipatory cash · Aceh, Indonesia</div>
+      <div class="eyebrow">Anticipatory cash · Asia, Africa, the Americas</div>
       <h1 id="h1">Cash before the flood</h1>
-      <p class="lede">Naungan (“shelter”) pays families days before a forecast flood, never twice, and never reveals who they are.</p>
+      <p class="lede">Naungan (“shelter”) pays families days before a forecast flood or heatwave, never twice, and never reveals who they are.</p>
       <div class="ctas">
         <a class="btn go" href="dashboard.html">See it live on Base</a>
         <a class="btn plain" href="claim.html">Claim with a card →</a>
@@ -284,10 +296,19 @@
   </div>
 </section>
 
+<section class="band" id="programs" aria-labelledby="worldH">
+  <div class="wrap">
+    <div class="eyebrow">Live programs</div>
+    <h2 class="big" id="worldH">Wherever a disaster can be forecast.</h2>
+    <p class="intro"><span id="worldSum">Reading every program from the contract…</span> Each one runs on the trigger the local Red Cross or Red Crescent society already uses in its Early Action Protocol, from the same global forecasts, and pays in USDC that households see in their own currency and language.</p>
+    <ul class="world" id="world" aria-live="polite"></ul>
+  </div>
+</section>
+
 <section class="band" id="anywhere" aria-labelledby="anyH">
   <div class="wrap">
     <div class="eyebrow">Anywhere</div>
-    <h2 class="big" id="anyH">Not only Aceh: check any river.</h2>
+    <h2 class="big" id="anyH">Check any river on Earth.</h2>
     <p class="intro">The flood data covers rivers worldwide and the contract takes any location, so a program can run wherever floods are forecast. Search a place and this page works out, in your browser with the oracle’s own code, its 1-in-5-year flood level, the next 30 days of forecast and when the trigger would have paid since 1997. Matching names between agencies has a profile per region too (Indonesian and Malay, or basic for anywhere else).</p>
     <form class="anyform" id="anyForm">
       <label for="anyQ" style="position:absolute;left:-9999px">Place to check</label>
@@ -324,8 +345,8 @@
 <section class="band">
   <div class="wrap aceh">
     <div>
-      <div class="eyebrow">Pilot context</div>
-      <h2 class="big">Starting in Aceh, Indonesia.</h2>
+      <div class="eyebrow">Where it started</div>
+      <h2 class="big">The first pilot: Aceh, Indonesia.</h2>
       <p class="intro" style="margin-bottom:0">Rohingya refugees and flood-prone villages are served at once by UN agencies, NGOs and zakat institutions. Indonesia is not party to the 1951 Refugee Convention, so data exposure is especially dangerous here. The first pilot: one district, one NGO and one zakat partner, about 200 households.</p>
     </div>
     <div>
@@ -473,6 +494,45 @@ $("anyForm").onsubmit = async (e) => {
 }
 // A town's centre usually sits on a side stream, not the river that floods it. GloFAS answers 25 points in
 // one request, so look about 10 km around and take the cell with the largest recent mean flow.
+/**
+ * Every program on the contract as a card: where it runs (country reverse-geocoded from its on-chain
+ * coordinates by BigDataCloud's free client endpoint, cached for the browser), its trigger rule and state.
+ */
+async function country(lat, lon) {
+  const k = `naungan-cc:${lat},${lon}`
+  try { const c = JSON.parse(localStorage.getItem(k)); if (c) return c } catch {}
+  const j = await (await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`)).json()
+  const c = { code: j.countryCode, name: j.countryName?.replace(/ \(the\)$/, ""), continent: j.continent }
+  try { localStorage.setItem(k, JSON.stringify(c)) } catch {}
+  return c
+}
+const flag = (cc) => (/^[A-Z]{2}$/.test(cc ?? "") ? String.fromCodePoint(...[...cc].map((ch) => 0x1f1a5 + ch.charCodeAt(0))) : "")
+async function world(ps, metas) {
+  const now = Date.now() / 1000
+  const places = await Promise.all(metas.map((m) => (Number.isFinite(m.lat) ? country(m.lat, m.lon).catch(() => ({})) : {})))
+  const cards = ps.map((p, i) => {
+    const m = metas[i], c = places[i], heat = m.hazard === "heat"
+    const rule = heat
+      ? `Heatwave: ${m.heat?.days ?? 2}+ days above ${m.heat?.tmax ?? 38} °C${m.heat?.tmin != null ? `, nights above ${m.heat.tmin} °C` : ""}, ≥${p.triggerThreshold}% of NOAA GEFS members, ${m.leadDays}-day lead`
+      : `River flood: ≥${p.triggerThreshold}% of GloFAS members above the 1-in-${m.returnPeriod}-year flood, ${m.leadDays}-day lead${m.rain ? ", confirmed by NOAA GEFS rainfall (2-of-2)" : ""}`
+    const over = p.claimDeadline > 0n ? now > Number(p.claimDeadline) : now > Number(p.seasonEnd)
+    const [st, cls] = over ? ["Over", "over"] : p.claimDeadline > 0n ? ["Claims open", "open"] : [`Watching · ${p.lastIndex}%`, ""]
+    const a = Object.assign(document.createElement("a"), { className: "panel", href: `dashboard.html?program=${i + 1}` })
+    a.innerHTML = `<span class="where"></span><h3></h3><p class="rule"></p><div class="meta"><span class="st ${cls}"></span><span class="pool"></span></div>`
+    a.querySelector(".where").textContent = `${flag(c.code)} ${c.name ?? "Unknown place"} · #${i + 1}`
+    a.querySelector("h3").textContent = (m.name ?? `Program ${i + 1}`).split(" · ")[0]
+    a.querySelector(".rule").textContent = rule
+    a.querySelector(".st").textContent = st
+    a.querySelector(".pool").textContent = `${Number(ethers.formatUnits(p.funded, 6))} USDC · ${p.claims}/${p.enrolled} paid`
+    const li = document.createElement("li")
+    li.append(a)
+    return li
+  })
+  $("world").replaceChildren(...cards.reverse()) // newest first
+  const n = (k) => new Set(places.map((x) => x[k]).filter(Boolean)).size
+  $("worldSum").textContent = `${ps.length} programs in ${n("code")} countries on ${n("continent")} continents, live on the contract now.`
+}
+
 async function riverCell(lat, lon) {
   const steps = [-0.1, -0.05, 0, 0.05, 0.1], lats = [], lons = []
   for (const a of steps) for (const b of steps) lats.push((lat + a).toFixed(3)), lons.push((lon + b).toFixed(3))
@@ -537,6 +597,7 @@ async function checkRiver(p) {
     if (at < 0) at = n - 1
     const meta = metas[at]
     $("nprog").textContent = ps.length // totals span every program, the chart above is the featured one
+    world(ps, metas).catch((e) => ($("worldSum").textContent = `Programs unavailable right now (${e.message}).`))
     $("enrolled").textContent = ps.reduce((s, p) => s + p.enrolled, 0n)
     $("paid").textContent = ps.reduce((s, p) => s + p.claims, 0n)
     $("usd").textContent = Number(ethers.formatUnits(ps.reduce((s, p) => s + p.claims * p.amountPerHousehold, 0n), 6)).toLocaleString("en", { maximumFractionDigits: 2 })

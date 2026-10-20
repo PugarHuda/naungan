@@ -34,7 +34,7 @@ const T = {
         wallet: "Wallet on this phone", spend: "Send to a cash-out agent or shop. No fees: you do not need any other coin.",
         to: "Recipient address (0x…)", amt: "Amount in USDC", send: "Send", sent: "Sent", badAmt: "Enter an amount up to your balance",
         scan: "Scan the shop's QR code", scanNo: "This browser cannot scan. Ask the shop to show its address and type or paste it.", scanBad: "That QR code holds no wallet address.", scanDenied: "Camera access was blocked. Allow it in the browser settings, or type the address.",
-        fxNote: (d) => `Rupiah value at the ${d} USD rate (exchangerate-api.com); 1 USDC is worth 1 US dollar.`,
+        fxNote: (d, c) => `${c} value at the ${d} US dollar rate (exchangerate-api.com); 1 USDC is worth 1 US dollar.`,
         pinTitle: "This card is locked. Enter the 6-digit PIN your agency gave you.", unlock: "Unlock card", checking: "Checking PIN…", pinBad: "That PIN does not open this card. Check the slip from your agency.", pinLeft: (n) => `${n} tries left before this card locks.`, pinLocked: "This card is locked after too many wrong PINs. Ask your agency for a new card.", pinOffline: "Checking a PIN needs a connection. Try again when you have signal.",
         alertBtn: "Alert me when claims open", alertOn: "This phone will alert you when claims open, even with the app closed. It remembers your card so the alert opens it.",
         alertNo: "This phone cannot check in the background. Open this page during flood warnings, or listen to your agency.",
@@ -71,7 +71,7 @@ const T = {
         wallet: "Dompet di ponsel ini", spend: "Kirim ke agen tarik tunai atau toko. Tanpa biaya: Anda tidak perlu koin lain.",
         to: "Alamat penerima (0x…)", amt: "Jumlah USDC", send: "Kirim", sent: "Terkirim", badAmt: "Masukkan jumlah sampai sebesar saldo Anda",
         scan: "Pindai kode QR toko", scanNo: "Browser ini tidak bisa memindai. Minta toko menunjukkan alamatnya lalu ketik atau tempel.", scanBad: "Kode QR itu tidak berisi alamat dompet.", scanDenied: "Akses kamera diblokir. Izinkan di pengaturan browser, atau ketik alamatnya.",
-        fxNote: (d) => `Nilai rupiah memakai kurs USD tanggal ${d} (exchangerate-api.com); 1 USDC bernilai 1 dolar AS.`,
+        fxNote: (d, c) => `Nilai ${c} memakai kurs dolar AS tanggal ${d} (exchangerate-api.com); 1 USDC bernilai 1 dolar AS.`,
         pinTitle: "Kartu ini terkunci. Masukkan PIN 6 angka dari lembaga bantuan Anda.", unlock: "Buka kartu", checking: "Memeriksa PIN…", pinBad: "PIN tidak cocok untuk kartu ini. Periksa lembar PIN dari lembaga Anda.", pinLeft: (n) => `Sisa ${n} kali percobaan sebelum kartu ini terkunci.`, pinLocked: "Kartu ini terkunci karena terlalu banyak PIN salah. Minta kartu baru ke lembaga Anda.", pinOffline: "Memeriksa PIN butuh koneksi internet. Coba lagi saat ada sinyal.",
         alertBtn: "Beri tahu saya saat klaim dibuka", alertOn: "Ponsel ini akan memberi tahu Anda saat klaim dibuka, meski aplikasi ditutup. Kartu Anda diingat agar notifikasi langsung membukanya.",
         alertNo: "Ponsel ini tidak bisa memeriksa di latar belakang. Buka halaman ini saat ada peringatan banjir, atau ikuti info dari lembaga Anda.",
@@ -81,12 +81,113 @@ const T = {
         notCard: "Itu bukan kode kartu Naungan. Tempel seluruh kode yang tercetak di bawah QR.", pinFormat: "Masukkan 6 angka PIN Anda.",
         joinClosed: "Pendaftaran ditutup saat peringatan banjir membuka klaim, jadi ponsel ini tidak bisa ikut program ini sekarang. Tanyakan program berikutnya ke lembaga Anda.",
         another: "Pakai kartu lain", pickWallet: "Dompet"
+    },
+    bn: {
+        title: "আপনার সহায়তা দাবি করুন", load: "প্রোগ্রাম লোড হচ্ছে…", noCard: "ফোনের ক্যামেরা দিয়ে আপনার নাউঙ্গান কার্ড স্ক্যান করুন, অথবা নিচে কার্ডের কোড পেস্ট করুন।",
+        paste: "কার্ডের কোড", open: "কার্ড খুলুন", program: "প্রোগ্রাম", amount: "পরিমাণ", status: "অবস্থা",
+        watching: "নদীর উপর নজর রাখা হচ্ছে। বন্যার পূর্বাভাস সীমা পেরোলে দাবি স্বয়ংক্রিয়ভাবে খুলে যাবে।",
+        open_: "বন্যা সতর্কতা: দাবি খোলা হয়েছে", until: "পর্যন্ত", closed: "দাবির সময় শেষ হয়ে গেছে।",
+        notEnrolled: "এই কার্ডটি এই প্রোগ্রামে নিবন্ধিত নয়। আপনার সহায়তা সংস্থার সাথে যোগাযোগ করুন।",
+        claimed: "এই কার্ড দিয়ে ইতিমধ্যে দাবি করা হয়েছে। প্রতিটি পরিবার একবারই দাবি করতে পারে।",
+        enrolled: "আপনার কার্ড এই প্রোগ্রামের জন্য বৈধ।", payTo: "টাকা কোথায় যাবে?",
+        newWallet: "এই ফোনে একটি ওয়ালেট তৈরি করুন", ownWallet: "আমার নিজের ঠিকানা ব্যবহার করুন", addr: "ওয়ালেটের ঠিকানা (0x…)",
+        backup: "এই ব্যাকআপ কী লিখে নিরাপদে রাখুন। যার কাছে এটি থাকবে, টাকা তার নিয়ন্ত্রণে।", showKey: "ব্যাকআপ কী দেখান",
+        watching_heat: "তাপমাত্রার পূর্বাভাসের উপর নজর রাখা হচ্ছে। তাপপ্রবাহের পূর্বাভাস এলে দাবি স্বয়ংক্রিয়ভাবে খুলে যাবে।",
+        open__heat: "তাপপ্রবাহ সতর্কতা: দাবি খোলা হয়েছে", chance_heat: "তাপপ্রবাহের সম্ভাবনা",
+        alertNo_heat: "এই ফোন পটভূমিতে পরীক্ষা করতে পারে না। তাপপ্রবাহের সতর্কতার সময় এই পেজটি খুলুন, অথবা আপনার সংস্থার কথা শুনুন।",
+        joinClosed_heat: "তাপপ্রবাহ সতর্কতায় দাবি খোলার সময় নিবন্ধন বন্ধ হয়ে গেছে, তাই এই ফোন এখন এই প্রোগ্রামে যোগ দিতে পারবে না। পরের প্রোগ্রাম সম্পর্কে আপনার সংস্থাকে জিজ্ঞেস করুন।",
+        chance: "বন্যার সম্ভাবনা", chanceOf: (a, b) => `${a}% (${b}% হলে দাবি খুলবে)`,
+        joinTitle: "নিজের ফোন দিয়ে নিবন্ধন করুন",
+        joinHow: "এই কোডটি সংস্থার কর্মীকে দেখান। এতে কোনো নাম নেই এবং এটি দিয়ে দাবি করা যায় না। আপনার গোপন তথ্য শুধু এই ফোনেই থাকে, তাই সংস্থাও জানতে পারে না আপনি কখন দাবি করেছেন।",
+        joinWait: "এখনও নিবন্ধিত নয়। নিচের কোডটি সংস্থাকে দেখান, তারপর এই পেজটি আবার খুলুন।",
+        joinBackupBtn: "আমার ব্যাকআপ কার্ড দেখান", joinBackupWarn: "এটি আপনার দাবির কার্ড। প্রিন্ট করুন বা ছবি তুলে নিরাপদে রাখুন: ফোন হারালে দাবি করার এটিই একমাত্র উপায়। যার হাতে এটি থাকবে, সে আপনার হয়ে দাবি করতে পারবে।",
+        claim: "এখনই দাবি করুন", proving: "এই ফোনে আপনার গোপন প্রমাণ তৈরি হচ্ছে…", sending: "রিলেয়ারের মাধ্যমে পাঠানো হচ্ছে…",
+        done: "পরিশোধিত", balance: "যেখানে পাঠানো হয়েছে", tx: "লেনদেন দেখুন", err: "কিছু একটা ভুল হয়েছে", underfunded: "প্রোগ্রামে এখন কোনো তহবিল নেই। পরে আবার চেষ্টা করুন।",
+        offline: "সিগন্যাল নেই। এই ফোনে সংরক্ষিত প্রোগ্রামের তথ্য দেখানো হচ্ছে, সময়:", queued: "আপনার দাবি প্রস্তুত এবং এই ফোনে সংরক্ষিত। আবার অনলাইনে এলে এটি স্বয়ংক্রিয়ভাবে পাঠানো হবে।",
+        privacy: "আপনার নাম, পরিচয়পত্র ও অবস্থান কখনো এই ফোনের বাইরে যায় না। ব্লকচেইন শুধু জানে যে একটি নিবন্ধিত পরিবার দাবি করেছে।",
+        wallet: "এই ফোনের ওয়ালেট", spend: "নগদ উত্তোলন এজেন্ট বা দোকানে পাঠান। কোনো ফি নেই: অন্য কোনো কয়েনের দরকার নেই।",
+        to: "প্রাপকের ঠিকানা (0x…)", amt: "USDC-তে পরিমাণ", send: "পাঠান", sent: "পাঠানো হয়েছে", badAmt: "আপনার ব্যালেন্স পর্যন্ত একটি পরিমাণ লিখুন",
+        scan: "দোকানের QR কোড স্ক্যান করুন", scanNo: "এই ব্রাউজার স্ক্যান করতে পারে না। দোকানকে তাদের ঠিকানা দেখাতে বলুন, তারপর টাইপ বা পেস্ট করুন।", scanBad: "ওই QR কোডে কোনো ওয়ালেটের ঠিকানা নেই।", scanDenied: "ক্যামেরা ব্যবহারের অনুমতি বন্ধ। ব্রাউজারের সেটিংসে অনুমতি দিন, অথবা ঠিকানা টাইপ করুন।",
+        fxNote: (d, c) => `${d} তারিখের ডলার রেটে ${c} মূল্য (exchangerate-api.com); ১ USDC = ১ মার্কিন ডলার।`,
+        pinTitle: "এই কার্ডটি লক করা। আপনার সংস্থার দেওয়া ৬ সংখ্যার পিন দিন।", unlock: "কার্ড খুলুন", checking: "পিন যাচাই করা হচ্ছে…", pinBad: "এই পিন দিয়ে কার্ডটি খোলে না। সংস্থার দেওয়া কাগজটি দেখুন।", pinLeft: (n) => `কার্ডটি লক হওয়ার আগে আর ${n} বার চেষ্টা করতে পারবেন।`, pinLocked: "অনেকবার ভুল পিন দেওয়ায় কার্ডটি লক হয়ে গেছে। নতুন কার্ডের জন্য সংস্থাকে বলুন।", pinOffline: "পিন যাচাই করতে ইন্টারনেট লাগে। সিগন্যাল পেলে আবার চেষ্টা করুন।",
+        alertBtn: "দাবি খুললে আমাকে জানান", alertOn: "দাবি খুললে এই ফোন আপনাকে জানাবে, অ্যাপ বন্ধ থাকলেও। আপনার কার্ড মনে রাখা হয় যাতে নোটিফিকেশন সরাসরি সেটি খোলে।",
+        alertNo: "এই ফোন পটভূমিতে পরীক্ষা করতে পারে না। বন্যা সতর্কতার সময় এই পেজটি খুলুন, অথবা আপনার সংস্থার কথা শুনুন।",
+        alertDenied: "এই সাইটের নোটিফিকেশন বন্ধ। সতর্কতা পেতে ব্রাউজারের সেটিংসে অনুমতি দিন।",
+        alertInstall: "আগে নাউঙ্গানকে হোম স্ক্রিনে যোগ করুন (ব্রাউজার মেনু → অ্যাপ ইনস্টল করুন), তারপর আবার চাপুন।",
+        unknownProgram: "এই কার্ডটি এমন একটি প্রোগ্রামের, যা এই নেটওয়ার্কে নেই। নিশ্চিত হন যে আপনি নাউঙ্গান কার্ড স্ক্যান করেছেন।",
+        notCard: "এটি নাউঙ্গান কার্ডের কোড নয়। QR-এর নিচে ছাপা পুরো কোডটি পেস্ট করুন।", pinFormat: "আপনার পিনের ৬টি সংখ্যা দিন।",
+        joinClosed: "বন্যা সতর্কতায় দাবি খোলার সময় নিবন্ধন বন্ধ হয়ে গেছে, তাই এই ফোন এখন এই প্রোগ্রামে যোগ দিতে পারবে না। পরের প্রোগ্রাম সম্পর্কে আপনার সংস্থাকে জিজ্ঞেস করুন।",
+        another: "অন্য কার্ড ব্যবহার করুন", pickWallet: "ওয়ালেট"
+    },
+    es: {
+        title: "Reclame su apoyo", load: "Cargando programa…", noCard: "Escanee su tarjeta Naungan con la cámara del teléfono, o pegue el código de la tarjeta abajo.",
+        paste: "Código de la tarjeta", open: "Abrir tarjeta", program: "Programa", amount: "Monto", status: "Estado",
+        watching: "Vigilando el río. Los reclamos se abren solos cuando el pronóstico de inundación supera el umbral.",
+        open_: "Alerta de inundación: reclamos abiertos", until: "hasta", closed: "El plazo para reclamar ha terminado.",
+        notEnrolled: "Esta tarjeta no está inscrita en este programa. Contacte a su organización de ayuda.",
+        claimed: "Esta tarjeta ya fue reclamada. Cada hogar puede reclamar una sola vez.",
+        enrolled: "Su tarjeta es válida para este programa.", payTo: "¿A dónde debe ir el dinero?",
+        newWallet: "Crear una billetera en este teléfono", ownWallet: "Usar mi propia dirección", addr: "Dirección de billetera (0x…)",
+        backup: "Anote esta clave de respaldo y guárdela bien. Quien la tenga controla el dinero.", showKey: "Mostrar clave de respaldo",
+        watching_heat: "Vigilando el pronóstico de temperatura. Los reclamos se abren solos cuando se pronostica una ola de calor.",
+        open__heat: "Alerta de ola de calor: reclamos abiertos", chance_heat: "Probabilidad de ola de calor",
+        alertNo_heat: "Este teléfono no puede revisar en segundo plano. Abra esta página durante los avisos de ola de calor, o escuche a su organización.",
+        joinClosed_heat: "La inscripción se cerró cuando la alerta de ola de calor abrió los reclamos, así que este teléfono no puede unirse a este programa ahora. Pregunte a su organización por el próximo.",
+        chance: "Probabilidad de inundación", chanceOf: (a, b) => `${a}% (los reclamos se abren al ${b}%)`,
+        joinTitle: "Inscríbase con su propio teléfono",
+        joinHow: "Muestre este código al personal de la organización. No contiene ningún nombre y no sirve para reclamar. Su secreto queda solo en este teléfono, así que ni la organización puede saber cuándo reclama.",
+        joinWait: "Todavía no está inscrito. Muestre el código de abajo a la organización y vuelva a abrir esta página.",
+        joinBackupBtn: "Mostrar mi tarjeta de respaldo", joinBackupWarn: "Esta es su tarjeta para reclamar. Imprímala o guarde una foto en un lugar seguro: si pierde este teléfono, es la única forma de reclamar. Quien la tenga puede reclamar por usted.",
+        claim: "Reclamar ahora", proving: "Creando su prueba privada en este teléfono…", sending: "Enviando por el relayer…",
+        done: "Pagado", balance: "Pagado a", tx: "Ver transacción", err: "Algo salió mal", underfunded: "El programa no tiene fondos en este momento. Intente más tarde.",
+        offline: "Sin señal. Mostrando el programa guardado en este teléfono el", queued: "Su reclamo está listo y guardado en este teléfono. Se enviará solo cuando vuelva la conexión.",
+        privacy: "Su nombre, documento y ubicación nunca salen de este teléfono. La blockchain solo sabe que un hogar inscrito reclamó.",
+        wallet: "Billetera en este teléfono", spend: "Envíe a un agente de retiro o a una tienda. Sin comisiones: no necesita ninguna otra moneda.",
+        to: "Dirección del destinatario (0x…)", amt: "Monto en USDC", send: "Enviar", sent: "Enviado", badAmt: "Ingrese un monto hasta su saldo",
+        scan: "Escanear el código QR de la tienda", scanNo: "Este navegador no puede escanear. Pida a la tienda su dirección y escríbala o péguela.", scanBad: "Ese código QR no contiene una dirección de billetera.", scanDenied: "El acceso a la cámara está bloqueado. Permítalo en la configuración del navegador, o escriba la dirección.",
+        fxNote: (d, c) => `Valor en ${c} al tipo de cambio del dólar del ${d} (exchangerate-api.com); 1 USDC vale 1 dólar estadounidense.`,
+        pinTitle: "Esta tarjeta está bloqueada. Ingrese el PIN de 6 dígitos que le dio su organización.", unlock: "Desbloquear tarjeta", checking: "Verificando PIN…", pinBad: "Ese PIN no abre esta tarjeta. Revise la hoja que le dio su organización.", pinLeft: (n) => `Le quedan ${n} intentos antes de que la tarjeta se bloquee.`, pinLocked: "Esta tarjeta se bloqueó por demasiados PIN incorrectos. Pida una tarjeta nueva a su organización.", pinOffline: "Verificar el PIN necesita conexión. Intente de nuevo cuando tenga señal.",
+        alertBtn: "Avisarme cuando se abran los reclamos", alertOn: "Este teléfono le avisará cuando se abran los reclamos, aun con la aplicación cerrada. Recuerda su tarjeta para que el aviso la abra.",
+        alertNo: "Este teléfono no puede revisar en segundo plano. Abra esta página durante los avisos de inundación, o escuche a su organización.",
+        alertDenied: "Las notificaciones están bloqueadas para este sitio. Permítalas en la configuración del navegador para recibir el aviso.",
+        alertInstall: "Primero agregue Naungan a su pantalla de inicio (menú del navegador → Instalar aplicación) y vuelva a tocar.",
+        unknownProgram: "Esta tarjeta es de un programa que no existe en esta red. Verifique que escaneó una tarjeta Naungan.",
+        notCard: "Ese no es un código de tarjeta Naungan. Pegue el código completo impreso debajo del QR.", pinFormat: "Ingrese los 6 dígitos de su PIN.",
+        joinClosed: "La inscripción se cerró cuando la alerta de inundación abrió los reclamos, así que este teléfono no puede unirse a este programa ahora. Pregunte a su organización por el próximo.",
+        another: "Usar otra tarjeta", pickWallet: "Billetera"
     }
 }
-let lang = (() => { try { return localStorage.getItem("naungan-lang") } catch { return null } })() || (navigator.language?.startsWith("id") ? "id" : "en")
+const NATIVE = { en: "English", id: "Bahasa Indonesia", bn: "বাংলা", es: "Español" }
+// Language: the household's own choice, else the phone's language if we have it, else (once the program's
+// country is known, see `place`) that country's main language, else English.
+const saved = (() => { try { return localStorage.getItem("naungan-lang") } catch { return null } })()
+const phoneLang = navigator.languages?.map((l) => l.slice(0, 2)).find((l) => T[l] && l !== "en")
+let lang = T[saved] ? saved : phoneLang ?? "en"
 // Hazard-specific wording (a heat program says "heatwave", not "flood") falls back to the shared string.
 const t = (k) => (state.hazard === "heat" && T[lang][k + "_heat"]) || T[lang][k]
-const locale = () => (lang === "id" ? "id-ID" : "en-GB")
+const locale = () => (state.country ? `${lang}-${state.country}` : lang === "en" ? "en-GB" : lang)
+
+/** ISO 3166 country → ISO 4217 currency (datasets/country-codes), for showing a payout in local money. */
+const CURRENCY = Object.fromEntries("ADEURAEAEDAFAFNAGXCDAIXCDALALLAMAMDAOAOAARARSASUSDATEURAUAUDAWAWGAXEURAZAZNBABAMBBBBDBDBDTBEEURBFXOFBGEURBHBHDBIBIFBJXOFBLEURBMBMDBNBNDBOBOBBQUSDBRBRLBSBSDBTINRBVNOKBWBWPBYBYNBZBZDCACADCCAUDCDCDFCFXAFCGXAFCHCHFCIXOFCKNZDCLCLPCMXAFCNCNYCOCOPCRCRCCUCUPCVCVECWXCGCXAUDCYEURCZCZKDEEURDJDJFDKDKKDMXCDDODOPDZDZDECUSDEEEUREGEGPEHMADERERNESEURETETBFIEURFJFJDFKFKPFMUSDFODKKFREURGAXAFGBGBPGDXCDGEGELGFEURGGGBPGHGHSGIGIPGLDKKGMGMDGNGNFGPEURGQXAFGREURGTGTQGUUSDGWXOFGYGYDHKHKDHMAUDHNHNLHREURHTHTGHUHUFIDIDRIEEURILILSIMGBPININRIOUSDIQIQDIRIRRISISKITEURJEGBPJMJMDJOJODJPJPYKEKESKGKGSKHKHRKIAUDKMKMFKNXCDKPKPWKRKRWKWKWDKYKYDKZKZTLALAKLBLBPLCXCDLICHFLKLKRLRLRDLSLSLLTEURLUEURLVEURLYLYDMAMADMCEURMDMDLMEEURMFEURMGMGAMHUSDMKMKDMLXOFMMMMKMNMNTMOMOPMPUSDMQEURMRMRUMSXCDMTEURMUMURMVMVRMWMWKMXMXNMYMYRMZMZNNANADNCXPFNEXOFNFAUDNGNGNNINIONLEURNONOKNPNPRNRAUDNUNZDNZNZDOMOMRPAPABPEPENPFXPFPGPGKPHPHPPKPKRPLPLNPMEURPNNZDPRUSDPTEURPWUSDPYPYGQAQARREEURRORONRSRSDRURUBRWRWFSASARSBSBDSCSCRSDSDGSESEKSGSGDSHSHPSIEURSJNOKSKEURSLSLESMEURSNXOFSOSOSSRSRDSSSSPSTSTNSVSVCSXXCGSYSYPSZSZLTCUSDTDXAFTFEURTGXOFTHTHBTJTJSTKNZDTLUSDTMTMTTNTNDTOTOPTRTRYTTTTDTVAUDTWTWDTZTZSUAUAHUGUGXUMUSDUSUSDUYUYUUZUZSVAEURVCXCDVEVESVGUSDVIUSDVNVNDVUVUVWFXPFWSWSTYEYERYTEURZAZARZMZMWZWZWG".match(/.{5}/g).map((x) => [x.slice(0, 2), x.slice(2)]))
+/**
+ * Which country a program runs in, from its coordinates on-chain (or `country` in newer metadata):
+ * reverse-geocoded once by BigDataCloud's free client endpoint and kept on the phone, so it works offline.
+ * It picks the local currency for amounts and, when the household has not chosen one, the language.
+ */
+async function place(meta, key) {
+    const k = `naungan-place:${key}`
+    let cc = meta.country ?? store.get(k)
+    if (!cc && Number.isFinite(meta.lat)) {
+        try {
+            const j = await (await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${meta.lat}&longitude=${meta.lon}&localityLanguage=en`)).json()
+            if (/^[A-Z]{2}$/.test(j.countryCode ?? "")) store.set(k, (cc = j.countryCode))
+        } catch {} // offline: amounts stay in USDC until the next visit
+    }
+    if (!cc) return
+    state.country = cc
+    const local = new Intl.Locale(`und-${cc}`).maximize().language // CLDR likely language: BD → bn, HN → es
+    if (!T[saved] && !phoneLang && T[local] && lang !== local) (lang = local), render(), state.reload?.()
+}
 const $ = (id) => document.getElementById(id)
 const show = (id, on = true) => $(id).toggleAttribute("hidden", !on)
 const scopeHash = (pid) => BigInt(ethers.keccak256(ethers.toBeHex(pid, 32))) >> 8n
@@ -120,7 +221,7 @@ function render() {
     $("addr").placeholder = t("addr")
     $("sendTo").placeholder = t("to")
     $("sendAmt").placeholder = t("amt")
-    $("lang").textContent = lang === "en" ? "Bahasa Indonesia" : "English"
+    $("lang").value = lang
 }
 
 /**
@@ -164,10 +265,12 @@ window.addEventListener("hashchange", () => location.reload())
 
 async function main() {
     render()
-    $("lang").onclick = () => {
-        lang = lang === "en" ? "id" : "en"
+    $("lang").replaceChildren(...Object.keys(T).map((l) => new Option(NATIVE[l], l)))
+    $("lang").onchange = (e) => {
+        lang = e.target.value
         try { localStorage.setItem("naungan-lang", lang) } catch {}
         render()
+        state.reload?.() // dates and amounts are formatted for the language too
     }
 
     // A registration link from the agency (#join=<program>): this phone makes its own identity.
@@ -251,28 +354,31 @@ const store = {
     del: (k) => { try { localStorage.removeItem(k) } catch {} }
 }
 /**
- * What a USDC amount means at the market: the day's USD→IDR rate from a free public API, kept on the
- * phone so it still shows offline. USDC is redeemable 1:1 for US dollars, so USD is the right base.
+ * What a USDC amount means at the local market: the day's USD rates from a free public API, kept on the
+ * phone so they still show offline. USDC is redeemable 1:1 for US dollars, so USD is the right base.
  */
-const FX = "naungan-fx-idr"
-async function idrRate() {
+const FX = "naungan-fx-usd"
+async function usdRates() {
     const saved = store.get(FX)
     if (saved && Date.now() - saved.at < 12 * 3600e3) return saved
     try {
         const j = await (await fetch("https://open.er-api.com/v6/latest/USD")).json()
-        if (j.result !== "success" || !(j.rates?.IDR > 0)) throw new Error("no rate")
-        const fx = { idr: j.rates.IDR, day: j.time_last_update_unix * 1000, at: Date.now() }
+        if (j.result !== "success" || !j.rates) throw new Error("no rate")
+        const fx = { rates: j.rates, day: j.time_last_update_unix * 1000, at: Date.now() }
         store.set(FX, fx)
         return fx
     } catch {
-        return saved // offline or the API is down: the last known rate, or none
+        return saved // offline or the API is down: the last known rates, or none
     }
 }
-async function showIdr(id, usdc) {
-    const fx = await idrRate()
-    if (!fx) return
-    $(id).textContent = `≈ Rp ${Math.round(Number(usdc) * fx.idr).toLocaleString("id-ID")}`
-    $(id).title = t("fxNote")(new Date(fx.day).toLocaleDateString(locale()))
+async function showLocal(id, usdc) {
+    const cur = CURRENCY[state.country]
+    if (!cur || cur === "USD") return show(id, false) // dollar countries read the USDC figure as is
+    const fx = await usdRates(), rate = fx?.rates?.[cur]
+    if (!(rate > 0)) return show(id, false)
+    const money = new Intl.NumberFormat(locale(), { style: "currency", currency: cur, maximumFractionDigits: rate > 10 ? 0 : 2 })
+    $(id).textContent = `≈ ${money.format(Number(usdc) * rate)}`
+    $(id).title = t("fxNote")(new Date(fx.day).toLocaleDateString(locale()), new Intl.DisplayNames([locale()], { type: "currency" }).of(cur))
     show(id)
 }
 
@@ -332,19 +438,25 @@ async function load() {
 
     $("pname").textContent = snap.meta.name
     if (state.hazard !== snap.meta.hazard) (state.hazard = snap.meta.hazard), render()
+    await place(snap.meta, `${d.naungan}:${state.pid}`)
     $("pamount").textContent = `${ethers.formatUnits(amount, snap.dec)} USDC`
-    showIdr("pidr", ethers.formatUnits(amount, snap.dec))
-    $("pstatus").textContent = deadline === 0n ? t("watching") : open ? `${t("open_")} ${t("until")} ${new Date(Number(deadline) * 1000).toLocaleString(locale(), { dateStyle: "long", timeStyle: "short" })}` : t("closed")
+    // Everything here is worded and formatted for the language, so a language change repaints it.
+    const paint = () => {
+        showLocal("pidr", ethers.formatUnits(amount, snap.dec))
+        $("pstatus").textContent = deadline === 0n ? t("watching") : open ? `${t("open_")} ${t("until")} ${new Date(Number(deadline) * 1000).toLocaleString(locale(), { dateStyle: "long", timeStyle: "short" })}` : t("closed")
+        $("pindex").textContent = t("chanceOf")(snap.lastIndex, snap.threshold)
+        if (snap.offline) ($("offline").textContent = `${t("offline")} ${new Date(snap.at).toLocaleString(locale())}`), show("offline")
+    }
+    paint()
+    state.reload = paint
     $("pstatus").className = open ? "pill on" : "pill"
-    $("pindex").textContent = t("chanceOf")(snap.lastIndex, snap.threshold)
-    if (snap.offline) ($("offline").textContent = `${t("offline")} ${new Date(snap.at).toLocaleString(locale())}`), show("offline")
 
     const showPaid = (body) => {
         show("progress", false), show("pay", false), show("queued", false), show("done")
         $("txlink").href = d.explorer ? `${d.explorer}/tx/${body.txHash}` : "#"
         $("txlink").textContent = d.explorer ? t("tx") : body.txHash
         $("bal").textContent = `${ethers.formatUnits(amount, snap.dec)} USDC`
-        showIdr("balIdr", ethers.formatUnits(amount, snap.dec))
+        showLocal("balIdr", ethers.formatUnits(amount, snap.dec))
         $("to").textContent = `${t("balance")} ${body.payout}`
         $("cardmsg").dataset.t = "claimed", ($("cardmsg").className = "note ok"), render()
         walletPanel(d, (b) => b >= amount, body.payout)
@@ -526,7 +638,7 @@ async function walletPanel(d, settled = () => true, prefer) {
     const use = (addr) => {
         const w = funded.find((x) => x.address === addr), bal = bals.get(addr)
         $("wbal").textContent = `${ethers.formatUnits(bal, dec)} USDC`
-        showIdr("wIdr", ethers.formatUnits(bal, dec))
+        showLocal("wIdr", ethers.formatUnits(bal, dec))
         $("waddr").textContent = w.address
         spendFrom(d, token, w, bal, dec)
     }

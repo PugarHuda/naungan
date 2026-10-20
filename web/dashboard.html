@@ -489,7 +489,7 @@ const words = (m) => m?.hazard === "heat" ? { noun: "heatwave", Noun: "Heatwave"
 // heatForecast) against the program's heatwave temperature, with the trigger's lead window shaded.
 async function heatChart(meta) {
   const v = await import("./verify.js")
-  const { cells, tmax, days } = v.heatParams(meta)
+  const { cells, tmax, tmin, days } = v.heatParams(meta)
   const f = await v.heatForecast({ cells, leadDays: 16 })
   const at = (i) => f.series.map((s) => s[i]).filter((x) => x != null).sort((a, b) => a - b)
   // The last forecast day can come back empty for every member: chart only the days that have data.
@@ -510,7 +510,7 @@ async function heatChart(meta) {
       svgEl("path", { d: `${line(max)}L${x(n - 1)},${y(lo)}L${L},${y(lo)}Z`, fill: "rgba(240,128,60,.22)" }),
       svgEl("path", { d: line(med), fill: "none", stroke: "#0A0B0F", "stroke-width": 3, "stroke-linejoin": "round", "stroke-linecap": "round" }),
       svgEl("line", { x1: L, x2: W - R, y1: y(tmax), y2: y(tmax), stroke: "#A94F0B", "stroke-width": 2, "stroke-dasharray": "7 5" }),
-      svgEl("text", { x: W - R, y: y(tmax) - 8, fill: "#A94F0B", "font-size": 13, "font-weight": 700, "text-anchor": "end" }, `Heatwave: ${days}+ days above ${tmax} °C`),
+      svgEl("text", { x: W - R, y: y(tmax) - 8, fill: "#A94F0B", "font-size": 13, "font-weight": 700, "text-anchor": "end" }, `Heatwave: ${days}+ days above ${tmax} °C${tmin == null ? "" : `, nights above ${tmin} °C`}`),
       svgEl("text", { x: L + 8, y: T + 18, fill: "#5C6268", "font-size": 12 }, `Next ${meta.leadDays} days: what the trigger looks at`),
       svgEl("text", { x: 14, y: T + (H - T - B) / 2, fill: "#5C6268", "font-size": 12, transform: `rotate(-90 14 ${T + (H - T - B) / 2})`, "text-anchor": "middle" }, "°C, daily max")
     )
@@ -578,7 +578,7 @@ async function trackRecord() {
     const list = el("ol")
     const heat = m.hazard === "heat"
     for (const e of r.paid.slice().reverse()) list.append(el("li", null, heat ? `${day(e.start)} to ${day(e.end)}, up to ${e.peak.toFixed(1)} °C` : `${day(e.peakDate)}, river ${Math.round(e.peak)} m³/s`))
-    const note = el("p", "fine", heat ? `Pays when ERA5 records ${m.heat?.days ?? 2} or more consecutive days above ${r.flood.threshold} °C. This replays a perfect forecast: it shows how often the program pays, not how skilful forecasts are.` : `Pays when the river passes the 1-in-${m.returnPeriod}-year flood (${Math.round(r.flood.threshold)} m³/s)` +
+    const note = el("p", "fine", heat ? `Pays when ERA5 records ${m.heat?.days ?? 2} or more consecutive days above ${r.flood.threshold} °C${m.heat?.tmin == null ? "" : ` with nights above ${m.heat.tmin} °C`}. This replays a perfect forecast: it shows how often the program pays, not how skilful forecasts are.` : `Pays when the river passes the 1-in-${m.returnPeriod}-year flood (${Math.round(r.flood.threshold)} m³/s)` +
       (r.rain ? ` and catchment rain passes its 1-in-${m.rain.returnPeriod}-year ${m.leadDays}-day total (${Math.round(r.rain.threshold)} mm) within ${m.leadDays} days.` : ".") +
       " This replays a perfect forecast: it shows how often the program pays, not how skilful forecasts are.")
     out.replaceChildren(head, tl, list, note)
