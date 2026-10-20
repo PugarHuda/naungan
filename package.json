@@ -18,6 +18,7 @@
   "license": "MIT",
   "type": "commonjs",
   "devDependencies": {
+    "@rapideditor/country-coder": "^5.6.1",
     "@axe-core/playwright": "^4.14.0",
     "@ethereum-attestation-service/eas-contracts": "^1.9.0",
     "@noble/curves": "^1.9.7",

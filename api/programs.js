@@ -46,15 +46,10 @@ function summarise({ programs, events, decimals = 6, base, now = Date.now() / 10
     })
 }
 
-/** Country of a point (BigDataCloud's keyless endpoint, as the web pages use); null when it fails. */
-async function countryOf(lat, lon) {
-    try {
-        const j = await (await fetch(`https://api-bdc.io/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`, { signal: AbortSignal.timeout(5000) })).json()
-        return /^[A-Z]{2}$/.test(j.countryCode ?? "") ? j.countryCode : null
-    } catch {
-        return null
-    }
-}
+// Country of a point from bundled borders (country-coder, as OpenStreetMap's iD editor), as the web pages do:
+// no geocoding service in the path (BigDataCloud's keyless endpoint is for browsers only and bans servers).
+const { iso1A2Code } = require("@rapideditor/country-coder")
+const countryOf = (lat, lon) => iso1A2Code([lon, lat]) ?? null
 
 async function load() {
     const { d, naungan, provider } = readOnly()
@@ -68,7 +63,7 @@ async function load() {
         token.decimals()
     ])
     const programs = ids.map((id, i) => ({ id, p: ps[i], meta: metas[i] }))
-    const countries = Object.fromEntries(await Promise.all(programs.filter((x) => !x.meta.country && Number.isFinite(x.meta.lat)).map(async (x) => [x.id, await countryOf(x.meta.lat, x.meta.lon)])))
+    const countries = Object.fromEntries(programs.filter((x) => !x.meta.country && Number.isFinite(x.meta.lat)).map((x) => [x.id, countryOf(x.meta.lat, x.meta.lon)]))
     return { d, programs, events, decimals: Number(decimals), countries }
 }
 

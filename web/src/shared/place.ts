@@ -1,5 +1,5 @@
 // Where a program runs and what its money is worth there: country from the program's on-chain coordinates
-// (BigDataCloud's free, keyless client endpoint), its currency (ISO 4217) and main language (CLDR likely
+// (bundled borders, no service), its currency (ISO 4217) and main language (CLDR likely
 // subtags, built into Intl), and the day's USD rates. Everything is kept in localStorage so a phone that
 // once had signal still shows it offline.
 
@@ -18,30 +18,22 @@ const write = (k: string, v: unknown) => {
     } catch {} // private window or storage blocked: works, just without the offline copy
 }
 
-// Several programs often share a river gauge: one lookup per point, not one per program card.
-const pending = new Map<string, Promise<Place | null>>()
-
-/** Country of a point, or null when offline and never looked up before. A failed lookup is tried once more. */
-export function placeOf(lat: number, lon: number): Promise<Place | null> {
+/**
+ * Country of a point, offline: country-coder (the borders OpenStreetMap's iD editor uses) is bundled as its own
+ * chunk, loaded the first time a page needs it, so no geocoding service sees where programs are or can rate-limit
+ * or ban the page. Its UN M49 region stands in for the continent (the Americas count as one). Null at sea.
+ */
+export async function placeOf(lat: number, lon: number): Promise<Place | null> {
     const k = `naungan-place:${lat},${lon}`
     const saved = read<Place>(k)
-    if (saved?.code) return Promise.resolve(saved)
-    const look = async (): Promise<Place | null> => {
-        for (let i = 0; i < 2; i++) {
-            try {
-                const j = await (await fetch(`https://api-bdc.io/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`, { signal: AbortSignal.timeout(8000) })).json()
-                if (!/^[A-Z]{2}$/.test(j.countryCode ?? "")) return null // open sea: no country, not a failure
-                const p: Place = { code: j.countryCode, name: j.countryName?.replace(/ \(the\)$/, ""), continent: j.continent }
-                write(k, p)
-                return p
-            } catch {
-                await new Promise((r) => setTimeout(r, 1500))
-            }
-        }
-        return null
-    }
-    if (!pending.has(k)) pending.set(k, look().finally(() => pending.delete(k)))
-    return pending.get(k)!
+    if (saved?.code) return saved
+    const cc = await import("@rapideditor/country-coder")
+    const code = cc.iso1A2Code([lon, lat])
+    if (!code || !/^[A-Z]{2}$/.test(code)) return null
+    const continent = cc.featuresContaining([lon, lat]).find((f) => f.properties.level === "region")?.properties.nameEn
+    const p: Place = { code, name: new Intl.DisplayNames(["en"], { type: "region" }).of(code), continent }
+    write(k, p)
+    return p
 }
 
 /** ISO 3166 country → ISO 4217 currency (datasets/country-codes). */

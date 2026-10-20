@@ -31,7 +31,7 @@ test("security headers: present, and the CSP allows every host the pages actuall
     await page.getByRole("list", { name: "Matching places" }).getByRole("button").first().click()
     await expect(page.getByText(/to the main channel|Uganda Red Cross/).first()).toBeVisible()
 
-    expect(fetched.size).toBeGreaterThanOrEqual(5) // RPC, indexer, Open-Meteo, BigDataCloud, exchange rates…
+    expect(fetched.size).toBeGreaterThanOrEqual(5) // RPC, indexer, Open-Meteo, exchange rates, IFRC GO…
     expect([...fetched].filter((o) => !connect.includes(o)), "origins fetched but missing from connect-src").toEqual([])
 })
 
