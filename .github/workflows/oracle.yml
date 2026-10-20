@@ -1,40 +1,34 @@
-# Hosted flood oracle: every 6 hours (GloFAS updates daily), post the GloFAS trigger for each watched
-# program to the deployment in web/deployment.json. No server to keep alive.
-# Setup: repository secret ORACLE_KEY (an oracle address of the program, with a little gas) and
-# repository variable PROGRAMS (comma-separated program ids, e.g. "1"). For 2-of-2 programs, also
-# RAIN_ORACLE_KEY (the oracle whose metadata pipeline is "rain") and RAIN_PROGRAMS.
+# Hosted oracles: every 6 hours (GloFAS and GEFS update daily), each key reports on every live program it is
+# an oracle of, found on-chain (`oracle.js --all`), so a program launched from launch.html needs no setup
+# here. Each oracle runs the pipeline its program's metadata assigns it (GloFAS, GEFS rainfall or heatwave).
+# Setup: repository secrets ORACLE_KEY and, for 2-of-2 programs, RAIN_ORACLE_KEY (each with a little gas).
+# A key running low on gas shows up as a warning on the run.
 name: Oracle
 on:
   schedule: [{ cron: "17 */6 * * *" }]
   workflow_dispatch:
     inputs:
-      program: { description: "Program id (defaults to vars.PROGRAMS)", required: false }
+      program: { description: "One program id (default: every live program of each key)", required: false }
 concurrency: { group: oracle, cancel-in-progress: false } # never two reports racing on one nonce
 jobs:
   report:
     runs-on: ubuntu-latest
-    if: ${{ vars.PROGRAMS != '' || inputs.program != '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - run: npx hardhat compile
-      - name: Post GloFAS / heatwave reading (each program's metadata picks the pipeline)
+      - name: Hosted oracle (GloFAS / heatwave)
         env:
           PRIVATE_KEY: ${{ secrets.ORACLE_KEY }}
-          PROGRAMS: ${{ inputs.program || vars.PROGRAMS }}
+          PROGRAM: ${{ inputs.program }}
         run: |
-          for p in ${PROGRAMS//,/ }; do
-            node scripts/oracle.js --program "$p" || echo "::warning::program $p: oracle run failed"
-          done
-      # Second, independent key and forecast (NOAA GEFS rainfall); each oracle picks its pipeline from the program metadata.
-      - name: Post GEFS rainfall reading
-        if: ${{ vars.RAIN_PROGRAMS != '' }}
+          if [ -n "$PROGRAM" ]; then node scripts/oracle.js --program "$PROGRAM"; else node scripts/oracle.js --all; fi
+      - name: Second oracle (NOAA GEFS rainfall)
+        if: ${{ inputs.program == '' }}
         env:
           PRIVATE_KEY: ${{ secrets.RAIN_ORACLE_KEY }}
-          PROGRAMS: ${{ vars.RAIN_PROGRAMS }}
         run: |
-          for p in ${PROGRAMS//,/ }; do
-            node scripts/oracle.js --program "$p" || echo "::warning::program $p: rain oracle run failed"
-          done
+          if [ -z "$PRIVATE_KEY" ]; then echo "no RAIN_ORACLE_KEY secret: skipping"; exit 0; fi
+          node scripts/oracle.js --all

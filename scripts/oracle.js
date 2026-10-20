@@ -10,13 +10,14 @@
 //   node scripts/oracle.js --program 1 --replay 2025-11-20  replay a real past event from reanalysis
 //   node scripts/oracle.js --program 1 --dry-run            compute and print, send nothing
 //   node scripts/oracle.js --program 4 --source rain --dry-run
+//   node scripts/oracle.js --all                            every live program this key is an oracle of (no watch list to keep)
 const { parseArgs } = require("util")
 const { connect, programMeta, explain } = require("../lib/chain")
 const hazard = require("../lib/hazard.mjs")
 const { ethers } = require("ethers")
 
 const { values: a } = parseArgs({
-    options: { program: { type: "string" }, watch: { type: "string" }, replay: { type: "string" }, "dry-run": { type: "boolean" }, source: { type: "string" } }
+    options: { all: { type: "boolean" }, program: { type: "string" }, watch: { type: "string" }, replay: { type: "string" }, "dry-run": { type: "boolean" }, source: { type: "string" } }
 })
 
 async function once({ naungan, wallet }, pid) {
@@ -38,8 +39,40 @@ async function once({ naungan, wallet }, pid) {
     return ev.args.triggered
 }
 
+/**
+ * Programs this key should report on now: it is one of their oracles, and they are neither triggered nor
+ * past their season. Read from the chain, so a program launched from the browser is picked up on the next
+ * run with no list to edit.
+ */
+async function mine({ naungan, wallet }) {
+    const n = Number(await naungan.programCount()), now = Date.now() / 1000, out = []
+    for (let pid = 1n; pid <= BigInt(n); pid++) {
+        const p = await naungan.programs(pid)
+        if (p.claimDeadline > 0n || now > Number(p.seasonEnd)) continue
+        if (await naungan.isOracle(pid, wallet.address)) out.push(pid)
+    }
+    return out
+}
+
+/** The relayer and oracles pay gas from these keys: say so in the run log well before they run dry. */
+const LOW_GAS = ethers.parseEther("0.01")
+async function gasCheck({ wallet }) {
+    const bal = await wallet.provider.getBalance(wallet.address)
+    if (bal < LOW_GAS) console.log(`::warning::${wallet.address} has ${ethers.formatEther(bal)} ETH left for gas; top it up (scripts/topup.js)`)
+}
+
 ;(async () => {
-    if (!/^\d+$/.test(a.program ?? "")) throw new Error("--program <id> is required")
+    if (a.all) {
+        const ctx = await connect()
+        const pids = await mine(ctx)
+        console.log(`${ctx.wallet.address} is an oracle of ${pids.length} live program(s): ${pids.join(", ") || "none"}`)
+        let failed = 0
+        for (const pid of pids) await once(ctx, pid).catch((e) => (failed++, console.log(`::warning::program ${pid}: ${explain(e)}`)))
+        await gasCheck(ctx)
+        if (failed === pids.length && pids.length) process.exitCode = 1 // every report failed: make the run red
+        return
+    }
+    if (!/^\d+$/.test(a.program ?? "")) throw new Error("--program <id> (or --all) is required")
     if (a.replay && !/^\d{4}-\d{2}-\d{2}$/.test(a.replay)) throw new Error("--replay must be YYYY-MM-DD")
     const ctx = await connect()
     const pid = BigInt(a.program)

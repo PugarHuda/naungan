@@ -101,9 +101,11 @@
                 <code class="joinurl">{done.join}</code>
             </li>
             <li>
-                The oracle only reports programs it watches. With the hosted oracle, ask the Naungan maintainers to add
-                <b>{done.id}</b> to its watch list (the <code>PROGRAMS</code> repository variable). Or run it yourself:
-                <code>node scripts/oracle.js --program {done.id} --watch 6</code>
+                {#if oracleList().some((o) => o.toLowerCase() === HOSTED_ORACLE.toLowerCase())}
+                    Naungan’s hosted oracle finds programs it is an oracle of on-chain: it reports on <b>#{done.id}</b> from its
+                    next run (every 6 hours) with no further setup.
+                {/if}
+                Any other oracle key runs <code>node scripts/oracle.js --all</code> (every live program it is an oracle of), on a schedule.
             </li>
         </ol>
     {:else}

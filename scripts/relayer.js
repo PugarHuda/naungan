@@ -226,8 +226,11 @@ async function createRelayer({ store = sharedStore() } = {}) {
     }
     const handle = async (method, url, ip, raw) => {
         if (method === "OPTIONS") return [204, {}]
-        if (method === "GET" && url === "/health")
-            return [200, { relayer: wallet.address, balance: ethers.formatEther(await provider.getBalance(wallet.address)), chainId: d.chainId, naungan: d.naungan, pinStore: store.store, pinTries: MAX_TRIES }]
+        if (method === "GET" && url === "/health") {
+            const bal = await provider.getBalance(wallet.address)
+            // lowGas: under ~50 sponsored claims left; uptime monitors can alert on it.
+            return [200, { relayer: wallet.address, balance: ethers.formatEther(bal), lowGas: bal < ethers.parseEther("0.01"), chainId: d.chainId, naungan: d.naungan, pinStore: store.store, pinTries: MAX_TRIES }]
+        }
         // A loose per-IP limit (an agency issues hundreds of cards at once); the per-card cap is the real bound.
         if (method === "POST" && url === "/pin") {
             if (await limited(`pin:${ip}`, PIN_PER_MINUTE)) return [429, { error: "too many requests, try again in a minute" }]

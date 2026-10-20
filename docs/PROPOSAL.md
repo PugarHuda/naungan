@@ -69,7 +69,7 @@ Cash assistance is now a core part of humanitarian response (about 21% of intern
 | `web/claim.html` | Household app (installable PWA): in-browser Groth16 proof, works offline and sends the claim when signal returns, opt-in flood alert computed on the phone (no push server), EN/ID | ✅ Browser-tested: claim, offline claim, double claim, underfunded, unenrolled card; axe-core WCAG 2.1 AA: 0 violations |
 | `web/dashboard.html`, `web/index.html` | Public totals, oracle evidence, donor funding from any browser wallet and CSV/JSON audit export from chain events only | ✅ XSS- and CSV-injection-tested; WCAG 2.1 AA: 0 violations |
 | **Live on Base Sepolia** | Naungan [`0x00E9E8F7a9E8Dd4923Eb92eC5536f70ecD0C70f4`](https://sepolia.basescan.org/address/0x00E9E8F7a9E8Dd4923Eb92eC5536f70ecD0C70f4), source verified on [Sourcify](https://repo.sourcify.dev/84532/0x00E9E8F7a9E8Dd4923Eb92eC5536f70ecD0C70f4) (exact match), paying Circle testnet USDC. Program #1 (Krueng Aceh): 3 households enrolled, live GloFAS reading posted (0%), then a labelled replay of the Nov 2025 flood opened claims; 3 ZK claims paid from a phone browser (one made offline), and a paid wallet spent 1 USDC gaslessly via EIP-3009. Program #2: claims made on the public GitHub Pages app through the relayer hosted on Vercel, ~12 s per claim | ✅ All on-chain, see the dashboard ledger |
-| CI, Pages, hosted oracle | Tests, build and a Slither gate on every push; web apps on GitHub Pages; the GloFAS oracle runs every 6 hours on GitHub Actions | ✅ |
+| CI, Pages, hosted oracle | Tests, build and a Slither gate on every push; web apps on Vercel; the oracles run every 6 hours on GitHub Actions and discover their programs on-chain | ✅ |
 
 ## 6. Feasibility & long-term sustainability (15%)
 
