@@ -4,7 +4,7 @@
   "functions": {
     "api/relayer.js": {
       "includeFiles": "{web/deployment.json,artifacts/contracts/Naungan.sol/Naungan.json,artifacts/@semaphore-protocol/contracts/Semaphore.sol/Semaphore.json}",
-      "maxDuration": 60
+      "maxDuration": 300
     },
     "api/programs.js": {
       "includeFiles": "{web/deployment.json,artifacts/contracts/Naungan.sol/Naungan.json}",
@@ -17,8 +17,22 @@
     "api/cap.js": {
       "includeFiles": "{web/deployment.json,artifacts/contracts/Naungan.sol/Naungan.json}",
       "maxDuration": 60
+    },
+    "api/iati.js": {
+      "includeFiles": "{web/deployment.json,artifacts/contracts/Naungan.sol/Naungan.json}",
+      "maxDuration": 60
     }
   },
+  "crons": [
+    {
+      "path": "/oracle",
+      "schedule": "7 12 * * *"
+    },
+    {
+      "path": "/notify",
+      "schedule": "37 12 * * *"
+    }
+  ],
   "rewrites": [
     {
       "source": "/relay",
@@ -45,6 +59,10 @@
       "destination": "/api/relayer?route=/notify"
     },
     {
+      "source": "/oracle",
+      "destination": "/api/relayer?route=/oracle"
+    },
+    {
       "source": "/health",
       "destination": "/api/relayer?route=/health"
     },
@@ -55,6 +73,10 @@
     {
       "source": "/cap.xml",
       "destination": "/api/cap"
+    },
+    {
+      "source": "/iati.xml",
+      "destination": "/api/iati"
     },
     {
       "source": "/programs.geojson",

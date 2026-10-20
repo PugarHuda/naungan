@@ -1,7 +1,15 @@
 const { expect } = require("chai")
-const { annualMaxima, returnLevel, exceedance, rolling, assessRain, episodes, agree, longestRun, assessHeat, replayHeat } = require("../lib/hazard.mjs")
+const fs = require("fs")
+const os = require("os")
+const path = require("path")
+const { annualMaxima, returnLevel, exceedance, rolling, assessRain, episodes, agree, longestRun, assessHeat, replayHeat, floodThreshold } = require("../lib/hazard.mjs")
 
 describe("hazard (GloFAS trigger math)", () => {
+    // Climatologies are cached on disk (lib/hazard.mjs memo): keep this suite's stubbed ones out of the real cache.
+    let dir
+    before(() => (process.env.HAZARD_CACHE = dir = fs.mkdtempSync(path.join(os.tmpdir(), "hazard-"))))
+    after(() => (delete process.env.HAZARD_CACHE, fs.rmSync(dir, { recursive: true, force: true })))
+
     it("takes yearly peaks from complete years only", () => {
         const time = [], values = []
         for (let d = 0; d < 365 * 2 + 10; d++) {
@@ -116,5 +124,24 @@ describe("hazard (GloFAS trigger math)", () => {
         ])
         const rain = [{ start: "2000-01-08", end: "2000-01-09" }, { start: "2000-06-01", end: "2000-06-02" }]
         expect(agree(ep, rain, 10).map((e) => e.start)).to.deep.equal(["2000-01-02"]) // rain on 1-08 is within 10 days of the first flood, 11 days before the second
+    })
+
+    it("an oracle fetches a climatology once a year, not once a run: Node keeps it in HAZARD_CACHE", async () => {
+        const real = globalThis.fetch
+        const time = [], river_discharge = []
+        for (let d = 0; d < 365 * 30; d++) time.push(new Date(Date.UTC(1990, 0, 1) + d * 864e5).toISOString().slice(0, 10)), river_discharge.push(100 + (d % 365) + (d % 997))
+        let calls = 0
+        globalThis.fetch = async () => (calls++, { ok: true, json: async () => ({ latitude: 1, longitude: 2, daily: { time, river_discharge } }) })
+        try {
+            const m = { lat: 1.234, lon: 2.345, returnPeriod: 5 }
+            const first = await floodThreshold(m), again = await floodThreshold(m)
+            expect(calls).to.equal(1)
+            expect(again).to.deep.equal(first)
+            expect(fs.readdirSync(dir).filter((x) => x.includes("glofas"))).to.have.length(1)
+            await floodThreshold({ ...m, returnPeriod: 10 }) // another return period is another key
+            expect(calls).to.equal(2)
+        } finally {
+            globalThis.fetch = real
+        }
     })
 })

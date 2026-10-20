@@ -12,3 +12,4 @@ cards/
 dist/
 playwright-report/
 test-results/
+.hazard-cache/

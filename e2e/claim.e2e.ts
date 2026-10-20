@@ -64,3 +64,28 @@ test.describe("offline", () => {
         await expect(page.locator("#joinCode, svg").first()).toBeVisible() // the registration code, from this phone
     })
 })
+
+// An e2e household enrolled in program 3 (watching: trigger not fired), so the card offers flood alerts. Never claims.
+const WATCH_CARD = "/claim.html#p=3&id=do3gruhiVV2vHe75Zl4%2BFoQ297YKA5q6inXoHvDLn2A%3D"
+
+test.describe("iPhone alerts", () => {
+    // Safari on iOS has no PushManager outside a home-screen app; Chromium with an iPhone user agent and no
+    // PushManager behaves as that browser does for this check.
+    test.use({ serviceWorkers: "allow", userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1" })
+    test("claim: on an iPhone browser tab, the alert button explains Add to Home Screen instead of failing @phone", async ({ page, check }) => {
+        await page.addInitScript(() => {
+            delete (ServiceWorkerRegistration.prototype as { pushManager?: unknown }).pushManager
+            delete (window as { PushManager?: unknown }).PushManager
+        })
+        let asked = false
+        await page.exposeFunction("__asked", () => (asked = true))
+        await page.addInitScript(() => (Notification.requestPermission = async () => ((window as unknown as { __asked: () => void }).__asked(), "denied")))
+        await page.goto(WATCH_CARD)
+        await page.locator("select#lang").selectOption("en")
+        await expect(page.getByText("Your card is valid for this program")).toBeVisible({ timeout: 90_000 })
+        await page.getByRole("button", { name: "Alert me when claims open" }).click()
+        await expect(page.getByText("On iPhone, alerts work from the home screen: tap Share, then Add to Home Screen")).toBeVisible()
+        expect(asked).toBe(false) // no permission prompt that iOS would refuse anyway
+        await check(page)
+    })
+})

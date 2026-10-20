@@ -18,11 +18,11 @@ const { connect, programMeta, explain } = require("../lib/chain")
 const hazard = require("../lib/hazard.mjs")
 const { ethers } = require("ethers")
 
-const { values: a } = parseArgs({
-    options: { all: { type: "boolean" }, program: { type: "string" }, watch: { type: "string" }, replay: { type: "string" }, "dry-run": { type: "boolean" }, source: { type: "string" }, every: { type: "string" } }
-})
-
-async function once({ naungan, wallet }, pid) {
+/**
+ * One assessment of program `pid`, posted unless `a["dry-run"]`; true once its trigger has fired. `send`, when
+ * given, submits the transaction (the relayer passes its serial sender: the hosted oracle key is the relayer key).
+ */
+async function once({ naungan, wallet, send }, pid, a = {}) {
     const p = await naungan.programs(pid)
     if (p.coordinator === ethers.ZeroAddress) throw new Error(`program ${pid} does not exist`)
     if (p.claimDeadline > 0n) return console.log(`program ${pid}: already triggered`), true
@@ -35,7 +35,8 @@ async function once({ naungan, wallet }, pid) {
     const above = BigInt(r.probability) >= p.triggerThreshold
     console.log(`${new Date().toISOString()} program ${pid} · ${m.name}\n  P(${m.hazard === "heat" ? "heatwave" : "flood"}) = ${r.probability}% (trigger at ${p.triggerThreshold}%) → ${above ? "above trigger" : "below trigger"}\n  ${r.evidence}`)
     if (a["dry-run"]) return false
-    const rcpt = await (await naungan.reportIndex(pid, r.probability, r.evidence)).wait()
+    const tx = send ? await send(({ nonce }) => naungan.reportIndex(pid, r.probability, r.evidence, { nonce })) : await naungan.reportIndex(pid, r.probability, r.evidence)
+    const rcpt = await tx.wait()
     const ev = rcpt.logs.map((l) => naungan.interface.parseLog(l)).find((x) => x?.name === "IndexReported")
     console.log(`  posted: ${rcpt.hash} · ${ev.args.agreeing}/${p.quorum} oracles agree → ${ev.args.triggered ? "CLAIMS OPEN" : "waiting for quorum"}`)
     return ev.args.triggered
@@ -58,6 +59,18 @@ async function mine({ naungan, wallet }, every = 0) {
     return out
 }
 
+/**
+ * Every program this key should report on now (see `mine`), each assessed and posted; the shared core of
+ * `--all` and the Vercel cron backup (api/oracle.js). Returns what happened per program.
+ */
+async function reportAll(ctx, every = 0, a = {}, log = console.log) {
+    const pids = await mine(ctx, every)
+    log(`${ctx.wallet.address} reports now on ${pids.length} live program(s)${every ? ` not reported on in the last ${every} h` : ""}: ${pids.join(", ") || "none"}`)
+    const out = []
+    for (const pid of pids) out.push(await once(ctx, pid, a).then((triggered) => ({ program: Number(pid), triggered }), (e) => (log(`::warning::program ${pid}: ${explain(e)}`), { program: Number(pid), error: explain(e) })))
+    return out
+}
+
 /** The relayer and oracles pay gas from these keys: say so in the run log well before they run dry. */
 const LOW_GAS = ethers.parseEther("0.01")
 async function gasCheck({ wallet }) {
@@ -65,30 +78,34 @@ async function gasCheck({ wallet }) {
     if (bal < LOW_GAS) console.log(`::warning::${wallet.address} has ${ethers.formatEther(bal)} ETH left for gas; top it up (scripts/topup.js)`)
 }
 
-;(async () => {
+async function main() {
+    const { values: a } = parseArgs({
+        options: { all: { type: "boolean" }, program: { type: "string" }, watch: { type: "string" }, replay: { type: "string" }, "dry-run": { type: "boolean" }, source: { type: "string" }, every: { type: "string" } }
+    })
     if (a.all) {
         const ctx = await connect()
         const every = Number(a.every ?? 0)
         if (!(every >= 0)) throw new Error("--every takes a number of hours")
-        const pids = await mine(ctx, every)
-        console.log(`${ctx.wallet.address} reports now on ${pids.length} live program(s)${every ? ` not reported on in the last ${every} h` : ""}: ${pids.join(", ") || "none"}`)
-        let failed = 0
-        for (const pid of pids) await once(ctx, pid).catch((e) => (failed++, console.log(`::warning::program ${pid}: ${explain(e)}`)))
+        const done = await reportAll(ctx, every, a)
         await gasCheck(ctx)
-        if (failed === pids.length && pids.length) process.exitCode = 1 // every report failed: make the run red
+        if (done.length && done.every((x) => x.error)) process.exitCode = 1 // every report failed: make the run red
         return
     }
     if (!/^\d+$/.test(a.program ?? "")) throw new Error("--program <id> (or --all) is required")
     if (a.replay && !/^\d{4}-\d{2}-\d{2}$/.test(a.replay)) throw new Error("--replay must be YYYY-MM-DD")
     const ctx = await connect()
     const pid = BigInt(a.program)
-    if (!a.watch) return once(ctx, pid)
+    if (!a.watch) return once(ctx, pid, a)
     const hours = Number(a.watch)
     if (!(hours > 0)) throw new Error("--watch takes a number of hours")
     // ponytail: in-process timer; run under a supervisor (systemd, pm2, cron) for production uptime
-    while (!(await once(ctx, pid).catch((e) => (console.error(`  error: ${explain(e)}`), false))))
+    while (!(await once(ctx, pid, a).catch((e) => (console.error(`  error: ${explain(e)}`), false))))
         await new Promise((r) => setTimeout(r, hours * 3600e3))
-})().catch((e) => {
-    console.error(explain(e))
-    process.exitCode = 1
-})
+}
+
+if (require.main === module)
+    main().catch((e) => {
+        console.error(explain(e))
+        process.exitCode = 1
+    })
+module.exports = { once, mine, reportAll, LOW_GAS }

@@ -226,6 +226,31 @@
         }
       }
     },
+    "/iati.xml": {
+      "get": {
+        "operationId": "iatiActivities",
+        "tags": [
+          "Open data"
+        ],
+        "summary": "Every program as an IATI 2.03 activity, with donations, payouts and refunds as transactions",
+        "description": "International Aid Transparency Initiative activity XML, valid against the official 2.03 schema. Donations are incoming funds (type 1), refunds of unclaimed money negative incoming funds, payouts one cash-transfer disbursement (type 3) per program per day with no payout addresses. USDC is stated as USD. reporting-org carries secondary-reporter=\"1\": the file is generated from the chain, not by an agency.",
+        "responses": {
+          "200": {
+            "description": "IATI 2.03 <iati-activities> document",
+            "content": {
+              "application/xml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        }
+      }
+    },
     "/feed.xml": {
       "get": {
         "operationId": "getFeed",
@@ -614,6 +639,59 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/oracle": {
+      "get": {
+        "operationId": "runHostedOracle",
+        "tags": [
+          "Relayer"
+        ],
+        "summary": "Backup run of the hosted oracle (called daily by a Vercel cron)",
+        "description": "Reports on every live program the hosted oracle key has not reported on for 5.5 hours, one run at a time, exactly as the hourly GitHub workflow does. Calling it can never make the oracle report more often than its schedule, so anyone may call it.",
+        "responses": {
+          "200": {
+            "description": "What each due program got",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "reported": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "program": {
+                            "type": "integer"
+                          },
+                          "triggered": {
+                            "type": "boolean"
+                          },
+                          "error": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "program"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "reported"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "An oracle run is already in progress"
+          },
+          "429": {
+            "description": "Too many requests from this address"
           }
         }
       }

@@ -15,6 +15,10 @@
 //        Web Push "claims are open" (lib/push.js): a phone leaves only its push endpoint per program; when a
 //        trigger fires, /notify wakes those phones once and forgets them. Idempotent, so anyone may call it
 //        (the oracle workflow does after every run).
+//   GET  /oracle → { reported }
+//        Backup scheduler for the hosted oracle (a Vercel cron): GitHub delays and drops scheduled runs. Reports
+//        only on programs this key has not reported on for ORACLE_EVERY hours, one run at a time, so a caller
+//        can never make it report more often than the schedule would; anyone may call it.
 //   GET  /health                       → relayer address, balance, chain
 const http = require("http")
 const { ethers } = require("ethers")
@@ -25,6 +29,7 @@ const PORT = Number(process.env.PORT || 8788)
 const PER_MINUTE = Number(process.env.RATE_LIMIT || 10)
 const PIN_PER_MINUTE = 600
 const MAX_BODY = 16e3
+const ORACLE_EVERY = 5.5 // hours, as the GitHub workflow's --every
 const uint = (v) => typeof v === "string" || typeof v === "number" || typeof v === "bigint" ? BigInt(v) : NaN
 
 /** Strict shape check at the trust boundary; throws on anything that is not a Semaphore v4 proof. */
@@ -292,6 +297,17 @@ async function createRelayer({ store = sharedStore() } = {}) {
                 await store.del(lock).catch(() => {})
             }
             return [200, { programs: open, sent }]
+        }
+        if (method === "GET" && url === "/oracle") {
+            if (await limited(`oracle:${ip}`, 2)) return [429, { error: "too many requests, try again in a minute" }]
+            const lock = `naungan:oracle:${d.naungan}`
+            if (!(await store.claim(lock, "1", 300))) return [409, { error: "an oracle run is in progress" }]
+            try {
+                const { reportAll } = require("./oracle")
+                return [200, { reported: await reportAll({ naungan, wallet, send: submit }, ORACLE_EVERY) }]
+            } finally {
+                await store.del(lock).catch(() => {})
+            }
         }
         // A loose per-IP limit (an agency issues hundreds of cards at once); the per-card cap is the real bound.
         if (method === "POST" && url === "/pin") {

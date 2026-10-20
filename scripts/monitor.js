@@ -36,6 +36,8 @@ function assess(r, now = Date.now() / 1000) {
     }
     const cap = r["/cap.xml"]
     if (cap?.status !== 200 || !/<feed xmlns="http:\/\/www.w3.org\/2005\/Atom">/.test(cap.body ?? "")) out.push(`CAP alert index /cap.xml answered ${cap?.status ?? "nothing"}`)
+    const iati = r["/iati.xml"]
+    if (iati?.status !== 200 || !/<iati-activities version="2\.03"/.test(iati.body ?? "")) out.push(`IATI activities /iati.xml answered ${iati?.status ?? "nothing"}`)
     const k = r["/push-key"]
     if (k?.status !== 200 || !/^[A-Za-z0-9_-]{87}$/.test(k.body?.key ?? "")) out.push(`/push-key answered ${k?.status ?? "nothing"}: phones cannot subscribe to alerts`)
     return out
@@ -56,7 +58,7 @@ async function get(base, path) {
 
 async function main() {
     const { values } = parseArgs({ options: { base: { type: "string", default: "https://naungan.vercel.app" } } })
-    const paths = [...PAGES, "/health", "/api/programs", "/cap.xml", "/push-key"]
+    const paths = [...PAGES, "/health", "/api/programs", "/cap.xml", "/iati.xml", "/push-key"]
     const r = Object.fromEntries(await Promise.all(paths.map(async (p) => [p, await get(values.base, p)])))
     for (const p of paths) console.log(`${String(r[p].status).padEnd(4)} ${String(r[p].ms).padStart(6)} ms  ${p}`)
     const problems = assess(r)
