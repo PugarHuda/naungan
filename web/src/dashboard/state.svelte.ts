@@ -91,10 +91,12 @@ async function fromApi(): Promise<{ events: Ev[]; toBlock: number }> {
     if (!res.ok) throw new Error(`open-data API answered ${res.status}`)
     const j: { contract: string; toBlock: number; events: { name: string; args: unknown[]; blockNumber: number; index: number; transactionHash: string }[] } = await res.json()
     if (j.contract.toLowerCase() !== String(c.target).toLowerCase()) throw new Error("open-data API serves another contract")
-    const events = j.events.map((e) => {
+    // Events the page's ABI does not list (ProgramCreated…) are skipped, as parseLog skips them from the indexer.
+    const events = j.events.flatMap((e) => {
+        if (!c.interface.getEvent(e.name)) return []
         const { topics, data } = c.interface.encodeEventLog(e.name, e.args as never[])
         const p = c.interface.parseLog({ topics, data })!
-        return { args: p.args, fragment: p.fragment, blockNumber: e.blockNumber, index: e.index, transactionHash: e.transactionHash }
+        return [{ args: p.args, fragment: p.fragment, blockNumber: e.blockNumber, index: e.index, transactionHash: e.transactionHash }]
     })
     return { events, toBlock: j.toBlock }
 }
