@@ -3,11 +3,12 @@
 const SHELL = "naungan-shell-v9"
 const ARTIFACTS = "naungan-artifacts-v1" // proving keys are immutable per version: cache forever
 const WATCH = "naungan-watch" // programs this phone waits on: chain address + program id only, no identity
+const SEND = "naungan-send" // a claim proved with no signal: the zero-knowledge proof (no identity) and where to send it
 const PRECACHE = ["claim", "claim.js", "manifest.webmanifest", "icon.svg", "deployment.json"]
 
 self.addEventListener("install", (e) => e.waitUntil(caches.open(SHELL).then((c) => c.addAll(PRECACHE)).then(() => self.skipWaiting())))
 self.addEventListener("activate", (e) =>
-    e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => ![SHELL, ARTIFACTS, WATCH].includes(k)).map((k) => caches.delete(k)))).then(() => self.clients.claim()))
+    e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => ![SHELL, ARTIFACTS, WATCH, SEND].includes(k)).map((k) => caches.delete(k)))).then(() => self.clients.claim()))
 )
 
 async function cacheFirst(req) {
@@ -85,6 +86,21 @@ self.addEventListener("push", (e) => e.waitUntil((async () => {
     const n = (NOTE[w?.lang] ?? NOTE.en)(w?.name ?? "Naungan", w?.hazard)
     await self.registration.showNotification(n.title, { body: n.body, tag: "naungan-push", icon: "icon.svg", badge: "icon.svg", data: { url: "claim" } })
 })()))
+
+// Background Sync (Chromium): a claim queued with no signal is sent when signal returns, even with the app closed,
+// and the household is told it was paid. The relayer answers a repeat of a claim it sent with the original payout,
+// so the page and this worker may both send it. Only a 5xx/409/429 throws, which makes the browser retry later.
+async function sendQueued() {
+    const c = await caches.open(SEND)
+    const hit = await c.match("/__claim__")
+    if (!hit) return
+    const { relay, job, note } = await hit.json()
+    const res = await fetch(relay, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ programId: job.pid, proof: job.proof }) })
+    if (!res.ok && res.status !== 400 && res.status !== 422) throw new Error(`relayer answered ${res.status}`)
+    await c.delete("/__claim__") // a refused proof is dropped here; the page shows why when it next opens
+    if (res.ok) await self.registration.showNotification(note.title, { body: note.body, tag: "naungan-paid", icon: "icon.svg", badge: "icon.svg", data: { url: "claim" } }).catch(() => {})
+}
+self.addEventListener("sync", (e) => { if (e.tag === "naungan-claim") e.waitUntil(sendQueued()) })
 
 self.addEventListener("periodicsync", (e) => { if (e.tag === "naungan-watch") e.waitUntil(checkWatches()) })
 

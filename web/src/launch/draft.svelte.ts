@@ -24,6 +24,9 @@ export const draft = $state({
     snapError: "",
     place: null as Place | null,
     society: null as Society | null,
+    people: null as number | null, // WorldPop 2020, within 5 km of the place
+    peopleError: "",
+    households: "", // planning only: how many households the coordinator means to cover (not on-chain)
     hazard: "flood" as "flood" | "heat" | "wind",
     preset: "urcs-flood",
     returnPeriod: 5,

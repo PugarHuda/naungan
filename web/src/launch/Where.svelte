@@ -4,6 +4,7 @@
     import { riverCell } from "../../../lib/hazard.mjs"
     import { flagOf, placeOf, searchPlaces } from "../shared/place"
     import { societyOf } from "../shared/ifrc"
+    import { peopleNear } from "../shared/worldpop"
     import { draft, suggestName, type Hit } from "./draft.svelte"
 
     let q = $state("")
@@ -43,7 +44,9 @@
     async function pick(h: Hit) {
         hits = []
         q = h.name
-        Object.assign(draft, { hit: h, cell: null, snapError: "", place: null, society: null })
+        Object.assign(draft, { hit: h, cell: null, snapError: "", place: null, society: null, people: null, peopleError: "" })
+        // Slow (WorldPop sums 100 m cells on its server): it fills in while the coordinator sets the trigger.
+        peopleNear(h.latitude, h.longitude).then((n) => draft.hit === h && (draft.people = n)).catch((e: Error) => draft.hit === h && (draft.peopleError = e.message))
         const snapped = draft.hazard === "flood" ? snap(h) : null
         const where = placeOf(h.latitude, h.longitude).then(async (p) => {
             if (draft.hit !== h) return
@@ -78,6 +81,11 @@
             <p class="big">{flagOf(draft.place?.code)} {draft.hit.name}{draft.place?.name ? `, ${draft.place.name}` : ""}</p>
             <p class="fine">
                 {#if societyLoading}Looking up the national society on IFRC GO…{:else if draft.society}National society: <a href={draft.society.url ?? "https://go.ifrc.org"} target="_blank" rel="noopener">{draft.society.society}</a>{:else if draft.place}No national society listed on IFRC GO for {draft.place.code}{:else}Looking up the country…{/if}
+            </p>
+            <p class="fine" id="people">
+                {#if draft.people != null}About {draft.people.toLocaleString("en")} people live within 5 km (<a href="https://www.worldpop.org" target="_blank" rel="noopener">WorldPop</a> 2020, 100 m grid).
+                {:else if draft.peopleError}The population count is unavailable right now ({draft.peopleError}).
+                {:else}Counting the people who live within 5 km (WorldPop)…{/if}
             </p>
             <p class="fine">
                 {#if snapping}Finding the river’s main channel…

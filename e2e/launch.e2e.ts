@@ -55,3 +55,16 @@ test("launch: a second, independent forecast makes the program 2-of-2 with Naung
     await page.getByLabel("Lead time (days)").fill("15")
     await expect(page.locator("p.fine", { hasText: "leadDays must be a number from 1 to 14 with an ECMWF oracle" })).toBeVisible()
 })
+
+test("launch: the place card counts the people living around it (WorldPop) and the terms turn households into the funding needed @desktop", async ({ page, check }) => {
+    await page.goto("/launch")
+    await page.getByLabel("Cyclone wind").check()
+    test.skip(!(await pickPlace(page, "Beira")), "Open-Meteo's geocoder did not answer this runner (the page said so)")
+    // WorldPop's API is read live from the browser, under the page's CSP; when it is down, the page says so in words.
+    await expect(page.locator("#people")).toHaveText(/About [\d,]{5,} people live within 5 km \(WorldPop 2020|The population count is unavailable right now \(.+\)/, { timeout: 120e3 })
+    await page.getByLabel("Per household (USDC)").fill("0.5")
+    await page.getByLabel("Households to cover").fill("1200")
+    await expect(page.locator("#budget")).toContainText("Funding needed to pay them all: 600 USDC")
+    if (/About/.test((await page.locator("#people").textContent())!)) await expect(page.locator("#budget")).toContainText(/for 1,200 households among the about [\d,]+ people within 5 km/)
+    await check(page)
+})

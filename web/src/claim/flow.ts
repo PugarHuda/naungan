@@ -184,6 +184,7 @@ function showPaid(body: { txHash: string; payout: string }, amount: bigint, dec:
     ui.step = null
     ui.pay = null
     ui.queued = false
+    unqueue() // sent from the page: the service worker has nothing left to send
     ui.paid = { txHash: body.txHash, payout: body.payout, amount: ethers.formatUnits(amount, dec) }
     ui.cardMsg = { key: "claimed", ok: true }
     walletPanel((b) => b >= amount, body.payout)
@@ -191,6 +192,16 @@ function showPaid(body: { txHash: string; payout: string }, amount: bigint, dec:
     navigator.serviceWorker?.ready.then((r) => r.active?.postMessage({ type: "unwatch", watch: { naungan: d.naungan, pid: card.pid!.toString() } }))
     store.del(SAVED), store.del(`naungan-alert-${d.naungan}-${card.pid}`)
 }
+
+/** Hands a queued claim to the service worker's Background Sync (Chromium), which sends it with the app closed. */
+async function queueInBackground(job: Job, amount: string) {
+    const r: any = await navigator.serviceWorker?.ready
+    if (!r?.sync) return // other browsers: the page sends it the next time it is open with signal
+    const note = { title: t("done"), body: t("readPaid")(amount) } // written now, in the household's language
+    await (await caches.open("naungan-send")).put("/__claim__", new Response(JSON.stringify({ relay: new URL("/relay", RELAYER).href, job, note })))
+    await r.sync.register("naungan-claim")
+}
+const unqueue = () => globalThis.caches?.open("naungan-send").then((c) => c.delete("/__claim__")).catch(() => {})
 
 let flushTimer: ReturnType<typeof setInterval> | undefined
 async function load() {
@@ -216,7 +227,7 @@ async function load() {
             store.del(PENDING)
             showPaid(body, amount, snap.dec)
         } catch (e: any) {
-            if (e.business) store.del(PENDING), (ui.error = `${t("err")}: ${e.message}`), (ui.queued = false)
+            if (e.business) store.del(PENDING), unqueue(), (ui.error = `${t("err")}: ${e.message}`), (ui.queued = false)
         }
         flushing = false
     }
@@ -259,6 +270,7 @@ async function load() {
             ui.step = null
             if (job && !e.business) {
                 store.set(PENDING, job) // no signal: keep the proof, send it automatically later
+                queueInBackground(job, ethers.formatUnits(amount, snap.dec)).catch(() => {})
                 ui.pay = null
                 ui.queued = true
                 return true

@@ -74,7 +74,13 @@
         <label>Per household (USDC)<input type="number" min="0.01" step="0.01" bind:value={draft.amount} /></label>
         <label>Claim window (days)<input type="number" min="1" max="365" step="1" bind:value={draft.claimDays} /></label>
         <label>Season ends<input type="date" bind:value={draft.seasonEnd} /></label>
+        <label>Households to cover<input type="number" min="1" step="1" bind:value={draft.households} placeholder="for the budget" /></label>
     </div>
+    {#if Number(draft.households) > 0 && Number(draft.amount) > 0}
+        <p class="fine" id="budget">
+            Funding needed to pay them all: <b>{(Number(draft.households) * Number(draft.amount)).toLocaleString("en", { maximumFractionDigits: 2 })} USDC</b>{#if draft.people}, for {Number(draft.households).toLocaleString("en")} households among the about {draft.people.toLocaleString("en")} people within 5 km{/if}. Not written on-chain: the program pays whoever is enrolled, up to what it holds.
+        </p>
+    {/if}
     <label class="check"><input type="checkbox" checked={draft.second} onchange={(e) => setSecond(e.currentTarget.checked)} /> Require a second, independent forecast to agree (2-of-2)</label>
     {#if draft.second}
         <p class="fine">Claims open only when both agree: {PAIRS[draft.hazard].map((p) => SOURCE[p]).join(" and ")}, each reported by its own Naungan key, so one model’s false alarm cannot release the money.{draft.hazard !== "flood" ? " ECMWF forecasts 14 days ahead at most." : ""}</p>

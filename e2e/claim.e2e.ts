@@ -1,4 +1,8 @@
-import { test, expect } from "./fixtures"
+import { chromium } from "@playwright/test"
+import { mkdtempSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+import { test, expect, MONEY } from "./fixtures"
 
 // The judges' demo card for program 2 (claims open). Claim is only ever pressed with /relay fulfilled locally.
 const DEMO_CARD = "/claim.html#p=2&id=sG0DdcsCNBfd7i%2FIGGuxLmkPFbIN2ydmlblYsEm3rK8%3D"
@@ -66,6 +70,46 @@ test.describe("offline", () => {
         await expect(page.locator("html")).toHaveAttribute("lang", "bn")
         await expect(page.locator("h1")).toHaveText("আপনার সহায়তা দাবি করুন")
         await expect(page.locator("#joinCode, svg").first()).toBeVisible() // the registration code, from this phone
+    })
+
+    // The queued claim here is a placeholder proof the relayer would refuse, and /relay is answered locally
+    // (context.route sees the service worker's own requests), so nothing could be paid even if it got out.
+    // Chromium turns Background Sync off in throwaway profiles and in its headless shell, so this one runs full Chromium
+    // with a persistent profile of its own (in a short temp path: Windows' 260-character limit breaks the cache storage).
+    test("claim: Background Sync sends a queued claim from the service worker and says it was paid; a refused one is dropped @phone", async () => {
+        const context = await chromium.launchPersistentContext(mkdtempSync(join(tmpdir(), "pw-")), { channel: "chromium", baseURL: "http://localhost:4173", permissions: ["notifications", "background-sync"] })
+        const page = context.pages()[0] ?? (await context.newPage())
+        const sent: { status: number; body: any }[] = []
+        let answer = 200
+        await context.route(MONEY, async (r) => {
+            if (!r.request().serviceWorker()) return r.abort()
+            sent.push({ status: answer, body: r.request().postDataJSON() })
+            await r.fulfill({ status: answer, contentType: "application/json", body: JSON.stringify(answer === 200 ? { txHash: "0x" + "ab".repeat(32), payout: "0x" + "12".repeat(20), amount: "500000" } : { error: "NotTriggered" }) })
+        })
+        await page.goto("/claim.html#join=6")
+        await page.evaluate(() => navigator.serviceWorker.ready)
+        const queue = (pid: string) => page.evaluate(async (pid) => {
+            const job = { pid, proof: { merkleTreeDepth: 1, merkleTreeRoot: "1", nullifier: "1", message: "1", scope: pid, points: Array(8).fill("0") }, payout: "0x" + "12".repeat(20) }
+            await (await caches.open("naungan-send")).put("/__claim__", new Response(JSON.stringify({ relay: "https://naungan.vercel.app/relay", job, note: { title: "Paid", body: "0.5 USDC is now in your wallet." } })))
+            await (await navigator.serviceWorker.ready as any).sync.register("naungan-claim")
+        }, pid)
+        const left = () => page.evaluate(async () => !!(await (await caches.open("naungan-send")).match("/__claim__")))
+        const notes = () => page.evaluate(async () => (await (await navigator.serviceWorker.ready).getNotifications()).map((n) => `${n.title}: ${n.body}`))
+
+        await queue("2")
+        await expect.poll(() => sent.length, { timeout: 30e3 }).toBe(1)
+        expect(sent[0].body.programId).toBe("2")
+        await expect.poll(left).toBe(false)
+        await expect.poll(notes).toContain("Paid: 0.5 USDC is now in your wallet.")
+
+        await page.evaluate(async () => (await (await navigator.serviceWorker.ready).getNotifications()).forEach((n) => n.close()))
+        answer = 422 // the contract's own verdict: dropped, and no "paid" notification
+        await queue("3")
+        await expect.poll(() => sent.length, { timeout: 30e3 }).toBe(2)
+        await expect.poll(left).toBe(false)
+        expect(await notes()).toEqual([])
+
+        await context.close()
     })
 })
 
