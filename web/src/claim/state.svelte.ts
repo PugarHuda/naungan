@@ -42,6 +42,7 @@ export const ui = $state({
     join: null as { code: string; card: string } | null,
     pay: null as { wallet: Wallet | HDNodeWallet } | null,
     queued: false,
+    feedback: false, // enrolled: may send its one anonymous rating
     step: null as string | null,
     paid: null as { txHash: string; payout: string; amount: string } | null,
     wallets: null as { funded: Funded[]; dec: bigint; prefer?: string } | null

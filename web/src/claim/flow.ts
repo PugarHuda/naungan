@@ -11,6 +11,7 @@ const proving = () => Promise.all([import("@semaphore-protocol/proof"), import("
 import { deployment as d, naungan, provider, parseMeta, ERC20_ABI } from "../shared/chain"
 import { placeOf, usdRates } from "../shared/place"
 import { ui, card, store, t, type Snapshot } from "./state.svelte"
+import { encode, feedbackScope } from "../../../lib/feedback.mjs"
 
 export const RELAYER = d.relayer ?? "http://localhost:8788"
 const PENDING = "naungan-pending"
@@ -247,6 +248,7 @@ async function load() {
     ui.cardMsg = { key: msg, ok: enrolled && !snap.claimed }
     walletPanel(undefined, enrolled ? wallet().address : undefined)
     if (enrolled && !snap.claimed && deadline === 0n) ui.alerts = true
+    if (enrolled && !snap.offline) ui.feedback = true
     if (!enrolled || snap.claimed || !open) return
     ui.pay = { wallet: wallet() }
     proving().catch(() => {}) // warm the prover while the household chooses where the money goes
@@ -281,6 +283,25 @@ async function load() {
     }
 }
 let claimHandler: ((payout: string) => Promise<boolean | undefined>) | null = null
+
+const ratedKey = () => `naungan-rated-${d.naungan}-${card.pid}-${card.identity?.commitment}`
+/** This card's sent rating on this phone: its transaction, "already" (sent before, from anywhere), or null. */
+export const ratedTx = (): string | null => store.get(ratedKey())
+/**
+ * The household's anonymous rating (lib/feedback.mjs), proved on this phone against the current group (Semaphore
+ * accepts a superseded root for an hour only) and sent through the relayer to Semaphore's validateProof.
+ */
+export async function sendFeedback(rating: number, topic: number): Promise<string> {
+    const members = (await snapshot()).members
+    const [{ generateProof }, { Group }] = await proving()
+    const proof = await generateProof(card.identity!, new Group(members.map(BigInt)), encode(rating, topic), feedbackScope(d.naungan, card.pid!))
+    const res = await fetch(new URL("/feedback", RELAYER), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ programId: card.pid!.toString(), proof }) })
+    const body = await res.json()
+    if (!res.ok && body.error !== "AlreadyRated") throw new Error(body.error ?? `HTTP ${res.status}`)
+    const done = res.ok ? body.txHash : "already"
+    store.set(ratedKey(), done)
+    return done
+}
 /** Prove and send the claim to `payout`; false means the button may be pressed again. */
 export const claim = (payout: string) => claimHandler!(payout)
 

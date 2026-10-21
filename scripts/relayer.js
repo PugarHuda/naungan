@@ -7,6 +7,9 @@
 //   POST /transfer { from, to, value, validAfter, validBefore, nonce, signature }  → { txHash }
 //        EIP-3009 transferWithAuthorization: a paid household moves its USDC (to a cash-out agent or
 //        shop) without ever holding ETH. Only sponsored for addresses Naungan has paid.
+//   POST /feedback { programId, proof } → { txHash }
+//        An enrolled household's anonymous rating (lib/feedback.mjs): a Semaphore proof under the program's feedback
+//        scope, submitted to Semaphore's own validateProof, which verifies it and refuses a second from the household.
 //   POST /pin { programId, card, point } → { evaluated, left }
 //        OPRF for PIN-locked v2 cards (lib/cardlock.mjs): evaluates a blinded point, at most MAX_TRIES
 //        times per card. The server never sees the PIN, and the phone cannot test one without it.
@@ -32,8 +35,11 @@ const MAX_BODY = 16e3
 const ORACLE_EVERY = 5.5 // hours, as the GitHub workflow's --every
 const uint = (v) => typeof v === "string" || typeof v === "number" || typeof v === "bigint" ? BigInt(v) : NaN
 
-/** Strict shape check at the trust boundary; throws on anything that is not a Semaphore v4 proof. */
-function parseProof(body) {
+/**
+ * Strict shape check at the trust boundary; throws on anything that is not a Semaphore v4 proof. The scope must be
+ * the claim scope (the program id) or, for feedback, `scopeOf(programId)`.
+ */
+function parseProof(body, scopeOf = (pid) => pid) {
     const { programId, proof } = body ?? {}
     const p = proof ?? {}
     const out = {
@@ -48,7 +54,7 @@ function parseProof(body) {
         throw new Error("malformed proof")
     if (out.merkleTreeDepth < 1n || out.merkleTreeDepth > 32n) throw new Error("merkleTreeDepth out of range")
     const pid = uint(programId)
-    if (typeof pid !== "bigint" || pid !== out.scope) throw new Error("programId must equal proof.scope")
+    if (typeof pid !== "bigint" || pid < 1n || scopeOf(pid) !== out.scope) throw new Error("proof.scope must be the program's scope for this request")
     return { pid, proof: out }
 }
 
@@ -202,10 +208,12 @@ async function createRelayer({ store = sharedStore() } = {}) {
     // lib/cardlock.mjs is an ES module shared with the browser: import() loads it on any Node version
     // (require() of ESM needs 22.12+, and the serverless runtime may be older).
     const { oprfKey, evaluate, MAX_TRIES } = await import("../lib/cardlock.mjs")
+    const feedback = await import("../lib/feedback.mjs")
     const { naungan: reader, wallet, provider, d } = await connect()
     // Sends go out from the bare wallet with an explicit nonce (see `submit`), never through the NonceManager.
     const naungan = reader.connect(wallet)
     const pinSeed = wallet.privateKey // rotating the relayer key invalidates v2 cards
+    const semaphore = new ethers.Contract(d.semaphore, ["function validateProof(uint256 groupId, (uint256 merkleTreeDepth, uint256 merkleTreeRoot, uint256 nullifier, uint256 message, uint256 scope, uint256[8] points) proof)"], wallet)
     const usdc = new ethers.Contract(d.usdc, ["function transferWithAuthorization(address,address,uint256,uint256,uint256,bytes32,uint8,bytes32,bytes32)"], wallet)
     // Payout wallets are remembered in the shared store as they are found, so a cold serverless instance
     // answers a known payee from one store read instead of rescanning every Claimed log since deployment.
@@ -354,9 +362,33 @@ async function createRelayer({ store = sharedStore() } = {}) {
             if (n > MAX_TRIES) return [429, { error: "this card is locked after too many PIN attempts: ask your agency for a new card", left: 0 }]
             return [200, { evaluated, left: MAX_TRIES - n }]
         }
-        if (method !== "POST" || !["/relay", "/transfer"].includes(url)) return [404, { error: "not found" }]
+        if (method !== "POST" || !["/relay", "/transfer", "/feedback"].includes(url)) return [404, { error: "not found" }]
         if (await limited(ip)) return [429, { error: "too many requests, try again in a minute" }]
         if (raw.length > MAX_BODY) return [413, { error: "body too large" }]
+        if (url === "/feedback") {
+            let pid, proof
+            try {
+                ;({ pid, proof } = parseProof(JSON.parse(raw), (id) => feedback.feedbackScope(d.naungan, id)))
+                if (!feedback.decode(proof.message)) throw new Error("message must be a rating from 1 to 5 with a topic (lib/feedback.mjs)")
+            } catch (e) {
+                return [400, { error: e.message }]
+            }
+            const p = await naungan.programs(pid)
+            if (p.coordinator === ethers.ZeroAddress) return [422, { error: "UnknownProgram" }]
+            try {
+                await semaphore.validateProof.staticCall(p.groupId, proof) // Semaphore's verdict before any gas is spent
+            } catch (e) {
+                const name = revertName(e)
+                return [/^Semaphore__/.test(name) ? 422 : 503, { error: name === "Semaphore__YouAreUsingTheSameNullifierTwice" ? "AlreadyRated" : name }]
+            }
+            try {
+                const txHash = await send(`feedback:${pid}:${proof.nullifier}`, (o) => semaphore.validateProof(p.groupId, proof, o), "AlreadyRated")
+                console.log(`${new Date().toISOString()} program ${pid} feedback ${proof.message} · ${txHash}`)
+                return [200, { txHash }]
+            } catch (e) {
+                return [e.status ?? 502, { error: e.status ? e.message : revertName(e) }]
+            }
+        }
         if (url === "/transfer") {
             let a
             try {

@@ -1,7 +1,7 @@
 // Open data: GET /api/programs → every program as JSON, read from the chain with no key (CORS *).
 // The CDN keeps each answer for 5 minutes, so the RPC and indexer are read once per window, not per visitor.
 const { ethers } = require("ethers")
-const { readOnly, allEvents } = require("../lib/chain")
+const { readOnly, allEvents, wideLogs } = require("../lib/chain")
 
 // stale-if-error: when the public RPC fails a refresh, the CDN keeps serving the last good copy for a day instead of a 503.
 const CACHE = "public, s-maxage=300, stale-while-revalidate=600, stale-if-error=86400"
@@ -23,7 +23,7 @@ const iso = (unix) => new Date(Number(unix) * 1000).toISOString()
  * Pure: program structs, metadata and events → the public summary. `programs` is [{ id, p, meta }] with
  * p as Naungan.programs() returns it; `events` as lib/chain.js allEvents returns them.
  */
-function summarise({ programs, events, decimals = 6, base, now = Date.now() / 1000, countries = {} }) {
+function summarise({ programs, events, decimals = 6, base, now = Date.now() / 1000, countries = {}, feedback = null }) {
     const usdc = (v) => Number(ethers.formatUnits(v, decimals))
     const last = new Map()
     for (const e of events) if (e.name === "IndexReported") last.set(Number(e.args.programId), e) // oldest first: the last one wins
@@ -45,6 +45,8 @@ function summarise({ programs, events, decimals = 6, base, now = Date.now() / 10
             ...state,
             usdc: { perHousehold: usdc(p.amountPerHousehold), funded: usdc(p.funded), paidOut: usdc(p.claims * p.amountPerHousehold), shortfall: usdc(shortfall) },
             households: { enrolled: Number(p.enrolled), paid: Number(p.claims) },
+            // Anonymous ratings from enrolled households, each a Semaphore proof verified on-chain; null when unread.
+            feedback: feedback?.[id] ?? null,
             latestReport: r ? { valuePercent: Number(r.args.value), agreeing: Number(r.args.agreeing), triggered: r.args.triggered, evidence: r.args.evidence, at: iso(r.timestamp), tx: r.transactionHash } : null,
             links: { dashboard: `${base}/dashboard?program=${id}`, join: `${base}/claim#join=${id}`, feed: `${base}/feed.xml?program=${id}` }
         }
@@ -70,7 +72,28 @@ async function load() {
     ])
     const programs = ids.map((id, i) => ({ id, p: ps[i], meta: metas[i] }))
     const countries = Object.fromEntries(programs.filter((x) => !x.meta.country && Number.isFinite(x.meta.lat)).map((x) => [x.id, countryOf(x.meta.lat, x.meta.lon)]))
-    return { d, programs, events, decimals: Number(decimals), countries, head }
+    return { d, programs, events, decimals: Number(decimals), countries, head, feedback: await feedbackOf(d, programs, head).catch(() => null) }
+}
+
+/**
+ * Households' anonymous ratings (lib/feedback.mjs): Semaphore's ProofValidated logs, filtered on their indexed group
+ * and scope to each program's group and feedback scope, so another app's proofs in the shared Semaphore contract and
+ * claim proofs replayed into validateProof are never counted. Null when no wide-range RPC answers.
+ */
+async function feedbackOf(d, programs, head) {
+    const fb = await import("../lib/feedback.mjs") // an ES module: import(), never require() (Vercel's CommonJS runtime)
+    const sem = new ethers.Contract(d.semaphore, [fb.PROOF_VALIDATED])
+    const word = (x) => ethers.toBeHex(x, 32)
+    const scopes = new Map(programs.map(({ id }) => [word(fb.feedbackScope(d.naungan, id)), id]))
+    const groups = new Map(programs.map(({ id, p }) => [id, word(p.groupId)]))
+    const logs = await wideLogs(d.logRpcs, sem, d.fromBlock ?? 0, head, [sem.interface.getEvent("ProofValidated").topicHash, [...new Set(groups.values())], null, [...scopes.keys()]])
+    if (!logs) return null
+    const by = {}
+    for (const l of logs) {
+        const id = scopes.get(l.topics[3])
+        if (id && groups.get(id) === l.topics[1]) (by[id] ??= []).push(l.args.message)
+    }
+    return Object.fromEntries(programs.map(({ id }) => [id, fb.summarise(by[id] ?? [])]))
 }
 
 /**
@@ -94,6 +117,8 @@ const HXL = [
     ["USDC still needed", "#value+funding+gap+usd", (x) => x.usdc.shortfall],
     ["Households enrolled", "#targeted+hh+num", (x) => x.households.enrolled],
     ["Households paid", "#reached+hh+num", (x) => x.households.paid],
+    ["Household ratings (anonymous, ZK-proven)", "#indicator+feedback+num", (x) => x.feedback?.count],
+    ["Mean rating (1-5)", "#indicator+feedback+rating", (x) => x.feedback?.mean],
     ["Dashboard", "#meta+url", (x) => x.links.dashboard]
 ]
 /** RFC 4180 cell; a leading = + - @ is prefixed so a spreadsheet never runs on-chain text as a formula. */
@@ -165,5 +190,6 @@ module.exports.HXL = HXL
 module.exports.geojson = geojson
 module.exports.rule = rule
 module.exports.load = load
+module.exports.feedbackOf = feedbackOf
 module.exports.baseOf = baseOf
 module.exports.CACHE = CACHE

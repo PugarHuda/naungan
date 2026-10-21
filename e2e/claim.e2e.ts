@@ -137,3 +137,38 @@ test.describe("iPhone alerts", () => {
         await check(page)
     })
 })
+
+test("claim: an enrolled household rates the aid anonymously: a Semaphore proof under the program's feedback scope, never its claim scope; sent once @phone", async ({ page, check }) => {
+    const { feedbackScope } = await import("../lib/feedback.mjs")
+    let body: { programId: string; proof: { scope: string; message: string; points: unknown[] } } | undefined
+    let answer: [number, object] = [200, { txHash: "0x" + "cd".repeat(32) }]
+    await page.route("**/feedback", async (r) => { // answered here: the rating is proved for real but never sent
+        body = r.request().postDataJSON()
+        await r.fulfill({ status: answer[0], contentType: "application/json", body: JSON.stringify(answer[1]) })
+    })
+    await page.goto(WATCH_CARD)
+    await page.locator("select#lang").selectOption("en")
+    const panel = page.locator("#feedback")
+    await expect(panel.getByRole("heading", { name: "How was the help?" })).toBeVisible({ timeout: 60e3 })
+    await check(page)
+    await expect(panel.getByRole("button", { name: "Send anonymously" })).toBeDisabled() // no rating picked yet
+    await panel.getByLabel("4 of 5").check({ force: true })
+    await panel.getByLabel("Anything wrong?").selectOption({ label: "It came too late" })
+    await panel.getByRole("button", { name: "Send anonymously" }).click()
+    await expect(panel.getByRole("status")).toHaveText(/Thank you\. Your answer is on the public record, with no name\./, { timeout: 120e3 })
+    expect(body!.programId).toBe("3")
+    expect(BigInt(body!.proof.scope)).toBe(feedbackScope("0x00E9E8F7a9E8Dd4923Eb92eC5536f70ecD0C70f4", 3)) // not 3, the claim scope
+    expect(body!.proof.message.toString()).toBe("14") // topic 1 ("late") × 10 + 4 stars
+    expect(body!.proof.points).toHaveLength(8)
+    await expect(panel.getByRole("link", { name: "View transaction" })).toHaveAttribute("href", /\/tx\/0x(cd){32}$/)
+    // The phone remembers: reopening shows the thanks, not the form.
+    await page.reload()
+    await expect(page.locator("#feedback").getByRole("status")).toContainText("Thank you", { timeout: 60e3 })
+    // Rated from another phone: Semaphore refuses the second proof, and the app says so kindly.
+    await page.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith("naungan-rated-")).forEach((k) => localStorage.removeItem(k)))
+    answer = [422, { error: "AlreadyRated" }]
+    await page.reload()
+    await page.locator("#feedback").getByLabel("2 of 5").check({ force: true })
+    await page.locator("#feedback").getByRole("button", { name: "Send anonymously" }).click()
+    await expect(page.locator("#feedback").getByRole("status")).toHaveText("This card has already answered. Thank you.", { timeout: 120e3 })
+})

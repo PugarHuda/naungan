@@ -99,3 +99,16 @@ test("dashboard: a 2-of-2 cyclone program (#10, Beira) shows both independent fo
     await expect(ecmwf.getByRole("status")).toHaveText(/✓ Matches|Not comparable with the posted/, { timeout: 90_000 })
     await expect(page.getByText(/of 2 oracles at the trigger\. Claims open when 2 agree\./)).toBeVisible()
 })
+
+test("dashboard: what households say, read from Semaphore's on-chain proofs for this program's group and feedback scope", async ({ page, check }) => {
+    const asked: string[] = []
+    page.on("request", (r) => r.method() === "POST" && asked.push(r.postData() ?? ""))
+    await page.goto("/dashboard?program=3")
+    const panel = page.locator("#feedback")
+    await panel.scrollIntoViewIfNeeded()
+    await expect(panel.getByRole("status")).toHaveText(/of 5 from \d+ household|No household has rated this program yet/, { timeout: 45e3 })
+    await expect(panel).toContainText(/Read from (base-sepolia\.gateway\.tenderly\.co|base-sepolia-rpc\.publicnode\.com|open-data API)/)
+    // The query names Semaphore's ProofValidated, the program's group and its feedback scope as topics.
+    expect(asked.some((b) => b.includes('"eth_getLogs"') && /"address":"0x6e5Dd641faea7772baA3F83B30a643EC17d4180d"/i.test(b))).toBe(true)
+    await check(page)
+})

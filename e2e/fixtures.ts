@@ -1,9 +1,9 @@
-// Every test gets: the money endpoints (/relay, /transfer, /pin) cut off, so no test can ever spend; a
+// Every test gets: the endpoints that spend (/relay, /transfer, /pin, and /feedback, which costs gas) cut off, so no test can ever spend; a
 // failure on any console error or page error; and `check(page)`, which runs axe and the 360 px overflow test.
 import { test as base, expect, type Page } from "@playwright/test"
 import AxeBuilder from "@axe-core/playwright"
 
-export const MONEY = /\/(relay|transfer|pin)(\?|$)/
+export const MONEY = /\/(relay|transfer|pin|feedback)(\?|$)/
 
 // Noise from free public services under load, not from our code: rate limits (HTTP 429, the public RPC's
 // JSON-RPC -32007 "request limit reached"), the indexer's and the wide-range history RPCs' retries, and the browser's own log line when a

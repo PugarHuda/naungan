@@ -42,6 +42,11 @@ describe("services input validation", () => {
         const proof = { merkleTreeDepth: 2, merkleTreeRoot: "1", nullifier: "2", message: "3", scope: "5", points: Array(8).fill("0") }
         expect(parseProof({ programId: "5", proof }).pid).to.equal(5n)
         expect(() => parseProof({ programId: "6", proof })).to.throw(/scope/)
+        expect(() => parseProof({ programId: "0", proof: { ...proof, scope: "0" } })).to.throw(/scope/)
+        // Feedback: the same shape under the program's feedback scope, and never under the claim scope.
+        const fb = (pid) => 10n ** 30n + pid
+        expect(parseProof({ programId: "5", proof: { ...proof, scope: (10n ** 30n + 5n).toString() } }, fb).pid).to.equal(5n)
+        expect(() => parseProof({ programId: "5", proof }, fb)).to.throw(/scope/)
         expect(() => parseProof({ programId: "5", proof: { ...proof, points: [1] } })).to.throw(/malformed/)
         expect(() => parseProof({ programId: "5", proof: { ...proof, merkleTreeDepth: 99 } })).to.throw(/range/)
         expect(() => parseProof({ programId: "5", proof: { ...proof, nullifier: { x: 1 } } })).to.throw(/malformed/)
@@ -236,5 +241,20 @@ describe("waking phones when claims open (/notify)", () => {
         const [a, b] = await Promise.all([drain(store, "q", wake, { batch: 50 }), drain(store, "q", wake, { batch: 50 })])
         expect(first.woke + a.woke + b.woke).to.equal(1000)
         expect([...seen.values()].every((n) => n === 1)).to.equal(true)
+    })
+})
+
+describe("household feedback encoding (lib/feedback.mjs)", () => {
+    it("encodes a rating and topic into a small message, refuses anything else, and never reads a payout address as a rating", async () => {
+        const { encode, decode, feedbackScope, TOPICS } = await import("../lib/feedback.mjs")
+        expect(encode(5, 4)).to.equal(45n)
+        expect(decode(45n)).to.deep.equal({ rating: 5, topic: 4 })
+        for (const [r, t] of [[0, 0], [6, 0], [3, TOPICS.length], [2.5, 0]]) expect(() => encode(r, t)).to.throw()
+        expect(decode(10n)).to.equal(null) // 0 stars
+        expect(decode(BigInt("0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E"))).to.equal(null) // a claim's message is its payout address
+        // Per deployment and program, and never a small number a program id (the claim scope) could equal.
+        expect(feedbackScope("0xAbC", 1)).to.equal(feedbackScope("0xabc", 1))
+        expect(feedbackScope("0xabc", 1)).to.not.equal(feedbackScope("0xabc", 2))
+        expect(feedbackScope("0xabc", 1) > 2n ** 200n).to.equal(true)
     })
 })

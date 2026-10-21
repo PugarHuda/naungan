@@ -44,6 +44,10 @@
       "destination": "/api/relayer?route=/transfer"
     },
     {
+      "source": "/feedback",
+      "destination": "/api/relayer?route=/feedback"
+    },
+    {
       "source": "/pin",
       "destination": "/api/relayer?route=/pin"
     },

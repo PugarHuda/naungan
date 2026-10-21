@@ -127,6 +127,36 @@ describe("Naungan", () => {
         expect(await naungan.nullifierUsed(programId, poseidon2([scopeHash, households[1].secretScalar]))).to.equal(false)
     })
 
+    it("households rate the aid anonymously through Semaphore's validateProof: once each, unlinkable to and never blocking their claim", async () => {
+        const { feedbackScope, encode, summarise, PROOF_VALIDATED } = await import("../lib/feedback.mjs")
+        const semaphore = await ethers.getContractAt("Semaphore", semaphoreAddr)
+        const { groupId } = await naungan.programs(programId)
+        const scope = feedbackScope(await naungan.getAddress(), programId)
+        const rate = (h, rating, topic) => generateProof(h, group, encode(rating, topic), scope)
+        // A paid household and one that has not claimed yet both rate; anyone may submit (the relayer pays the gas).
+        await semaphore.connect(relayer).validateProof(groupId, await rate(households[0], 4))
+        const unpaid = await rate(households[1], 2, 1) // 2 stars, "late"
+        await semaphore.connect(relayer).validateProof(groupId, unpaid)
+        // One rating per household: a fresh proof with another rating has the same nullifier.
+        await expect(semaphore.validateProof(groupId, await rate(households[0], 5))).to.be.revertedWithCustomError(semaphore, "Semaphore__YouAreUsingTheSameNullifierTwice")
+        // Not a member: refused.
+        const stranger = new Identity()
+        const fake = new Group([...households.map((h) => h.commitment), stranger.commitment])
+        await expect(semaphore.validateProof(groupId, await generateProof(stranger, fake, encode(1), scope))).to.be.revertedWithCustomError(semaphore, "Semaphore__MerkleTreeRootIsNotPartOfTheGroup")
+        // The rating is not a claim, and rating used none of the household's claim: its claim still goes through.
+        await expect(naungan.claim.staticCall(programId, unpaid)).to.be.revertedWithCustomError(naungan, "WrongScope")
+        expect(unpaid.nullifier).to.not.equal((await proofFor(households[1], outsider.address)).nullifier)
+        await naungan.claim.staticCall(programId, await proofFor(households[1], outsider.address))
+        // A claim proof replayed into validateProof lands under the program's id as scope, not the feedback scope.
+        const [paid] = await naungan.queryFilter(naungan.filters.Claimed(programId))
+        const replay = naungan.interface.parseTransaction(await paid.getTransaction()).args[1].toObject(true)
+        await semaphore.validateProof(groupId, replay)
+        // What the dashboard reads: ProofValidated filtered by the indexed group and scope, nothing else.
+        const iface = new ethers.Interface([PROOF_VALIDATED])
+        const logs = await ethers.provider.getLogs({ address: semaphoreAddr, fromBlock: 0, topics: [iface.getEvent("ProofValidated").topicHash, ethers.toBeHex(groupId, 32), null, ethers.toBeHex(scope, 32)] })
+        expect(summarise(logs.map((l) => iface.parseLog(l).args.message))).to.deep.equal({ count: 2, mean: 3, ratings: [0, 1, 0, 1, 0], topics: { none: 1, late: 1, tooLittle: 0, cashOut: 0, leftOut: 0 } })
+    })
+
     it("a relayer cannot redirect the payout", async () => {
         const proof = await proofFor(households[1], ethers.Wallet.createRandom().address)
         const tampered = { ...proof, message: BigInt(relayer.address).toString() }

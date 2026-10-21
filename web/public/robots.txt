@@ -3,6 +3,7 @@ Allow: /
 Disallow: /relay
 Disallow: /transfer
 Disallow: /pin
+Disallow: /feedback
 Disallow: /subscribe
 Disallow: /notify
 Disallow: /oracle

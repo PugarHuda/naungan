@@ -10,6 +10,7 @@
     import Paid from "./Paid.svelte"
     import Wallet from "./Wallet.svelte"
     import ReadAloud from "./ReadAloud.svelte"
+    import Feedback from "./Feedback.svelte"
 
     $effect(() => {
         document.documentElement.lang = ui.lang
@@ -39,6 +40,7 @@
     {#if ui.step}<section class="card row" aria-live="polite"><div class="spinner"></div><span>{t(ui.step)}</span></section>{/if}
     {#if ui.paid}<Paid {...ui.paid} />{/if}
     {#if ui.wallets}<Wallet funded={ui.wallets.funded} dec={ui.wallets.dec} />{/if}
+    {#if ui.feedback}<Feedback />{/if}
     {#if ui.error}<section class="card note bad" role="alert">{ui.error}</section>{/if}
     <p class="privacy">{t("privacy")}</p>
 </main>

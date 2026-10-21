@@ -3,6 +3,7 @@
 type Entry = string | ((...a: any[]) => string)
 export const T: Record<string, Record<string, Entry>> = {
     en: {
+        fbTitle: "How was the help?", fbHow: "Anonymous: a zero-knowledge proof shows your agency that an enrolled household answered, never which one, and it cannot be linked to your claim. One answer per household.", fbStars: (n) => `${n} of 5`, fbTopic: "Anything wrong?", fbT_none: "Nothing", fbT_late: "It came too late", fbT_tooLittle: "It was not enough", fbT_cashOut: "Hard to cash out", fbT_leftOut: "Someone was left out", fbSend: "Send anonymously", fbSending: "Making your anonymous proof…", fbDone: "Thank you. Your answer is on the public record, with no name.", fbAlready: "This card has already answered. Thank you.",
         title: "Claim your support", load: "Loading program…", noCard: "Scan your Naungan card with the phone camera, or paste the card code below.",
         paste: "Card code", open: "Open card", program: "Program", amount: "Amount", status: "Status",
         watching: "Watching the river. Claims open automatically when the flood forecast crosses the trigger.",
@@ -46,6 +47,7 @@ export const T: Record<string, Record<string, Entry>> = {
         readAloud: "Read aloud", about: "about", readNext: (b) => `To receive the money, press “${b}”.`, readPaid: (a) => `Paid. ${a} USDC is now in your wallet.`
     },
     id: {
+        fbTitle: "Bagaimana bantuannya?", fbHow: "Anonim: bukti zero-knowledge menunjukkan kepada lembaga Anda bahwa sebuah keluarga terdaftar menjawab, tidak pernah keluarga yang mana, dan tidak bisa dikaitkan dengan klaim Anda. Satu jawaban per keluarga.", fbStars: (n) => `${n} dari 5`, fbTopic: "Ada masalah?", fbT_none: "Tidak ada", fbT_late: "Datang terlambat", fbT_tooLittle: "Tidak cukup", fbT_cashOut: "Sulit dicairkan", fbT_leftOut: "Ada yang terlewat", fbSend: "Kirim tanpa nama", fbSending: "Membuat bukti anonim Anda…", fbDone: "Terima kasih. Jawaban Anda tercatat secara publik, tanpa nama.", fbAlready: "Kartu ini sudah menjawab. Terima kasih.",
         title: "Klaim bantuan Anda", load: "Memuat program…", noCard: "Pindai kartu Naungan dengan kamera ponsel, atau tempel kode kartu di bawah.",
         paste: "Kode kartu", open: "Buka kartu", program: "Program", amount: "Jumlah", status: "Status",
         watching: "Memantau sungai. Klaim terbuka otomatis saat prakiraan banjir melewati batas pemicu.",
@@ -89,6 +91,7 @@ export const T: Record<string, Record<string, Entry>> = {
         readAloud: "Bacakan", about: "sekitar", readNext: (b) => `Untuk menerima uangnya, tekan “${b}”.`, readPaid: (a) => `Terbayar. ${a} USDC sekarang ada di dompet Anda.`
     },
     bn: {
+        fbTitle: "সহায়তা কেমন ছিল?", fbHow: "বেনামি: একটি জিরো-নলেজ প্রমাণ আপনার সংস্থাকে দেখায় যে একটি নিবন্ধিত পরিবার উত্তর দিয়েছে, কোন পরিবার তা কখনো নয়, এবং এটি আপনার দাবির সাথে যুক্ত করা যায় না। প্রতি পরিবারে একটি উত্তর।", fbStars: (n) => `৫ এর মধ্যে ${n}`, fbTopic: "কোনো সমস্যা?", fbT_none: "কিছু না", fbT_late: "দেরিতে এসেছে", fbT_tooLittle: "যথেষ্ট ছিল না", fbT_cashOut: "টাকা তোলা কঠিন", fbT_leftOut: "কেউ বাদ পড়েছে", fbSend: "বেনামে পাঠান", fbSending: "আপনার বেনামি প্রমাণ তৈরি হচ্ছে…", fbDone: "ধন্যবাদ। আপনার উত্তর নাম ছাড়াই প্রকাশ্য রেকর্ডে আছে।", fbAlready: "এই কার্ড আগেই উত্তর দিয়েছে। ধন্যবাদ।",
         title: "আপনার সহায়তা দাবি করুন", load: "প্রোগ্রাম লোড হচ্ছে…", noCard: "ফোনের ক্যামেরা দিয়ে আপনার নাউঙ্গান কার্ড স্ক্যান করুন, অথবা নিচে কার্ডের কোড পেস্ট করুন।",
         paste: "কার্ডের কোড", open: "কার্ড খুলুন", program: "প্রোগ্রাম", amount: "পরিমাণ", status: "অবস্থা",
         watching: "নদীর উপর নজর রাখা হচ্ছে। বন্যার পূর্বাভাস সীমা পেরোলে দাবি স্বয়ংক্রিয়ভাবে খুলে যাবে।",
@@ -132,6 +135,7 @@ export const T: Record<string, Record<string, Entry>> = {
         readAloud: "জোরে পড়ে শোনান", about: "প্রায়", readNext: (b) => `টাকা পেতে “${b}” চাপুন।`, readPaid: (a) => `পরিশোধিত। ${a} USDC এখন আপনার ওয়ালেটে আছে।`
     },
     es: {
+        fbTitle: "¿Cómo fue la ayuda?", fbHow: "Anónimo: una prueba de conocimiento cero muestra a su agencia que respondió un hogar inscrito, nunca cuál, y no se puede vincular con su reclamo. Una respuesta por hogar.", fbStars: (n) => `${n} de 5`, fbTopic: "¿Algo salió mal?", fbT_none: "Nada", fbT_late: "Llegó tarde", fbT_tooLittle: "No fue suficiente", fbT_cashOut: "Difícil de cobrar", fbT_leftOut: "Alguien quedó fuera", fbSend: "Enviar en forma anónima", fbSending: "Creando su prueba anónima…", fbDone: "Gracias. Su respuesta queda en el registro público, sin nombre.", fbAlready: "Esta tarjeta ya respondió. Gracias.",
         title: "Reclame su apoyo", load: "Cargando programa…", noCard: "Escanee su tarjeta Naungan con la cámara del teléfono, o pegue el código de la tarjeta abajo.",
         paste: "Código de la tarjeta", open: "Abrir tarjeta", program: "Programa", amount: "Monto", status: "Estado",
         watching: "Vigilando el río. Los reclamos se abren solos cuando el pronóstico de inundación supera el umbral.",
@@ -175,6 +179,7 @@ export const T: Record<string, Record<string, Entry>> = {
         readAloud: "Leer en voz alta", about: "unos", readNext: (b) => `Para recibir el dinero, toque “${b}”.`, readPaid: (a) => `Pagado. Ya tiene ${a} USDC en su billetera.`
     },
     sw: {
+        fbTitle: "Msaada ulikuwaje?", fbHow: "Bila jina: uthibitisho wa zero-knowledge unaonyesha shirika lako kwamba kaya iliyosajiliwa imejibu, kamwe si kaya ipi, na hauwezi kuhusishwa na dai lako. Jibu moja kwa kila kaya.", fbStars: (n) => `${n} kati ya 5`, fbTopic: "Kuna tatizo?", fbT_none: "Hakuna", fbT_late: "Ulichelewa", fbT_tooLittle: "Haukutosha", fbT_cashOut: "Vigumu kutoa pesa", fbT_leftOut: "Mtu aliachwa", fbSend: "Tuma bila jina", fbSending: "Inaunda uthibitisho wako usio na jina…", fbDone: "Asante. Jibu lako liko kwenye rekodi ya umma, bila jina.", fbAlready: "Kadi hii imeshajibu. Asante.",
         title: "Pokea msaada wako", load: "Inapakia mpango…", noCard: "Changanua kadi yako ya Naungan kwa kamera ya simu, au bandika msimbo wa kadi hapa chini.",
         paste: "Msimbo wa kadi", open: "Fungua kadi", program: "Mpango", amount: "Kiasi", status: "Hali",
         watching: "Tunafuatilia mto. Madai yatafunguliwa yenyewe utabiri wa mafuriko ukifikia kiwango cha kuanzisha.",
@@ -219,6 +224,7 @@ export const T: Record<string, Record<string, Entry>> = {
     },
     // European Portuguese, the written norm in Mozambique (telemóvel, not celular).
     pt: {
+        fbTitle: "Como correu o apoio?", fbHow: "Anónimo: uma prova de conhecimento zero mostra à sua agência que respondeu um agregado inscrito, nunca qual, e não pode ser ligada ao seu pedido. Uma resposta por agregado.", fbStars: (n) => `${n} de 5`, fbTopic: "Algo correu mal?", fbT_none: "Nada", fbT_late: "Chegou tarde", fbT_tooLittle: "Não foi suficiente", fbT_cashOut: "Difícil levantar o dinheiro", fbT_leftOut: "Alguém ficou de fora", fbSend: "Enviar anonimamente", fbSending: "A criar a sua prova anónima…", fbDone: "Obrigado. A sua resposta fica no registo público, sem nome.", fbAlready: "Este cartão já respondeu. Obrigado.",
         title: "Receba o seu apoio", load: "A carregar o programa…", noCard: "Leia o seu cartão Naungan com a câmara do telemóvel, ou cole o código do cartão abaixo.",
         paste: "Código do cartão", open: "Abrir cartão", program: "Programa", amount: "Valor", status: "Estado",
         watching: "A vigiar o rio. Os pedidos abrem automaticamente quando a previsão de cheia ultrapassa o limiar.",
@@ -263,6 +269,7 @@ export const T: Record<string, Record<string, Entry>> = {
     },
     // Filipino as it is spoken: "ayuda" for cash aid, "bagyo" for a typhoon, and "i-claim", which everyone uses.
     fil: {
+        fbTitle: "Kumusta ang tulong?", fbHow: "Walang pangalan: ipinapakita ng isang zero-knowledge proof sa inyong ahensiya na may sumagot na nakatalang pamilya, hindi kailanman kung alin, at hindi ito maiuugnay sa iyong claim. Isang sagot bawat pamilya.", fbStars: (n) => `${n} sa 5`, fbTopic: "May problema ba?", fbT_none: "Wala", fbT_late: "Huli na dumating", fbT_tooLittle: "Kulang", fbT_cashOut: "Mahirap i-cash out", fbT_leftOut: "May naiwan", fbSend: "Ipadala nang walang pangalan", fbSending: "Ginagawa ang iyong patunay na walang pangalan…", fbDone: "Salamat. Nasa pampublikong talaan ang iyong sagot, walang pangalan.", fbAlready: "Nakasagot na ang card na ito. Salamat.",
         title: "Kunin ang iyong ayuda", load: "Nilo-load ang programa…", noCard: "I-scan ang iyong Naungan card gamit ang camera ng telepono, o i-paste ang code ng card sa ibaba.",
         paste: "Code ng card", open: "Buksan ang card", program: "Programa", amount: "Halaga", status: "Katayuan",
         watching: "Binabantayan ang ilog. Kusang magbubukas ang pag-claim kapag lumampas ang taya ng baha sa itinakdang antas.",
