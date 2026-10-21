@@ -2,7 +2,7 @@
     // Step 1: the place. Open-Meteo's geocoder finds it; for a flood the oracle must read the river's main
     // channel, so riverCell (the same code `coordinator.js create --snap` runs) moves to the wettest GloFAS cell.
     import { riverCell } from "../../../lib/hazard.mjs"
-    import { flagOf, placeOf } from "../shared/place"
+    import { flagOf, placeOf, searchPlaces } from "../shared/place"
     import { societyOf } from "../shared/ifrc"
     import { draft, suggestName, type Hit } from "./draft.svelte"
 
@@ -18,9 +18,9 @@
         hits = []
         msg = "Searching…"
         try {
-            const res = await (await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=6&language=en&format=json`)).json()
-            if (!res.results?.length) return void (msg = `No place called “${query}” found. Try a city or district name.`)
-            hits = res.results
+            const found = await searchPlaces<Hit>(query) // times out, so a stalled geocoder ends in a message
+            if (!found.length) return void (msg = `No place called “${query}” found. Try a city or district name.`)
+            hits = found
             msg = ""
         } catch (err) {
             msg = `The place search is unavailable right now (${(err as Error).message}).`

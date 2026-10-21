@@ -72,3 +72,10 @@ export function localMoney(usdc: number, cc: string | undefined, fx: Rates | nul
     const text = new Intl.NumberFormat(locale, { style: "currency", currency: cur, currencyDisplay: display, maximumFractionDigits: rate > 10 ? 0 : 2 }).format(usdc * rate)
     return { text: `≈ ${text}`, currency: new Intl.DisplayNames([locale], { type: "currency" }).of(cur) ?? cur, day: new Date(fx!.day) }
 }
+
+/** Places by name from Open-Meteo's geocoder, for the launch page and the landing river check. Throws on failure or after 10 s. */
+export async function searchPlaces<H>(query: string): Promise<H[]> {
+    const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=6&language=en&format=json`, { signal: AbortSignal.timeout(10e3) })
+    if (!r.ok) throw new Error(`HTTP ${r.status}`)
+    return (await r.json()).results ?? []
+}

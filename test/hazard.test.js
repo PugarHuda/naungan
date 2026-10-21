@@ -4,6 +4,9 @@ const os = require("os")
 const path = require("path")
 const { annualMaxima, returnLevel, exceedance, rolling, assessRain, episodes, agree, longestRun, assessHeat, replayHeat, floodThreshold, assessWind, replayWind, windHistory, PIPELINES, defaultPipeline } = require("../lib/hazard.mjs")
 
+// Open-Meteo ensemble metadata: the run being served (2026-10-21 06Z), unless a test swaps it.
+let RUN = () => ({ last_run_initialisation_time: 1792562400 })
+
 describe("hazard (GloFAS trigger math)", () => {
     // Climatologies are cached on disk (lib/hazard.mjs memo): keep this suite's stubbed ones out of the real cache.
     let dir
@@ -53,7 +56,8 @@ describe("hazard (GloFAS trigger math)", () => {
         const real = global.fetch
         global.fetch = async (url) => ({
             ok: true,
-            json: async () => url.includes("archive")
+            json: async () => url.includes("meta.json") ? RUN(url)
+                : url.includes("archive")
                 ? [{ daily: { time, precipitation_sum: a } }, { daily: { time, precipitation_sum: b } }]
                 // GEFS, 2 cells × 2 members over 2 days: member01 drowns cell A only, member02 is dry.
                 : [{ latitude: 1, longitude: 1, daily: { time: ["t0", "t1"], precipitation_sum_member01: [400, 400], precipitation_sum_member02: [1, 1] } },
@@ -83,7 +87,8 @@ describe("hazard (GloFAS trigger math)", () => {
         const real = global.fetch
         global.fetch = async (url) => ({
             ok: true,
-            json: async () => url.includes("archive")
+            json: async () => url.includes("meta.json") ? RUN(url)
+                : url.includes("archive")
                 ? { daily: { time: ["2024-04-19", "2024-04-20", "2024-04-21"], temperature_2m_max: [39.0, 39.8, 37.5], temperature_2m_min: [27, 28, 26] } }
                 // 3 members over 4 days: member01 has two hot days in a row, member02 two separate hot days, member03 none.
                 : { latitude: 23.75, longitude: 90.5, daily: { time: ["d0", "d1", "d2", "d3"], temperature_2m_max: [36, 37, 36, 35],
@@ -109,7 +114,8 @@ describe("hazard (GloFAS trigger math)", () => {
         const real = global.fetch
         global.fetch = async (url) => ({
             ok: true,
-            json: async () => !url.includes("archive")
+            json: async () => url.includes("meta.json") ? RUN(url)
+                : !url.includes("archive")
                 // GEFS, 3 members over 3 days: member01 brings a 150 km/h gust, member02 and the control stay calm.
                 ? { latitude: 11.25, longitude: 125, daily: { time: ["d0", "d1", "d2"], wind_gusts_10m_max: [30, 35, 40], wind_gusts_10m_max_member01: [40, 150, 60], wind_gusts_10m_max_member02: [30, 50, 45] } }
                 : url.includes("start_date=2013-11-07")
@@ -139,8 +145,19 @@ describe("hazard (GloFAS trigger math)", () => {
             expect(asked.some((u) => /models=ecmwf_ifs025/.test(u)) && !asked.some((u) => /models=gfs025/.test(u))).to.equal(true)
             expect(e.evidence).to.match(/^ECMWF IFS 0\.25 ENS wind gusts via Open-Meteo .*1\/3 members exceed/)
             expect(PIPELINES["wind-ecmwf"][1]).to.equal(replayWind) // a replay reads observed ERA5 whichever model runs live
+            // Each live reading names its model run by the hour (four runs a day), from that model's own metadata.
+            expect(r.evidence).to.include("| run 2026-10-21T06Z |")
+            expect(asked.some((u) => u.includes("/data/ecmwf_ifs025_ensemble/static/meta.json"))).to.equal(true)
+            // A new run lands while the forecast is read: the reading is taken again under the new run, never labelled with the old one.
+            let n = 0
+            RUN = () => ({ last_run_initialisation_time: n++ === 0 ? 1792562400 : 1792584000 })
+            asked = []
+            const again = await assessWind(m)
+            expect(again.evidence).to.include("| run 2026-10-21T12Z |")
+            expect(asked.filter((u) => /models=gfs025/.test(u))).to.have.length(2)
         } finally {
             global.fetch = real
+            RUN = () => ({ last_run_initialisation_time: 1792562400 })
         }
     })
 
@@ -154,6 +171,7 @@ describe("hazard (GloFAS trigger math)", () => {
         expect(parseEvidence("REPLAY of ERA5 observed max temperature via Open-Meteo (not a live forecast) | mean of 1 cells | window 2024-04-15..2024-04-21")).to.include({ pipeline: "heat", replay: "2024-04-15" })
         expect(parseEvidence("NOAA GEFS 0.25 wind gusts via Open-Meteo | mean of 1 cells | run 2026-10-21 | lead 5d")).to.deep.equal({ pipeline: "wind", replay: null, run: "2026-10-21" })
         expect(parseEvidence("REPLAY of ERA5 observed wind gusts via Open-Meteo (not a live forecast) | mean of 1 cells | window 2013-11-07..2013-11-11")).to.include({ pipeline: "wind", replay: "2013-11-07" })
+        expect(parseEvidence("ECMWF IFS 0.25 ENS wind gusts via Open-Meteo | mean of 1 cells | run 2026-10-21T06Z | lead 5d")).to.deep.equal({ pipeline: "wind-ecmwf", replay: null, run: "2026-10-21T06Z" })
         expect(parseEvidence("trust me, 99%")).to.equal(null)
     })
 

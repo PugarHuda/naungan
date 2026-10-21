@@ -22,7 +22,7 @@ const cached = async <T>(key: string, days: number, load: () => Promise<T>): Pro
 }
 
 const getJSON = async (url: string) => {
-    const r = await fetch(url)
+    const r = await fetch(url, { signal: AbortSignal.timeout(20e3) })
     if (!r.ok) throw new Error(`IFRC GO answered ${r.status}`)
     return r.json()
 }

@@ -1,6 +1,7 @@
 <script lang="ts">
     // Any river: Open-Meteo's geocoder finds the place, then the same GloFAS code the oracle runs gives its
     // flood level, forecast and 30-year record. Nothing is stored; each search is a few public API calls.
+    import { searchPlaces } from "../shared/place"
     import { trackRecord } from "../shared/verify.mjs"
     import { riverCell } from "../../../lib/hazard.mjs" // the same river snap the coordinator CLI and launch page use
     import ForecastChart from "./ForecastChart.svelte"
@@ -26,9 +27,9 @@
         hits = []
         hitMsg = "Searching…"
         try {
-            const res = await (await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=6&language=en&format=json`)).json()
-            if (!res.results?.length) return void (hitMsg = `No place called “${query}” found. Try a city or district name.`)
-            hits = res.results
+            const found = await searchPlaces<(typeof hits)[number]>(query)
+            if (!found.length) return void (hitMsg = `No place called “${query}” found. Try a city or district name.`)
+            hits = found
             hitMsg = ""
         } catch (err) {
             hitMsg = `The place search is unavailable right now (${(err as Error).message}).`

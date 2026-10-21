@@ -132,6 +132,35 @@ describe("event history from the indexer", () => {
         expect(topicsMatch([sig, [p(1), p(2)]], [sig, p(2)])).to.equal(true) // OR within one position
         expect(topicsMatch([sig.toUpperCase().replace("0X", "0x"), p(2)], [sig, p(2)])).to.equal(true)
     })
+
+    it("reads wide-range RPCs first: halves the span a node refuses, moves on from a node that fails, keeps each log's time", async () => {
+        const { ethers } = require("ethers")
+        const { wideLogs } = require("../lib/chain")
+        const iface = new ethers.Interface(["event Funded(uint256 indexed programId, uint256 amount)"])
+        const contract = { target: "0x00E9E8F7a9E8Dd4923Eb92eC5536f70ecD0C70f4", interface: iface }
+        const log = (block) => ({ ...iface.encodeEventLog("Funded", [3, 250000]), blockNumber: "0x" + block.toString(16), logIndex: "0x0", transactionHash: "0x" + "ab".repeat(32), blockTimestamp: "0x6ad8187a" })
+        const asked = [], real = global.fetch
+        global.fetch = async (url, init) => {
+            const [{ fromBlock, toBlock }] = JSON.parse(init.body).params
+            const from = Number(fromBlock), to = Number(toBlock)
+            asked.push([new URL(url).host, to - from + 1])
+            const json = url.includes("down") ? { error: { message: "rate limited" } }
+                : to - from + 1 > 50_000 ? { error: { code: -32701, message: "exceed maximum block range: 50000" } }
+                : { result: from <= 120_000 && 120_000 <= to ? [log(120_000)] : [] }
+            return { json: async () => json }
+        }
+        try {
+            const out = await wideLogs(["https://down.example", "https://wide.example"], contract, 100_000, 199_999)
+            expect(out).to.have.length(1)
+            expect(out[0]).to.include({ blockNumber: 120_000, timestamp: 0x6ad8187a })
+            expect(out[0].args.amount).to.equal(250000n)
+            expect(asked.filter(([h]) => h === "down.example").length).to.equal(8) // 100k halved below the 1000-block floor (781), then given up
+            expect(asked.filter(([h]) => h === "wide.example").map(([, n]) => n)).to.deep.equal([100_000, 50_000, 50_000])
+            expect(await wideLogs(["https://down.example"], contract, 1, 10)).to.equal(null) // nothing answered: the caller falls back
+        } finally {
+            global.fetch = real
+        }
+    })
 })
 
 describe("steady RPC reads", () => {

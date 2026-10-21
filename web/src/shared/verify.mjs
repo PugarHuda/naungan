@@ -17,7 +17,7 @@ export function parseEvidence(evidence) {
         : /^(REPLAY of GloFAS|GloFAS)/.test(evidence) ? "glofas" : null
     if (!pipeline) return null
     const replay = /^REPLAY/.test(evidence) ? evidence.match(/window (\d{4}-\d{2}-\d{2})\.\./)?.[1] : null
-    const run = evidence.match(/run (\d{4}-\d{2}-\d{2})/)?.[1] ?? null
+    const run = evidence.match(/run (\d{4}-\d{2}-\d{2}(?:T\d{2}Z)?)/)?.[1] ?? null // ensembles name the hour of their run
     return { pipeline, replay, run }
 }
 
@@ -56,6 +56,10 @@ export async function recheck(meta, report) {
         value: r.probability,
         evidence: r.evidence,
         comparable,
-        why: e.replay ? `replay of ${e.replay}` : comparable ? `same forecast run ${e.run}` : `forecast run ${e.run} has been replaced by ${runNow}`
+        why: e.replay ? `replay of ${e.replay}`
+            : comparable ? `same forecast run ${e.run}`
+            // Reports posted before runs were named by the hour: GEFS and ECMWF ENS run four times a day, so a day is not a run.
+            : runNow?.startsWith(`${e.run}T`) ? `this report names only the day of its run (${e.run}), and the model runs four times a day`
+            : `forecast run ${e.run} has been replaced by ${runNow}`
     }
 }

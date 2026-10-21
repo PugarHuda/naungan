@@ -14,7 +14,7 @@ export type Forecast = { time: string[]; median: (number | null)[]; max: (number
 
 /** GloFAS median and wettest member for the next 30 days, against the program's flood level. */
 export async function forecast(meta: FloodMeta): Promise<Forecast> {
-    const r = await fetch(`https://flood-api.open-meteo.com/v1/flood?latitude=${meta.lat}&longitude=${meta.lon}&daily=river_discharge_median,river_discharge_max&forecast_days=30`)
+    const r = await fetch(`https://flood-api.open-meteo.com/v1/flood?latitude=${meta.lat}&longitude=${meta.lon}&daily=river_discharge_median,river_discharge_max&forecast_days=30`, { signal: AbortSignal.timeout(20e3) })
     if (!r.ok) throw new Error(`GloFAS forecast ${r.status}`)
     const j = await r.json()
     const { threshold } = await floodThreshold(meta)

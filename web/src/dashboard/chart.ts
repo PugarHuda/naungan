@@ -33,7 +33,7 @@ const ticks = (x: (i: number) => number, at: number[], time: string[], last: num
     at.map((i) => ({ x: x(i), label: i === 0 ? "Today" : shortDay(time[i]), anchor: (i === 0 ? "start" : i === last ? "end" : "middle") as "start" | "middle" | "end" }))
 
 export async function floodChart(meta: ProgramMeta): Promise<Chart> {
-    const r = await fetch(`https://flood-api.open-meteo.com/v1/flood?latitude=${meta.lat}&longitude=${meta.lon}&daily=river_discharge_median,river_discharge_max&forecast_days=30`)
+    const r = await fetch(`https://flood-api.open-meteo.com/v1/flood?latitude=${meta.lat}&longitude=${meta.lon}&daily=river_discharge_median,river_discharge_max&forecast_days=30`, { signal: AbortSignal.timeout(20e3) })
     if (!r.ok) throw new Error(`GloFAS ${r.status}`)
     const j = await r.json()
     const { threshold } = await (await import("../shared/verify.mjs")).floodThreshold(meta as { lat: number; lon: number; returnPeriod: number }) // flood programs always carry all three
