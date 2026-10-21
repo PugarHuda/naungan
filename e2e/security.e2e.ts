@@ -24,7 +24,7 @@ test("security headers: present, and the CSP allows every host the pages actuall
     await page.goto("/dashboard.html?program=5")
     await expect(page.locator('[role="log"] .row').first()).toBeVisible()
     await page.goto("/claim.html#join=7")
-    await expect(page.locator(".idr").first()).toContainText("USh")
+    await expect(page.locator(".idr").first()).toContainText("UGX")
     await page.goto("/launch.html")
     // Without a place (geocoder refused this runner) the society lookup never runs; every origin fetched so far is still checked.
     if (await pickPlace(page, "Butaleja")) await expect(page.getByText(/to the main channel|Uganda Red Cross/).first()).toBeVisible()

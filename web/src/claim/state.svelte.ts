@@ -71,7 +71,9 @@ export function statusOf(s: Snapshot | null) {
     if (Date.now() / 1000 > Number(deadline)) return t("closed")
     return `${t("open_")} ${t("until")} ${new Date(Number(deadline) * 1000).toLocaleString(locale(), { dateStyle: "long", timeStyle: "short" })}`
 }
-export const locale = () => (ui.country ? `${ui.lang}-${ui.country}` : ui.lang === "en" ? "en-GB" : ui.lang)
+// English formats as English wherever the program runs (18,002 and 22:46, not en-ID's 18.002 and 22.46); another
+// language formats as it is written in the program's country (bn-BD, es-HN).
+export const locale = () => (ui.lang === "en" ? "en-GB" : ui.country ? `${ui.lang}-${ui.country}` : ui.lang)
 
 export const store = {
     get: (k: string): any => { try { return JSON.parse(localStorage.getItem(k) ?? "null") } catch { return null } },
