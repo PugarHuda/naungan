@@ -172,3 +172,40 @@ describe("steady RPC reads", () => {
         c.server.close()
     })
 })
+
+describe("waking phones when claims open (/notify)", () => {
+    const { sharedStore, drain } = require("../scripts/relayer")
+    const queue = async (store, n) => { for (let i = 0; i < n; i++) await store.add("q", `https://fcm.googleapis.com/fcm/send/${i}`, 3600) }
+
+    it("every phone is woken once; gone ones dropped, refused ones kept for the next call", async () => {
+        const store = sharedStore({})
+        await queue(store, 1000)
+        const seen = new Map()
+        // 1 in 10 phones unsubscribed (410), 1 in 20 push services busy (429), one network failure.
+        const wake = async (e) => {
+            seen.set(e, (seen.get(e) ?? 0) + 1)
+            const i = Number(e.split("/").pop())
+            if (i === 7) throw new Error("fetch failed")
+            return i % 10 === 0 ? 410 : i % 20 === 5 ? 429 : 201
+        }
+        const r = await drain(store, "q", wake)
+        expect(seen.size).to.equal(1000)
+        expect([...seen.values()].every((n) => n === 1)).to.equal(true)
+        expect(r).to.deep.equal({ woke: 1000 - 100 - 50 - 1, retried: 51, more: false })
+        expect((await store.members("q")).sort()).to.have.length(51) // the busy and the failed, for next time; never the 410s
+    })
+
+    it("a sender out of time stops between batches and loses nobody; two senders never wake one phone twice", async () => {
+        const store = sharedStore({})
+        await queue(store, 1000)
+        const seen = new Map()
+        const wake = async (e) => (seen.set(e, (seen.get(e) ?? 0) + 1), await new Promise((r) => setTimeout(r, 1)), 201)
+        const first = await drain(store, "q", wake, { batch: 200, deadline: Date.now() + 15 })
+        expect(first.more).to.equal(true)
+        expect(first.woke).to.be.below(1000)
+        expect((await store.members("q")).length).to.equal(1000 - first.woke) // the rest are still queued
+        const [a, b] = await Promise.all([drain(store, "q", wake, { batch: 50 }), drain(store, "q", wake, { batch: 50 })])
+        expect(first.woke + a.woke + b.woke).to.equal(1000)
+        expect([...seen.values()].every((n) => n === 1)).to.equal(true)
+    })
+})

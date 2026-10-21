@@ -11,6 +11,7 @@
     import AuditPanel from "./AuditPanel.svelte"
     import TrackRecord from "./TrackRecord.svelte"
     import IfrcPanel from "./IfrcPanel.svelte"
+    import GdacsPanel from "./GdacsPanel.svelte"
     import Ledger from "./Ledger.svelte"
 
     start()
@@ -51,6 +52,7 @@
             <AuditPanel />
             <TrackRecord />
             <IfrcPanel />
+            <GdacsPanel />
         </section>
 
         <section class="bottom">

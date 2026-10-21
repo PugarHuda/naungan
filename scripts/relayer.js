@@ -106,7 +106,8 @@ function sharedStore(env = process.env) {
             // Delete only while we still hold it: a lock that outlived its TTL may belong to the next caller now.
             release: async (k, v) => void (await run(["EVAL", "if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) end return 0", "1", k, v])),
             add: async (k, v, ttl) => void (await run(["SADD", k, v], ["EXPIRE", k, String(ttl)])),
-            members: async (k) => (await run(["SMEMBERS", k]))[0] ?? []
+            members: async (k) => (await run(["SMEMBERS", k]))[0] ?? [],
+            pop: async (k, n) => (await run(["SPOP", k, String(n)]))[0] ?? [] // up to n members, removed as they are read
         }
     }
     const m = new Map() // ponytail: one process's memory; expired entries are dropped when read
@@ -121,10 +122,36 @@ function sharedStore(env = process.env) {
         del: async (k) => void m.delete(k),
         release: async (k, v) => void (live(k)?.v === v && m.delete(k)),
         add: async (k, v, ttl) => void put(k, new Set(live(k)?.v).add(v), ttl),
-        members: async (k) => [...(live(k)?.v ?? [])]
+        members: async (k) => [...(live(k)?.v ?? [])],
+        pop: async (k, n) => { const e = live(k); const out = [...(e?.v ?? [])].slice(0, n); for (const x of out) e.v.delete(x); return out }
     }
 }
 const YEAR = 31536000, MONTH = 2592000
+
+/**
+ * Wake every phone queued under `key`, `batch` at a time. Each batch is popped from the shared store before it is
+ * sent, so two senders never wake one phone twice and a sender cut off by its time limit loses nothing: it stops at
+ * `deadline` (ms) and what is left stays queued for the next call. A phone whose push service answered 429, 5xx or
+ * nothing goes back in the queue for next time; any other answer (404/410: the phone unsubscribed) drops it.
+ */
+async function drain(store, key, wake, { batch = 200, deadline = Infinity, ttl = MONTH } = {}) {
+    let woke = 0, more = false
+    const retry = []
+    for (;;) {
+        if (Date.now() >= deadline) {
+            more = true
+            break
+        }
+        const subs = await store.pop(key, batch)
+        if (!subs.length) break
+        for (let i = 0; i < subs.length; i += 50) {
+            const codes = await Promise.all(subs.slice(i, i + 50).map((e) => wake(e).catch(() => 0)))
+            codes.forEach((c, j) => (c >= 200 && c < 300 ? woke++ : (c === 0 || c === 429 || c >= 500) && retry.push(subs[i + j])))
+        }
+    }
+    for (const e of retry) await store.add(key, e, ttl)
+    return { woke, retried: retry.length, more }
+}
 // PIN try counters must outlive any card: a stolen card left in a drawer must not earn fresh guesses.
 const PIN_TTL = 10 * YEAR
 
@@ -274,32 +301,29 @@ async function createRelayer({ store = sharedStore() } = {}) {
             if (await limited(`notify:${ip}`, 6)) return [429, { error: "too many requests, try again in a minute" }]
             const now = BigInt(Math.floor(Date.now() / 1000))
             const n = Number(await naungan.programCount())
-            const open = []
+            const open = [], seasonEnd = {}
             for (let pid = 1; pid <= n; pid++) {
                 const p = await naungan.programs(pid)
-                if (p.claimDeadline > 0n && now <= p.claimDeadline) open.push(pid)
+                if (p.claimDeadline > 0n && now <= p.claimDeadline) open.push(pid), (seasonEnd[pid] = Number(p.seasonEnd))
             }
             // One sender at a time across instances, so two callers never both read a list before it is forgotten.
             const lock = `naungan:notifying:${d.naungan}`
             const me = ethers.hexlify(ethers.randomBytes(8))
             if (!(await store.claim(lock, me, 300))) return [409, { error: "already notifying, try again in a minute" }]
-            let sent = 0
+            // Stop well inside the function's 300 s; phones not reached yet stay queued for the next call (the oracle
+            // workflow calls hourly, the Vercel cron daily), so a program of any size is woken over successive calls.
+            const deadline = Date.now() + 240e3
+            let sent = 0, more = false
             try {
                 for (const pid of open) {
-                    const subs = await store.members(pushKey(pid))
-                    if (!subs.length) continue
-                    await store.del(pushKey(pid))
-                    let woke = 0
-                    // ponytail: 50 at a time inside one 300 s function; queue them if a program grows past ~10k phones
-                    for (let i = 0; i < subs.length; i += 50)
-                        woke += (await Promise.all(subs.slice(i, i + 50).map((e) => push.wake(e, vapid, "https://naungan.vercel.app").catch(() => 0)))).filter((c) => c >= 200 && c < 300).length
-                    console.log(`${new Date().toISOString()} program ${pid}: woke ${woke} of ${subs.length} phones`)
-                    sent += woke
+                    const r = await drain(store, pushKey(pid), (e) => push.wake(e, vapid, "https://naungan.vercel.app"), { deadline, ttl: seasonEnd[pid] - Number(now) + MONTH })
+                    if (r.woke || r.retried) console.log(`${new Date().toISOString()} program ${pid}: woke ${r.woke} phones, ${r.retried} to retry${r.more ? ", more queued" : ""}`)
+                    ;(sent += r.woke), (more ||= r.more)
                 }
             } finally {
                 await store.release(lock, me).catch(() => {})
             }
-            return [200, { programs: open, sent }]
+            return [200, { programs: open, sent, more }]
         }
         if (method === "GET" && url === "/oracle") {
             if (await limited(`oracle:${ip}`, 2)) return [429, { error: "too many requests, try again in a minute" }]
@@ -416,4 +440,4 @@ async function main() {
 }
 
 if (require.main === module) main().catch((e) => (console.error(e.message), process.exit(1)))
-module.exports = { parseProof, parseTransfer, parsePin, sharedStore, createRelayer, serialSender, claimStatus, transferStatus, HEADERS, MAX_BODY }
+module.exports = { drain, parseProof, parseTransfer, parsePin, sharedStore, createRelayer, serialSender, claimStatus, transferStatus, HEADERS, MAX_BODY }

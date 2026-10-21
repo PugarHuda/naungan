@@ -42,3 +42,21 @@ test("dashboard: with the free indexer down, the history comes from the open-dat
     expect(await rows.count()).toBeGreaterThanOrEqual(5)
     await expect(page.locator('[role="log"]')).toContainText(/Claimed|claimed|paid/i)
 })
+
+test("dashboard: official GDACS alerts near the program, read live; a heat program says GDACS has none for heat", async ({ page, check }) => {
+    await page.goto("/dashboard?program=8") // Aguán river, Honduras: Central America's flood and cyclone season
+    const panel = page.locator("article", { has: page.getByRole("heading", { name: "Official alerts nearby" }) })
+    await panel.scrollIntoViewIfNeeded()
+    const status = panel.getByRole("status")
+    await expect(status).toHaveText(/active|No GDACS flood or cyclone alert near this program|GDACS is unavailable right now \(.+\)/, { timeout: 30e3 })
+    if (await panel.locator("ul.go li").count()) {
+        // Each listed alert links its official GDACS report and says how far it is.
+        await expect(panel.locator("ul.go li a").first()).toHaveAttribute("href", /^https:\/\/www\.gdacs\.org\/report\.aspx\?eventid=\d+/)
+        await expect(panel.locator("ul.go li .meta").first()).toHaveText(/(Flood|Tropical cyclone) · (Green|Orange|Red) alert · [\d,]+ km away/)
+    }
+    await check(page)
+    await page.goto("/dashboard?program=6") // Dhaka heatwave
+    const heat = page.locator("article", { has: page.getByRole("heading", { name: "Official alerts nearby" }) })
+    await heat.scrollIntoViewIfNeeded()
+    await expect(heat.getByRole("status")).toHaveText(/GDACS issues no heatwave alerts/)
+})

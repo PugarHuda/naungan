@@ -44,4 +44,9 @@ jobs:
           node scripts/oracle.js --all --every 5.5
       - name: Wake phones waiting on programs whose claims opened (Web Push)
         if: ${{ always() }}
-        run: curl -fsS -X POST https://naungan.vercel.app/notify
+        # Each call wakes phones for up to ~4 minutes; while it says more are queued, call again (at most 5 times a run).
+        run: |
+          for i in 1 2 3 4 5; do
+            out=$(curl -fsS -X POST https://naungan.vercel.app/notify); echo "$out"
+            echo "$out" | grep -q '"more":true' || break
+          done

@@ -586,7 +586,8 @@
                   "type": "object",
                   "required": [
                     "programs",
-                    "sent"
+                    "sent",
+                    "more"
                   ],
                   "properties": {
                     "programs": {
@@ -599,6 +600,10 @@
                     "sent": {
                       "type": "integer",
                       "description": "Phones woken by this call"
+                    },
+                    "more": {
+                      "type": "boolean",
+                      "description": "This call reached its time limit with phones still queued: call again to wake the rest (phones whose push service was busy stay queued for the next call too)"
                     }
                   }
                 }
