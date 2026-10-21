@@ -2,7 +2,8 @@
     // Every program on the contract as a card: where it runs (country from its on-chain coordinates), its
     // trigger rule and its state. Newest first.
     import { formatUnits } from "ethers"
-    import { isHeat, isOver, shortfall, type Program, type ProgramMeta } from "../shared/chain"
+    import { ruleText } from "../../../lib/program.mjs"
+    import { isOver, shortfall, type Program, type ProgramMeta } from "../shared/chain"
     import { flagOf, placeOf, type Place } from "../shared/place"
 
     let { programs, error }: { programs: { id: number; p: Program; meta: ProgramMeta }[] | null; error: string } = $props()
@@ -13,12 +14,7 @@
         Promise.all(programs.map(({ meta: m }) => (Number.isFinite(m.lat) && Number.isFinite(m.lon) ? placeOf(m.lat!, m.lon!) : null))).then((x) => (places = x))
     })
 
-    const rule = (p: Program, m: ProgramMeta) =>
-        m.hazard === "wind"
-            ? `Cyclone wind: ≥${p.triggerThreshold}% of NOAA GEFS members above the 1-in-${m.wind?.returnPeriod ?? m.returnPeriod}-year gust (ERA5), ${m.leadDays}-day lead`
-            : isHeat(m)
-            ? `Heatwave: ${m.heat?.days ?? 2}+ days above ${m.heat?.tmax ?? 38} °C${m.heat?.tmin != null ? `, nights above ${m.heat.tmin} °C` : ""}, ≥${p.triggerThreshold}% of NOAA GEFS members, ${m.leadDays}-day lead`
-            : `River flood: ≥${p.triggerThreshold}% of GloFAS members above the 1-in-${m.returnPeriod}-year flood, ${m.leadDays}-day lead${m.rain ? ", confirmed by NOAA GEFS rainfall (2-of-2)" : ""}`
+    const rule = (p: Program, m: ProgramMeta) => ruleText(m, p.triggerThreshold)
     const status = (p: Program): [string, string] => (isOver(p) ? ["Over", "over"] : p.claimDeadline > 0n ? ["Claims open", "open"] : [`Watching · ${p.lastIndex}%`, ""])
     const count = (k: "code" | "continent") => new Set(places!.map((x) => x?.[k]).filter(Boolean)).size
 

@@ -8,6 +8,7 @@
     import { deployment as d, naungan, readPrograms, isOver, short, NAUNGAN_ABI, type Program, type ProgramMeta } from "../shared/chain"
     import { browserWallet, cancelled, walletSigner, why } from "../shared/wallet"
     import { readCode, codesIn, chunks } from "./codes"
+    import { languageOf } from "../shared/place"
 
     const ABI = [...NAUNGAN_ABI, "function isAgency(uint256, address) view returns (bool)", "function addAgency(uint256 programId, address agency)", "function enroll(uint256 programId, uint256[] commitments)"]
     const c = naungan()
@@ -187,7 +188,7 @@
                     </select>
                 </label>
                 {#if chosen}
-                    <p class="fine">{enrolled.size} household{enrolled.size === 1 ? "" : "s"} enrolled so far. Registration link for phones: <code>{location.origin}/claim#join={chosen.id}</code> · <a href="poster?program={chosen.id}" target="_blank" rel="noopener">Print a registration poster</a> · Enrolling from a name list? <a href="dedup?program={chosen.id}">Check it against other agencies first</a></p>
+                    <p class="fine">{enrolled.size} household{enrolled.size === 1 ? "" : "s"} enrolled so far. Registration link for phones: <code>{location.origin}/claim#join={chosen.id}</code> · <a href="poster?program={chosen.id}{chosen.meta.country ? `&lang=${languageOf(chosen.meta.country)}` : ""}" target="_blank" rel="noopener">Print a registration poster</a> · Enrolling from a name list? <a href="dedup?program={chosen.id}">Check it against other agencies first</a></p>
                 {/if}
             {/if}
         </article>

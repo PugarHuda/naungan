@@ -13,7 +13,7 @@ test("claim: no card shows the paste box, and a wrong code is refused @phone", a
     await check(page)
 })
 
-for (const [pid, lang, money, h1] of [["6", "bn", "BDT", "আপনার সহায়তা দাবি করুন"], ["8", "es", "HNL", "Reclame su apoyo"], ["7", "sw", "UGX", "Pokea msaada wako"]] as const) {
+for (const [pid, lang, money, h1] of [["6", "bn", "BDT", "আপনার সহায়তা দাবি করুন"], ["8", "es", "HNL", "Reclame su apoyo"], ["7", "sw", "UGX", "Pokea msaada wako"], ["10", "pt", "MZN", "Receba o seu apoio"]] as const) {
     test(`claim: registering for program ${pid} opens in English with ${money} amounts, and in ${lang} when the household picks it @phone`, async ({ page, check }) => {
         await page.goto(`/claim.html#join=${pid}`)
         await expect(page.locator("html")).toHaveAttribute("lang", "en")

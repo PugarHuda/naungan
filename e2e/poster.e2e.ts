@@ -47,3 +47,12 @@ test("poster: a cyclone program says cyclone in every language (#9, Swahili with
     await expect(page.locator("ol li").nth(2)).toContainText("Kimbunga kikitabiriwa")
     await expect(page.locator("ol li").nth(2).locator(".en")).toContainText("When a cyclone is forecast")
 })
+
+test("poster: Beira (#10, Mozambique) prints in Portuguese, cyclone wording included @desktop", async ({ page, check }) => {
+    await page.goto("/poster?program=10&lang=pt")
+    await expect(page.locator("html")).toHaveAttribute("lang", "pt")
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Inscreva-se para receber apoio em dinheiro antecipado")
+    await expect(page.locator(".amount")).toContainText("antes de o ciclone chegar")
+    await expect(page.locator("ol li").nth(2)).toContainText("Quando se prever um ciclone")
+    await check(page)
+})

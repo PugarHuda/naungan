@@ -1,4 +1,4 @@
-// Every string the household sees, in English, Bahasa Indonesia, Bengali, Spanish and Swahili. A key ending in
+// Every string the household sees, in English, Bahasa Indonesia, Bengali, Spanish, Swahili and Portuguese. A key ending in
 // "_heat" and "_wind" are the heatwave and cyclone wording of the same message; t() in state.svelte.ts falls back to the shared one.
 type Entry = string | ((...a: any[]) => string)
 export const T: Record<string, Record<string, Entry>> = {
@@ -216,8 +216,52 @@ export const T: Record<string, Record<string, Entry>> = {
         joinClosed: "Usajili ulifungwa tahadhari ya mafuriko ilipofungua madai, kwa hiyo simu hii haiwezi kujiunga na mpango huu sasa. Uliza shirika lako kuhusu mpango ujao.",
         another: "Tumia kadi nyingine", pickWallet: "Pochi",
         readAloud: "Nisomee kwa sauti", about: "takriban", readNext: (b) => `Ili kupokea pesa, bonyeza “${b}”.`, readPaid: (a) => `Imelipwa. USDC ${a} sasa iko kwenye pochi yako.`
+    },
+    // European Portuguese, the written norm in Mozambique (telemóvel, not celular).
+    pt: {
+        title: "Receba o seu apoio", load: "A carregar o programa…", noCard: "Leia o seu cartão Naungan com a câmara do telemóvel, ou cole o código do cartão abaixo.",
+        paste: "Código do cartão", open: "Abrir cartão", program: "Programa", amount: "Valor", status: "Estado",
+        watching: "A vigiar o rio. Os pedidos abrem automaticamente quando a previsão de cheia ultrapassa o limiar.",
+        open_: "Alerta de cheia: pedidos abertos", until: "até", closed: "O prazo para pedir terminou.",
+        notEnrolled: "Este cartão não está inscrito neste programa. Contacte a sua organização de ajuda.",
+        claimed: "Este cartão já foi usado. Cada agregado familiar só pode pedir uma vez.",
+        enrolled: "O seu cartão é válido para este programa.", payTo: "Para onde deve ir o dinheiro?",
+        newWallet: "Criar uma carteira neste telemóvel", ownWallet: "Usar o meu próprio endereço", addr: "Endereço da carteira (0x…)",
+        backup: "Escreva esta chave de recuperação e guarde-a num lugar seguro. Quem a tiver controla o dinheiro.", showKey: "Mostrar chave de recuperação",
+        watching_heat: "A vigiar a previsão da temperatura. Os pedidos abrem automaticamente quando se prevê uma onda de calor.",
+        watching_wind: "A vigiar a previsão do vento. Os pedidos abrem automaticamente quando se prevê um ciclone.",
+        open__heat: "Alerta de onda de calor: pedidos abertos", chance_heat: "Probabilidade de onda de calor",
+        open__wind: "Alerta de ciclone: pedidos abertos", chance_wind: "Probabilidade de ciclone",
+        alertNo_heat: "Este telemóvel não consegue verificar em segundo plano. Abra esta página durante os avisos de calor, ou ouça a sua organização.",
+        alertNo_wind: "Este telemóvel não consegue verificar em segundo plano. Abra esta página durante os avisos de ciclone, ou ouça a sua organização.",
+        joinClosed_heat: "As inscrições fecharam quando o alerta de onda de calor abriu os pedidos, por isso este telemóvel já não pode entrar neste programa. Pergunte à sua organização pelo próximo.",
+        joinClosed_wind: "As inscrições fecharam quando o alerta de ciclone abriu os pedidos, por isso este telemóvel já não pode entrar neste programa. Pergunte à sua organização pelo próximo.",
+        chance: "Probabilidade de cheia", chanceOf: (a, b) => `${a}% (os pedidos abrem aos ${b}%)`,
+        joinTitle: "Inscreva-se com o seu próprio telemóvel",
+        joinHow: "Mostre este código ao pessoal da organização. Não tem nome e não serve para pedir. O seu segredo fica só neste telemóvel, por isso nem a organização sabe quando pede.",
+        joinWait: "Ainda não está inscrito. Mostre o código abaixo à organização e volte a abrir esta página.",
+        joinBackupBtn: "Mostrar o meu cartão de recuperação", joinBackupWarn: "Este é o seu cartão para pedir. Imprima-o ou guarde uma fotografia num lugar seguro: se perder este telemóvel, é a única forma de pedir. Quem o tiver pode pedir por si.",
+        claim: "Pedir agora", proving: "A criar a sua prova privada neste telemóvel…", sending: "A enviar através do relayer…",
+        done: "Pago", balance: "Pago a", tx: "Ver transação", err: "Algo correu mal", underfunded: "O programa não tem fundos neste momento. Tente mais tarde.",
+        offline: "Sem rede. A mostrar o programa tal como foi guardado neste telemóvel às", queued: "O seu pedido está pronto e guardado neste telemóvel. Será enviado automaticamente quando voltar a ter rede.",
+        privacy: "O seu nome, documento e localização nunca saem deste telemóvel. A blockchain só fica a saber que um agregado inscrito pediu.",
+        wallet: "Carteira neste telemóvel", spend: "Envie a um agente de levantamento ou a uma loja. Sem taxas: não precisa de outra moeda.",
+        to: "Endereço do destinatário (0x…)", amt: "Valor em USDC", send: "Enviar", sent: "Enviado", badAmt: "Indique um valor até ao seu saldo",
+        scan: "Ler o código QR da loja", scanNo: "Este navegador não consegue ler códigos. Peça à loja o endereço e escreva-o ou cole-o.", scanBad: "Esse código QR não tem um endereço de carteira.", scanDenied: "O acesso à câmara foi bloqueado. Permita-o nas definições do navegador, ou escreva o endereço.",
+        fxNote: (d, c) => `Valor em ${c} à taxa do dólar americano de ${d} (exchangerate-api.com); 1 USDC vale 1 dólar americano.`,
+        pinTitle: "Este cartão está bloqueado. Introduza o PIN de 6 dígitos que a sua organização lhe deu.", unlock: "Desbloquear cartão", checking: "A verificar o PIN…", pinBad: "Esse PIN não abre este cartão. Confirme o papel que a sua organização lhe deu.", pinLeft: (n) => `Restam ${n} tentativas antes de o cartão ficar bloqueado.`, pinLocked: "Este cartão ficou bloqueado depois de demasiados PINs errados. Peça um cartão novo à sua organização.", pinOffline: "Verificar o PIN precisa de rede. Tente de novo quando tiver sinal.",
+        alertBtn: "Avisar-me quando os pedidos abrirem", alertOn: "Este telemóvel vai avisá-lo quando os pedidos abrirem, mesmo com a aplicação fechada. Guarda o seu cartão para o aviso o abrir.",
+        alertNo: "Este telemóvel não consegue verificar em segundo plano. Abra esta página durante os avisos de cheia, ou ouça a sua organização.",
+        alertDenied: "As notificações estão bloqueadas para este site. Permita-as nas definições do navegador para receber o aviso.",
+        alertIos: "No iPhone, os avisos funcionam a partir do ecrã principal: toque em Partilhar, depois em Adicionar ao ecrã principal, abra o Naungan a partir daí e toque de novo.",
+        alertInstall: "Primeiro adicione o Naungan ao ecrã principal (menu do navegador → Instalar aplicação) e toque de novo.",
+        unknownProgram: "Este cartão é de um programa que não existe nesta rede. Confirme que leu um cartão Naungan.",
+        notCard: "Isso não é um código de cartão Naungan. Cole o código completo impresso por baixo do QR.", pinFormat: "Introduza os 6 dígitos do seu PIN.",
+        joinClosed: "As inscrições fecharam quando o alerta de cheia abriu os pedidos, por isso este telemóvel já não pode entrar neste programa. Pergunte à sua organização pelo próximo.",
+        another: "Usar outro cartão", pickWallet: "Carteira",
+        readAloud: "Ler em voz alta", about: "cerca de", readNext: (b) => `Para receber o dinheiro, carregue em “${b}”.`, readPaid: (a) => `Pago. ${a} USDC já estão na sua carteira.`
     }
 }
 /** The language to show: the household's own saved choice (the language menu), else English. */
 export const pickLang = (saved: string | null): string => (saved && T[saved] ? saved : "en")
-export const NATIVE: Record<string, string> = { en: "English", id: "Bahasa Indonesia", bn: "বাংলা", es: "Español", sw: "Kiswahili" }
+export const NATIVE: Record<string, string> = { en: "English", id: "Bahasa Indonesia", bn: "বাংলা", es: "Español", sw: "Kiswahili", pt: "Português" }

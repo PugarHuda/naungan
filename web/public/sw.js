@@ -34,15 +34,16 @@ async function networkFirst(req) {
     }
 }
 
-// Flood alerts, two ways to wake: Periodic Background Sync (the phone polls the chain itself, no server; only
+// Hazard alerts, two ways to wake: Periodic Background Sync (the phone polls the chain itself, no server; only
 // installed Chromium apps, at a rate the browser picks) and a payload-free Web Push from the relayer's /notify
 // (any browser with push). Either way the notification is written here, from the chain, in the language the household chose.
 const NOTE = {
-    en: (name, heat) => ({ title: `${heat ? "Heatwave" : "Flood"} alert: claims are open`, body: `${name}: open Naungan and tap Claim before the window closes.` }),
-    id: (name, heat) => ({ title: `Peringatan ${heat ? "gelombang panas" : "banjir"}: klaim dibuka`, body: `${name}: buka Naungan dan tekan Klaim sebelum masa klaim berakhir.` }),
-    bn: (name, heat) => ({ title: `${heat ? "তাপপ্রবাহ" : "বন্যা"} সতর্কতা: দাবি খোলা হয়েছে`, body: `${name}: নাউঙ্গান খুলুন এবং সময় শেষ হওয়ার আগে "দাবি করুন" চাপুন।` }),
-    es: (name, heat) => ({ title: `Alerta de ${heat ? "ola de calor" : "inundación"}: reclamos abiertos`, body: `${name}: abra Naungan y toque Reclamar antes de que termine el plazo.` }),
-    sw: (name, heat) => ({ title: `Tahadhari ya ${heat ? "wimbi la joto" : "mafuriko"}: madai yamefunguliwa`, body: `${name}: fungua Naungan na ubonyeze Dai kabla muda haujaisha.` })
+    en: (name, hz) => ({ title: `${{ heat: "Heatwave", wind: "Cyclone" }[hz] ?? "Flood"} alert: claims are open`, body: `${name}: open Naungan and tap Claim before the window closes.` }),
+    id: (name, hz) => ({ title: `Peringatan ${{ heat: "gelombang panas", wind: "siklon" }[hz] ?? "banjir"}: klaim dibuka`, body: `${name}: buka Naungan dan tekan Klaim sebelum masa klaim berakhir.` }),
+    bn: (name, hz) => ({ title: `${{ heat: "তাপপ্রবাহ", wind: "ঘূর্ণিঝড়" }[hz] ?? "বন্যা"} সতর্কতা: দাবি খোলা হয়েছে`, body: `${name}: নাউঙ্গান খুলুন এবং সময় শেষ হওয়ার আগে "দাবি করুন" চাপুন।` }),
+    es: (name, hz) => ({ title: `Alerta de ${{ heat: "ola de calor", wind: "ciclón" }[hz] ?? "inundación"}: reclamos abiertos`, body: `${name}: abra Naungan y toque Reclamar antes de que termine el plazo.` }),
+    sw: (name, hz) => ({ title: `Tahadhari ya ${{ heat: "wimbi la joto", wind: "kimbunga" }[hz] ?? "mafuriko"}: madai yamefunguliwa`, body: `${name}: fungua Naungan na ubonyeze Dai kabla muda haujaisha.` }),
+    pt: (name, hz) => ({ title: `Alerta de ${{ heat: "onda de calor", wind: "ciclone" }[hz] ?? "cheia"}: pedidos abertos`, body: `${name}: abra o Naungan e toque em Pedir antes de o prazo terminar.` })
 }
 const watchKey = (w) => `/__watch__/${w.naungan}/${w.pid}`
 
@@ -65,7 +66,7 @@ async function checkWatches() {
         if (end === 0n) continue
         if (now > end) { await cache.delete(req); continue } // window over: stop watching
         if (w.notified) continue
-        const n = (NOTE[w.lang] ?? NOTE.en)(w.name, w.hazard === "heat")
+        const n = (NOTE[w.lang] ?? NOTE.en)(w.name, w.hazard)
         try {
             await self.registration.showNotification(n.title, { body: n.body, tag: watchKey(w), icon: "icon.svg", badge: "icon.svg", requireInteraction: true, data: { url: "claim" } })
         } catch { continue } // permission revoked: leave it un-notified so a later grant still alerts, and check the rest
@@ -80,7 +81,7 @@ async function checkWatches() {
 self.addEventListener("push", (e) => e.waitUntil((async () => {
     if (await checkWatches().catch(() => 0)) return
     const w = await (async () => { const c = await caches.open(WATCH); const k = (await c.keys())[0]; return k && (await c.match(k)).json() })().catch(() => null)
-    const n = (NOTE[w?.lang] ?? NOTE.en)(w?.name ?? "Naungan", w?.hazard === "heat")
+    const n = (NOTE[w?.lang] ?? NOTE.en)(w?.name ?? "Naungan", w?.hazard)
     await self.registration.showNotification(n.title, { body: n.body, tag: "naungan-push", icon: "icon.svg", badge: "icon.svg", data: { url: "claim" } })
 })()))
 

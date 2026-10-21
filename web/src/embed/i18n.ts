@@ -1,4 +1,4 @@
-// The embed widget in the claim app's five languages: English unless the partner site asks for another (?lang=).
+// The embed widget in the claim app's languages: English unless the partner site asks for another (?lang=).
 export type Hazard = "flood" | "heat" | "wind"
 type Strings = {
     open: (hz: Hazard, until: string) => string
@@ -60,6 +60,16 @@ export const E: Record<string, Strings> = {
         verify: "Hakiki kila malipo kwenye Naungan ↗", loading: "Inapakia programu…", none: (id) => `Hakuna programu #${id}.`,
         noId: "Ongeza ?program=<id> kwenye anwani.", down: "Taarifa za programu hazipatikani sasa; inajaribu tena.",
         meter: (v, t) => `Utabiri wa karibuni ${v}% dhidi ya kichocheo cha ${t}%`
+    },
+    pt: {
+        open: (hz, until) => `Limiar de ${{ flood: "cheia", heat: "onda de calor", wind: "ciclone" }[hz]} atingido: pedidos abertos até ${until}`,
+        watching: (until) => `A vigiar a previsão até ${until}`,
+        closed: (since) => `Pedidos fechados em ${since}`,
+        latest: "Última previsão", trigger: "limiar", reported: "comunicado",
+        pool: "Fundo", paid: "Pago", households: "Agregados pagos", each: "Por agregado", of: "de",
+        verify: "Verifique cada pagamento no Naungan ↗", loading: "A carregar o programa…", none: (id) => `Não existe o programa #${id}.`,
+        noId: "Acrescente ?program=<id> ao endereço.", down: "Os dados do programa não estão disponíveis agora; a tentar de novo.",
+        meter: (v, t) => `Última previsão ${v}% face a um limiar de ${t}%`
     }
 }
 

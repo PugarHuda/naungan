@@ -1,4 +1,4 @@
-// Registration poster text in the claim app's five languages. The poster prints in English, or in the language an
+// Registration poster text in the claim app's languages. The poster prints in English, or in the language an
 // agency asks for (?lang=) with English underneath, so field staff can read it too.
 export type Hazard = "flood" | "heat" | "wind"
 type Strings = {
@@ -38,6 +38,12 @@ export const P: Record<string, Strings> = {
         per: (a, hz) => `${a} kwa kila kaya, hutumwa kabla ${{ flood: "mafuriko hayajafika", heat: "wimbi la joto halijafika", wind: "kimbunga hakijafika" }[hz]}`,
         steps: (hz) => ["Elekeza kamera ya simu kwenye msimbo huu na ufungue kiungo.", "Simu yako itaonyesha msimbo. Muonyeshe mfanyakazi wa shirika.", `${{ flood: "Mafuriko yakitabiriwa", heat: "Wimbi la joto likitabiriwa", wind: "Kimbunga kikitabiriwa" }[hz]}, fungua ukurasa tena na ubonyeze Dai.`],
         privacy: "Jina lako haliendi kamwe kwenye blockchain. Ni simu yako tu inayoweza kudai."
+    },
+    pt: {
+        title: "Inscreva-se para receber apoio em dinheiro antecipado",
+        per: (a, hz) => `${a} por agregado familiar, enviados antes de ${{ flood: "a cheia chegar", heat: "a onda de calor chegar", wind: "o ciclone chegar" }[hz]}`,
+        steps: (hz) => ["Aponte a câmara do telemóvel para este código e abra a ligação.", "O seu telemóvel mostra um código. Mostre-o ao pessoal da organização.", `Quando se prever ${{ flood: "uma cheia", heat: "uma onda de calor", wind: "um ciclone" }[hz]}, abra a página de novo e toque em Pedir.`],
+        privacy: "O seu nome nunca vai para a blockchain. Só o seu telemóvel pode pedir."
     }
 }
 

@@ -2,19 +2,12 @@
 // The CDN keeps each answer for 5 minutes, so the RPC and indexer are read once per window, not per visitor.
 const { ethers } = require("ethers")
 const { readOnly, allEvents } = require("../lib/chain")
+const { ruleText } = require("../lib/program.mjs")
 
 // stale-if-error: when the public RPC fails a refresh, the CDN keeps serving the last good copy for a day instead of a 503.
 const CACHE = "public, s-maxage=300, stale-while-revalidate=600, stale-if-error=86400"
 
-/** The trigger in words, as the landing page and dashboard state it. */
-function rule(m, threshold) {
-    if (m.hazard === "wind") return `Cyclone wind: at least ${threshold}% of NOAA GEFS members above the 1-in-${m.wind?.returnPeriod ?? m.returnPeriod}-year gust (ERA5), ${m.leadDays}-day lead`
-    if (m.hazard === "heat") {
-        const h = m.heat ?? {}
-        return `Heatwave: ${h.days ?? 2}+ days above ${h.tmax ?? 38} °C${h.tmin != null ? `, nights above ${h.tmin} °C` : ""}, at least ${threshold}% of NOAA GEFS members, ${m.leadDays}-day lead`
-    }
-    return `River flood: at least ${threshold}% of GloFAS members above the 1-in-${m.returnPeriod}-year flood, ${m.leadDays}-day lead${m.rain ? ", confirmed by NOAA GEFS rainfall (2-of-2)" : ""}`
-}
+const rule = ruleText // one wording with the landing cards (lib/program.mjs)
 
 const iso = (unix) => new Date(Number(unix) * 1000).toISOString()
 

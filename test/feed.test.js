@@ -1,7 +1,7 @@
 const { expect } = require("chai")
 const { spawnSync } = require("child_process")
 const { buildFeed } = require("../api/feed")
-const { summarise } = require("../api/programs")
+const { summarise, rule } = require("../api/programs")
 
 const T0 = 1_763_900_000 // 2025-11-23
 const ev = (name, args, n, timestamp = T0 + n * 60) => ({ name, args, blockNumber: 100 + n, index: 0, transactionHash: "0x" + n.toString(16).padStart(64, "0"), timestamp })
@@ -87,6 +87,9 @@ describe("open data: Atom feed and program summary", () => {
         expect(a.links.join).to.equal("https://x.org/claim#join=1")
         expect(b).to.include({ state: "over", country: "BD", hazard: "heat", latestReport: null })
         expect(b.trigger.rule).to.match(/^Heatwave: 2\+ days above 42 °C, nights above 30 °C/)
+        // A 2-of-2 cyclone program says which second forecast must agree, as a 2-of-2 flood program does.
+        expect(rule({ hazard: "wind", returnPeriod: 10, leadDays: 5, pipelines: { "0xA": "wind", "0xB": "wind-ecmwf" } }, "50")).to.match(/1-in-10-year gust \(ERA5\), 5-day lead, confirmed by ECMWF ENS \(2-of-2\)$/)
+        expect(rule({ hazard: "wind", returnPeriod: 10, leadDays: 5 }, "50")).to.not.match(/2-of-2/)
     })
 })
 
