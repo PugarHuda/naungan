@@ -27,7 +27,9 @@ function precacheClaimShell() {
             const seen = new Set()
             const walk = (name) => {
                 const c = bundle[name]
-                if (!c || c.type !== "chunk" || seen.has(name)) return
+                // The world's borders (230 kB) are fetched only for an old program without a country in its metadata,
+                // once, then remembered: not worth every phone's data plan at install.
+                if (!c || c.type !== "chunk" || seen.has(name) || c.name === "country-coder") return
                 seen.add(name)
                 for (const css of c.viteMetadata?.importedCss ?? []) seen.add(css)
                 for (const n of [...c.imports, ...c.dynamicImports]) walk(n)
@@ -76,11 +78,12 @@ export default defineConfig({
     plugins: [deploymentOverride(), svelte(), precacheClaimShell(), vercelHeaders()],
     server: { port: 5173 },
     preview: { port: 5173 },
+    worker: { format: "es" }, // the dedup worker imports lib/psi.mjs and its curve library as modules
     build: {
         outDir: out,
         emptyOutDir: true,
         target: "es2022",
         chunkSizeWarningLimit: 4000, // the claim app carries Semaphore + snarkjs; it is proved on the phone
-        rollupOptions: { input: { index: resolve(web, "index.html"), dashboard: resolve(web, "dashboard.html"), claim: resolve(web, "claim.html"), launch: resolve(web, "launch.html"), embed: resolve(web, "embed.html"), enroll: resolve(web, "enroll.html"), poster: resolve(web, "poster.html") } }
+        rollupOptions: { input: { index: resolve(web, "index.html"), dashboard: resolve(web, "dashboard.html"), claim: resolve(web, "claim.html"), launch: resolve(web, "launch.html"), embed: resolve(web, "embed.html"), enroll: resolve(web, "enroll.html"), dedup: resolve(web, "dedup.html"), poster: resolve(web, "poster.html") } }
     }
 })

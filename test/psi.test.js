@@ -1,5 +1,5 @@
 const { expect } = require("chai")
-const { Agency, privateDedup, soundex, nameTokens, recordKeys } = require("../lib/psi")
+const { Agency, privateDedup, soundex, nameTokens, recordKeys } = require("../lib/psi.mjs")
 
 describe("private cross-agency dedup (PSI)", () => {
     it("finds the same household across spelling variants without sharing lists", () => {

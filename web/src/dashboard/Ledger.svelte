@@ -2,6 +2,7 @@
     import { deployment as d } from "../shared/chain"
     import { dash } from "./state.svelte"
     import { describe, txUrl } from "./format"
+    import { download, cell } from "../shared/download" // cell: chain data never runs as a spreadsheet formula
 
     const rows = $derived((dash.current ?? []).slice().reverse())
 
@@ -11,16 +12,9 @@
             block: e.blockNumber, tx: e.transactionHash, event: e.fragment.name,
             ...Object.fromEntries(e.fragment.inputs.map((inp, i) => [inp.name, String(e.args[i])]))
         }))
-    function download(name: string, type: string, text: string) {
-        const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(new Blob([text], { type })), download: name })
-        a.click()
-        setTimeout(() => URL.revokeObjectURL(a.href), 1000)
-    }
     function csv() {
         const list: Record<string, unknown>[] = auditRows()
         const cols = [...new Set(list.flatMap(Object.keys))]
-        // Quote every cell; prefix formula-looking cells so spreadsheets never execute chain data (CSV injection).
-        const cell = (v: unknown) => `"${String(v ?? "").replace(/^[=+\-@\t\r]/, "'$&").replace(/"/g, '""')}"`
         download(`naungan-program-${dash.pid}-audit.csv`, "text/csv", [cols.map(cell).join(","), ...list.map((r) => cols.map((k) => cell(r[k])).join(","))].join("\r\n"))
     }
     function json() {

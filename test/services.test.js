@@ -139,12 +139,17 @@ describe("steady RPC reads", () => {
     const { ethers } = require("ethers")
     const { SteadyProvider } = require("../lib/chain")
     // A node that answers the first `flaky` reads with empty data, as sepolia.base.org's load balancer sometimes does.
-    const node = (flaky) => {
+    const node = (flaky, asError = false) => {
         const seen = []
         const server = http.createServer((req, res) => {
             let body = ""
             req.on("data", (c) => (body += c)).on("end", () => {
-                const out = [JSON.parse(body)].flat().map((p) => (seen.push(p.method), { jsonrpc: "2.0", id: p.id, result: p.method === "eth_call" ? (flaky-- > 0 ? "0x" : ethers.toBeHex(7, 32)) : "0xabc" }))
+                const out = [JSON.parse(body)].flat().map((p) => {
+                    seen.push(p.method)
+                    if (p.method !== "eth_call") return { jsonrpc: "2.0", id: p.id, result: "0xabc" }
+                    if (flaky-- <= 0) return { jsonrpc: "2.0", id: p.id, result: ethers.toBeHex(7, 32) }
+                    return asError ? { jsonrpc: "2.0", id: p.id, error: { code: -32000, message: "execution reverted" } } : { jsonrpc: "2.0", id: p.id, result: "0x" }
+                })
                 res.end(JSON.stringify(Array.isArray(JSON.parse(body)) ? out : out[0]))
             })
         })
@@ -160,5 +165,10 @@ describe("steady RPC reads", () => {
         const b = await node(3)
         await expect(read(b.url)).to.be.rejectedWith(/missing revert data|could not decode/)
         b.server.close()
+        // The other way the node fails: an error with no revert data ("missing revert data" in the page).
+        const c = await node(2, true)
+        expect(await read(c.url)).to.equal(7n)
+        expect(c.seen.filter((m) => m === "eth_call")).to.have.length(3)
+        c.server.close()
     })
 })

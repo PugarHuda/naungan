@@ -6,7 +6,7 @@
 //   node scripts/monitor.js [--base https://naungan.vercel.app]   exit 1 and one line per problem, or "all good"
 const { parseArgs } = require("util")
 
-const PAGES = ["/", "/dashboard.html", "/claim.html", "/launch.html", "/enroll.html", "/embed.html?program=1"]
+const PAGES = ["/", "/dashboard.html", "/claim.html", "/launch.html", "/enroll.html", "/dedup.html", "/embed.html?program=1"]
 // Oracles report every 6 hours; GitHub can delay a scheduled run by hours, so stale means two cycles missed.
 const STALE_H = 13
 

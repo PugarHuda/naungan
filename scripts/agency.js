@@ -27,7 +27,7 @@ const { ethers } = require("ethers")
 const QRCode = require("qrcode")
 const { lockV2, newPin } = require("../lib/cardlock.mjs")
 const { Identity } = require("@semaphore-protocol/core")
-const { Agency, DST, PROFILES, DEFAULT_PROFILE } = require("../lib/psi")
+const { Agency, DST, PROFILES, DEFAULT_PROFILE } = require("../lib/psi.mjs")
 const { connect, explain } = require("../lib/chain")
 const { readHouseholds: readCsv } = require("../lib/csv")
 

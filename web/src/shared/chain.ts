@@ -84,7 +84,7 @@ export const ERC20_ABI = [
     "function approve(address,uint256) returns (bool)"
 ]
 
-// A load-balanced public RPC (sepolia.base.org) now and then answers a contract read with empty data, which
+// A load-balanced public RPC (sepolia.base.org) now and then answers a contract read with empty data or a data-less error, which
 // ethers reports as "missing revert data" though nothing reverted. Our reads always return data, so ask again,
 // twice at most. Batches that send a transaction are never repeated. lib/chain.js has the same.
 export class SteadyProvider extends JsonRpcProvider {
@@ -92,7 +92,8 @@ export class SteadyProvider extends JsonRpcProvider {
         const list = [payload].flat()
         for (let i = 0; ; i++) {
             const out = await super._send(payload)
-            const empty = out.some((r) => r.result === "0x" && list.find((p) => p.id === r.id)?.method === "eth_call")
+            // Empty data, or an error with no revert data (a real revert of ours carries data): the node, not the contract.
+            const empty = out.some((r) => (r.result === "0x" || ("error" in r && !(r as { error?: { data?: unknown } }).error?.data)) && list.find((p) => p.id === r.id)?.method === "eth_call")
             if (!empty || i >= 2 || list.some((p) => p.method === "eth_sendRawTransaction")) return out
             await new Promise((r) => setTimeout(r, 300 * (i + 1)))
         }

@@ -21,13 +21,14 @@ const write = (k: string, v: unknown) => {
 /**
  * Country of a point, offline: country-coder (the borders OpenStreetMap's iD editor uses) is bundled as its own
  * chunk, loaded the first time a page needs it, so no geocoding service sees where programs are or can rate-limit
- * or ban the page. Its UN M49 region stands in for the continent (the Americas count as one). Null at sea.
+ * or ban the page (null offline if it was never loaded). Its UN M49 region stands in for the continent (the Americas count as one). Null at sea.
  */
 export async function placeOf(lat: number, lon: number): Promise<Place | null> {
     const k = `naungan-place:${lat},${lon}`
     const saved = read<Place>(k)
     if (saved?.code) return saved
-    const cc = await import("@rapideditor/country-coder")
+    const cc = await import("@rapideditor/country-coder").catch(() => null) // offline before it was ever loaded
+    if (!cc) return null
     const code = cc.iso1A2Code([lon, lat])
     if (!code || !/^[A-Z]{2}$/.test(code)) return null
     const continent = cc.featuresContaining([lon, lat]).find((f) => f.properties.level === "region")?.properties.nameEn

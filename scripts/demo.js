@@ -13,7 +13,7 @@ const fs = require("fs")
 const path = require("path")
 const { ethers, run, network } = require("hardhat")
 const { Identity, Group, generateProof } = require("@semaphore-protocol/core")
-const { Agency, privateDedup } = require("../lib/psi")
+const { Agency, privateDedup } = require("../lib/psi.mjs")
 const hazard = require("../lib/hazard.mjs")
 
 const LOCAL = ["hardhat", "localhost"].includes(network.name)
