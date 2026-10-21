@@ -90,6 +90,10 @@ describe("open data: Atom feed and program summary", () => {
         // A 2-of-2 cyclone program says which second forecast must agree, as a 2-of-2 flood program does.
         expect(rule({ hazard: "wind", returnPeriod: 10, leadDays: 5, pipelines: { "0xA": "wind", "0xB": "wind-ecmwf" } }, "50")).to.match(/1-in-10-year gust \(ERA5\), 5-day lead, confirmed by ECMWF ENS \(2-of-2\)$/)
         expect(rule({ hazard: "wind", returnPeriod: 10, leadDays: 5 }, "50")).to.not.match(/2-of-2/)
+        // The API keeps its own copy (Vercel's CommonJS functions cannot require an ES module); it must say what the landing cards say.
+        const { ruleText } = require("../lib/program.mjs")
+        for (const m of [{ returnPeriod: 5, leadDays: 10, rain: {} }, { hazard: "heat", heat: { tmax: 40, days: 3 }, leadDays: 7, pipelines: { a: "heat", b: "heat-ecmwf" } }, { hazard: "wind", wind: { returnPeriod: 10 }, leadDays: 5 }])
+            expect(rule(m, "60")).to.equal(ruleText(m, "60"))
     })
 })
 
