@@ -42,12 +42,13 @@
             "name": "format",
             "in": "query",
             "required": false,
-            "description": "csv returns the same rows as HXL-tagged CSV (row 2 holds the HXL hashtags), the format OCHA's HDX reads; geojson returns an RFC 7946 FeatureCollection, one Point per program",
+            "description": "csv returns the same rows as HXL-tagged CSV (row 2 holds the HXL hashtags), the format OCHA's HDX reads; geojson returns an RFC 7946 FeatureCollection, one Point per program; events returns every contract event (name, args with amounts as decimal strings, block, log index, transaction, time) and the block it is complete up to, the history the dashboard falls back to when the indexer is down",
             "schema": {
               "type": "string",
               "enum": [
                 "csv",
-                "geojson"
+                "geojson",
+                "events"
               ]
             }
           }

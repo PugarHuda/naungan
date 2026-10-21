@@ -10,7 +10,7 @@ export const MONEY = /\/(relay|transfer|pin)(\?|$)/
 // test deliberately takes the network away, or Open-Meteo not answering at all (the page then says so).
 const ignorable = (text: string, url: string) =>
     /blockscout/.test(url + text) || /\b429\b|request limit reached|ERR_INTERNET_DISCONNECTED/.test(text) || MONEY.test(url) ||
-    (/open-meteo\.com/.test(url) && /ERR_TIMED_OUT|ERR_CONNECTION/.test(text))
+    (/open-meteo\.com/.test(url + text) && /ERR_TIMED_OUT|ERR_CONNECTION|ERR_FAILED|blocked by CORS policy/.test(text)) // refused without CORS headers
 
 export const test = base.extend<{ check: (page: Page) => Promise<void>; errors: string[] }>({
     errors: [
@@ -39,3 +39,22 @@ export const test = base.extend<{ check: (page: Page) => Promise<void>; errors: 
     }
 })
 export { expect }
+
+/**
+ * Search a place on the launch page and pick the first match; false when there is none to pick. Open-Meteo's
+ * geocoder often refuses GitHub's shared runners outright: then the page must say so in words (checked here), the
+ * report notes it, and the caller skips what needs a place (it runs wherever the geocoder answers).
+ */
+export async function pickPlace(page: Page, name: string) {
+    await page.locator("#place").fill(name)
+    await page.getByRole("button", { name: "Search" }).click()
+    const first = page.getByRole("list", { name: "Matching places" }).getByRole("button").first()
+    const down = page.getByRole("status").filter({ hasText: /The place search is unavailable right now \(.+\)/ })
+    await expect(first.or(down)).toBeVisible({ timeout: 30e3 })
+    if (await down.isVisible()) {
+        test.info().annotations.push({ type: "geocoder-unavailable", description: (await down.textContent())! })
+        return false
+    }
+    await first.click()
+    return true
+}

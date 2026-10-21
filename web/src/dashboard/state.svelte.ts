@@ -60,7 +60,7 @@ async function programs() {
 async function indexed(indexer: string, fromBlock: number, toBlock: number) {
     const out: Ev[] = [], seen = new Set<string>()
     for (let b = fromBlock, tries = 0; ; ) {
-        const res = await fetch(`${indexer}?module=logs&action=getLogs&fromBlock=${b}&toBlock=${toBlock}&address=${c.target}`)
+        const res = await fetch(`${indexer}?module=logs&action=getLogs&fromBlock=${b}&toBlock=${toBlock}&address=${c.target}`, { signal: AbortSignal.timeout(15e3) })
         // The free indexer answers 429 under bursts: wait and ask again before falling back to slow RPC windows.
         if (res.status === 429 && tries++ < 3) {
             await new Promise((ok) => setTimeout(ok, 1500 * tries))
@@ -79,6 +79,24 @@ async function indexed(indexer: string, fromBlock: number, toBlock: number) {
         if (rows.length < 1000) return out
         b = Number(rows.at(-1)!.blockNumber) // the boundary block is read again; `seen` drops the repeats
     }
+}
+
+/**
+ * The same history from this site's open-data API (api/programs.js, cached at the edge and kept while the chain or
+ * indexer fails), for when the free indexer is down. Each event is re-encoded and parsed with the contract's own ABI,
+ * so the panels get exactly the objects a chain read gives. Returns the block it is complete up to.
+ */
+async function fromApi(): Promise<{ events: Ev[]; toBlock: number }> {
+    const res = await fetch(`${d.relayer ?? location.origin}/api/programs?format=events`, { signal: AbortSignal.timeout(20e3) })
+    if (!res.ok) throw new Error(`open-data API answered ${res.status}`)
+    const j: { contract: string; toBlock: number; events: { name: string; args: unknown[]; blockNumber: number; index: number; transactionHash: string }[] } = await res.json()
+    if (j.contract.toLowerCase() !== String(c.target).toLowerCase()) throw new Error("open-data API serves another contract")
+    const events = j.events.map((e) => {
+        const { topics, data } = c.interface.encodeEventLog(e.name, e.args as never[])
+        const p = c.interface.parseLog({ topics, data })!
+        return { args: p.args, fragment: p.fragment, blockNumber: e.blockNumber, index: e.index, transactionHash: e.transactionHash }
+    })
+    return { events, toBlock: j.toBlock }
 }
 
 // Every program's events, read once and then followed block by block.
@@ -105,9 +123,18 @@ async function tick() {
             for (const e of await indexed(d.indexer, from, head - 200)) have.add(e.transactionHash + e.index), events.push(e)
             next = head - 199
         } catch (e) {
-            console.warn((e as Error).message, "; reading the RPC instead")
             events.length = 0
             have.clear()
+            try {
+                const api = await fromApi()
+                for (const x of api.events) have.add(x.transactionHash + x.index), events.push(x)
+                next = Math.min(api.toBlock, head) + 1 // a cached copy can be older than the head: the RPC reads the rest
+                console.warn((e as Error).message, "; history from the open-data API instead")
+            } catch (e2) {
+                console.warn((e as Error).message, ";", (e2 as Error).message, "; reading the RPC instead")
+                events.length = 0
+                have.clear()
+            }
         }
     }
     // Each tick re-reads the last 10 blocks: a load-balanced RPC can report a head that the node serving

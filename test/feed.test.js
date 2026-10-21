@@ -83,3 +83,26 @@ describe("open data: Atom feed and program summary", () => {
         expect(b.trigger.rule).to.match(/^Heatwave: 2\+ days above 42 °C, nights above 30 °C/)
     })
 })
+
+describe("open data: event history for the dashboard", () => {
+    const { ethers } = require("ethers")
+    const { eventsJson } = require("../api/programs")
+    const iface = new ethers.Interface(require("../artifacts/contracts/Naungan.sol/Naungan.json").abi)
+    const sample = { programId: 3n, agency: "0x39d2a1f4b1c0000000000000000000000000cd7e", households: 12n, donor: "0x812D262d51eA66C863ecf58B2D5c246f2963d5a1", amount: 6_000_000n, oracle: "0x01029664a642F8e3FF9171e79C9168d6Dc3C1248", value: 64n, agreeing: 2n, triggered: true, evidence: "glofas p=64 rp5 lead10", nullifier: 2n ** 200n + 7n, payout: "0x000000000000000000000000000000000000dEaD" }
+
+    it("every event type survives the JSON and is re-encoded by the page into the same log", () => {
+        let n = 0
+        iface.forEachEvent((ev) => {
+            const values = ev.inputs.map((i) => sample[i.name] ?? (i.type === "address" ? ethers.ZeroAddress : i.type === "bool" ? false : i.type === "string" ? "" : 1n))
+            const log = iface.encodeEventLog(ev, values)
+            const parsed = iface.parseLog(log) // what lib/chain.js allEvents hands load()
+            const wire = JSON.parse(JSON.stringify(eventsJson({ d: { naungan: "0xC", chainId: 84532 }, head: 99, events: [{ name: parsed.name, args: parsed.args, blockNumber: 7, index: 1, transactionHash: "0xab", timestamp: 1 }] })))
+            const e = wire.events[0]
+            const again = iface.parseLog(iface.encodeEventLog(e.name, e.args)) // web/src/dashboard/state.svelte.ts fromApi
+            expect(again.args.toArray(), ev.name).to.deep.equal(parsed.args.toArray())
+            expect(iface.encodeEventLog(e.name, e.args), ev.name).to.deep.equal(log)
+            n++
+        })
+        expect(n).to.be.greaterThanOrEqual(8)
+    })
+})

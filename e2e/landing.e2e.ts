@@ -10,10 +10,10 @@ test("landing: every live program, the forecast chart, cards link to the dashboa
     expect(continents).toBeGreaterThanOrEqual(3)
 
     // The featured river's forecast: ensemble band + median. Open-Meteo's free tier rate-limits shared CI runners;
-    // or does not answer; then the page must say so plainly instead of drawing nothing, and the report notes it.
-    // lib/hazard.mjs tries three times, 20 s each, before it gives up.
-    const chart = page.locator("svg#chart path"), limited = page.getByText(/Forecast unavailable right now \(.*(429|timed out|aborted)/)
-    await expect(chart.first().or(limited)).toBeVisible({ timeout: 75e3 })
+    // or does not answer (GitHub's shared runners are often refused outright: "Failed to fetch"); then the page must say
+    // so plainly instead of drawing nothing, and the report notes it. A page gives up after two tries of 10 s.
+    const chart = page.locator("svg#chart path"), limited = page.getByText(/Forecast unavailable right now \(.+\)/)
+    await expect(chart.first().or(limited)).toBeVisible({ timeout: 45e3 })
     if (await limited.isVisible()) test.info().annotations.push({ type: "forecast-unavailable", description: (await limited.textContent())! })
     else await expect(chart).toHaveCount(2)
 

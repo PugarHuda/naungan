@@ -30,3 +30,15 @@ test("dashboard: the program picker updates the address", async ({ page }) => {
     await expect(page).toHaveURL(/\?program=8$/)
     await expect(page.locator("h1")).toHaveText(/Aguán/)
 })
+
+test("dashboard: with the free indexer down, the history comes from the open-data API, not thousands of RPC windows @desktop", async ({ page }) => {
+    await page.route(/blockscout\.com/, (r) => r.abort()) // the indexer is unreachable
+    const api = page.waitForResponse((r) => r.url().includes("/api/programs?format=events"), { timeout: 60e3 })
+    await page.goto("/dashboard.html?program=1")
+    expect((await api).status()).toBe(200)
+    // Program 1's whole history: funding, enrollment, the trigger and its payouts, rebuilt from the API's values.
+    const rows = page.locator('[role="log"] .row')
+    await expect(rows.first()).toBeVisible({ timeout: 30e3 })
+    expect(await rows.count()).toBeGreaterThanOrEqual(5)
+    await expect(page.locator('[role="log"]')).toContainText(/Claimed|claimed|paid/i)
+})

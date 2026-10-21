@@ -53,6 +53,7 @@ const countryOf = (lat, lon) => iso1A2Code([lon, lat]) ?? null
 
 async function load() {
     const { d, naungan, provider } = readOnly()
+    const head = await provider.getBlockNumber() // the events below are complete at least up to here
     const n = Number(await naungan.programCount())
     const ids = Array.from({ length: n }, (_, i) => i + 1)
     const token = new ethers.Contract(await naungan.token(), ["function decimals() view returns (uint8)"], provider)
@@ -64,7 +65,7 @@ async function load() {
     ])
     const programs = ids.map((id, i) => ({ id, p: ps[i], meta: metas[i] }))
     const countries = Object.fromEntries(programs.filter((x) => !x.meta.country && Number.isFinite(x.meta.lat)).map((x) => [x.id, countryOf(x.meta.lat, x.meta.lon)]))
-    return { d, programs, events, decimals: Number(decimals), countries }
+    return { d, programs, events, decimals: Number(decimals), countries, head }
 }
 
 /**
@@ -115,6 +116,16 @@ const geojson = (programs) => ({
 
 const baseOf = (req, d) => (req.headers?.host ? `https://${req.headers["x-forwarded-host"] ?? req.headers.host}` : d.relayer ?? "")
 
+/**
+ * Every event as the dashboard needs it when the free indexer is down (web/src/dashboard/state.svelte.ts fromApi):
+ * one cached request instead of thousands of 200-block RPC windows. Values keep their type (amounts as decimal
+ * strings, flags as booleans), so the page re-encodes and parses real logs with the contract's ABI.
+ */
+function eventsJson({ d, events, head }) {
+    const plain = (v) => (typeof v === "bigint" ? v.toString() : v)
+    return { contract: d.naungan, chainId: d.chainId, fromBlock: d.fromBlock ?? 0, toBlock: head, events: events.map((e) => ({ name: e.name, args: [...e.args].map(plain), blockNumber: e.blockNumber, index: e.index, transactionHash: e.transactionHash, timestamp: e.timestamp })) }
+}
+
 module.exports = async (req, res) => {
     try {
         const data = await load()
@@ -123,6 +134,10 @@ module.exports = async (req, res) => {
         if (format === "geojson") {
             res.writeHead(200, { "content-type": "application/geo+json; charset=utf-8", "access-control-allow-origin": "*", "cache-control": CACHE })
             return res.end(JSON.stringify(geojson(programs)))
+        }
+        if (format === "events") {
+            res.writeHead(200, { "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*", "cache-control": CACHE })
+            return res.end(JSON.stringify(eventsJson(data)))
         }
         if (format === "csv") {
             res.writeHead(200, { "content-type": "text/csv; charset=utf-8; header=present", "content-disposition": 'inline; filename="naungan-programs.csv"', "access-control-allow-origin": "*", "cache-control": CACHE })
@@ -138,6 +153,7 @@ module.exports = async (req, res) => {
     }
 }
 module.exports.summarise = summarise
+module.exports.eventsJson = eventsJson
 module.exports.hxlCsv = hxlCsv
 module.exports.HXL = HXL
 module.exports.geojson = geojson

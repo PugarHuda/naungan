@@ -1,4 +1,4 @@
-import { test, expect } from "./fixtures"
+import { test, expect, pickPlace } from "./fixtures"
 import { PRESETS } from "../lib/program.mjs"
 
 test("launch: every preset shows its published source and fills the trigger", async ({ page, check }) => {
@@ -21,9 +21,7 @@ test("launch: every preset shows its published source and fills the trigger", as
 test("launch: an out-of-range trigger is refused, naming the field, before any wallet opens", async ({ page }) => {
     await page.goto("/launch.html")
     await page.locator("select#preset").selectOption("bdrcs-heat") // heat: no river snap needed
-    await page.locator("#place").fill("Dhaka")
-    await page.getByRole("button", { name: "Search" }).click()
-    await page.getByRole("list", { name: "Matching places" }).getByRole("button").first().click()
+    test.skip(!(await pickPlace(page, "Dhaka")), "Open-Meteo's geocoder did not answer this runner (the page said so)")
     await page.getByLabel("Lead time (days)").fill("40") // NOAA GEFS runs 16 days out
     const create = page.getByRole("button", { name: "Connect wallet and create program" })
     await expect(page.locator("p.fine", { hasText: "leadDays must be a number from 1 to 16" })).toBeVisible()
