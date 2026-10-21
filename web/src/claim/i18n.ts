@@ -1,4 +1,4 @@
-// Every string the household sees, in English, Bahasa Indonesia, Bengali, Spanish, Swahili and Portuguese. A key ending in
+// Every string the household sees, in English, Bahasa Indonesia, Bengali, Spanish, Swahili, Portuguese and Filipino. A key ending in
 // "_heat" and "_wind" are the heatwave and cyclone wording of the same message; t() in state.svelte.ts falls back to the shared one.
 type Entry = string | ((...a: any[]) => string)
 export const T: Record<string, Record<string, Entry>> = {
@@ -260,8 +260,52 @@ export const T: Record<string, Record<string, Entry>> = {
         joinClosed: "As inscrições fecharam quando o alerta de cheia abriu os pedidos, por isso este telemóvel já não pode entrar neste programa. Pergunte à sua organização pelo próximo.",
         another: "Usar outro cartão", pickWallet: "Carteira",
         readAloud: "Ler em voz alta", about: "cerca de", readNext: (b) => `Para receber o dinheiro, carregue em “${b}”.`, readPaid: (a) => `Pago. ${a} USDC já estão na sua carteira.`
+    },
+    // Filipino as it is spoken: "ayuda" for cash aid, "bagyo" for a typhoon, and "i-claim", which everyone uses.
+    fil: {
+        title: "Kunin ang iyong ayuda", load: "Nilo-load ang programa…", noCard: "I-scan ang iyong Naungan card gamit ang camera ng telepono, o i-paste ang code ng card sa ibaba.",
+        paste: "Code ng card", open: "Buksan ang card", program: "Programa", amount: "Halaga", status: "Katayuan",
+        watching: "Binabantayan ang ilog. Kusang magbubukas ang pag-claim kapag lumampas ang taya ng baha sa itinakdang antas.",
+        open_: "Babala sa baha: bukas na ang pag-claim", until: "hanggang", closed: "Sarado na ang panahon ng pag-claim.",
+        notEnrolled: "Hindi nakatala ang card na ito sa programang ito. Makipag-ugnayan sa inyong ahensiya.",
+        claimed: "Na-claim na ang card na ito. Isang beses lang makakapag-claim ang bawat pamilya.",
+        enrolled: "Valid ang iyong card para sa programang ito.", payTo: "Saan ipapadala ang pera?",
+        newWallet: "Gumawa ng wallet sa teleponong ito", ownWallet: "Gamitin ang sarili kong address", addr: "Address ng wallet (0x…)",
+        backup: "Isulat ang backup key na ito at itago nang mabuti. Kung sino ang may hawak nito, siya ang may kontrol sa pera.", showKey: "Ipakita ang backup key",
+        watching_heat: "Binabantayan ang taya ng temperatura. Kusang magbubukas ang pag-claim kapag may tinatayang matinding init.",
+        watching_wind: "Binabantayan ang taya ng hangin. Kusang magbubukas ang pag-claim kapag may tinatayang bagyo.",
+        open__heat: "Babala sa matinding init: bukas na ang pag-claim", chance_heat: "Tsansa ng matinding init",
+        open__wind: "Babala sa bagyo: bukas na ang pag-claim", chance_wind: "Tsansa ng bagyo",
+        alertNo_heat: "Hindi makapag-check ang teleponong ito habang sarado ang app. Buksan ang pahinang ito kapag may babala sa init, o makinig sa inyong ahensiya.",
+        alertNo_wind: "Hindi makapag-check ang teleponong ito habang sarado ang app. Buksan ang pahinang ito kapag may babala sa bagyo, o makinig sa inyong ahensiya.",
+        joinClosed_heat: "Nagsara ang pagpaparehistro nang buksan ng babala sa matinding init ang pag-claim, kaya hindi na makakasali ang teleponong ito ngayon. Magtanong sa inyong ahensiya tungkol sa susunod na programa.",
+        joinClosed_wind: "Nagsara ang pagpaparehistro nang buksan ng babala sa bagyo ang pag-claim, kaya hindi na makakasali ang teleponong ito ngayon. Magtanong sa inyong ahensiya tungkol sa susunod na programa.",
+        chance: "Tsansa ng baha", chanceOf: (a, b) => `${a}% (magbubukas ang pag-claim sa ${b}%)`,
+        joinTitle: "Magparehistro gamit ang sarili mong telepono",
+        joinHow: "Ipakita ang code na ito sa tauhan ng ahensiya. Walang pangalan dito at hindi ito magagamit pang-claim. Nasa teleponong ito lang ang iyong sikreto, kaya kahit ang ahensiya ay hindi malalaman kung kailan ka nag-claim.",
+        joinWait: "Hindi ka pa nakarehistro. Ipakita sa ahensiya ang code sa ibaba, saka buksan muli ang pahinang ito.",
+        joinBackupBtn: "Ipakita ang aking backup card", joinBackupWarn: "Ito ang iyong card pang-claim. I-print ito o itago ang litrato sa ligtas na lugar: kapag nawala ang teleponong ito, ito lang ang paraan para makapag-claim. Kahit sino ang may hawak nito ay makakapag-claim para sa iyo.",
+        claim: "I-claim ngayon", proving: "Ginagawa ang iyong pribadong patunay sa teleponong ito…", sending: "Ipinapadala sa relayer…",
+        done: "Nabayaran na", balance: "Ibinayad sa", tx: "Tingnan ang transaksiyon", err: "May nangyaring mali", underfunded: "Wala pang pondo ang programa sa ngayon. Subukan ulit mamaya.",
+        offline: "Walang signal. Ipinapakita ang programa ayon sa huling naka-save sa teleponong ito noong", queued: "Handa na at naka-save sa teleponong ito ang iyong claim. Kusa itong ipapadala kapag may signal na ulit.",
+        privacy: "Hindi lumalabas sa teleponong ito ang iyong pangalan, ID at lokasyon. Ang alam lang ng blockchain ay may isang nakatalang pamilya na nag-claim.",
+        wallet: "Wallet sa teleponong ito", spend: "Ipadala sa cash-out agent o sa tindahan. Walang bayad: hindi mo kailangan ng ibang coin.",
+        to: "Address ng padadalhan (0x…)", amt: "Halaga sa USDC", send: "Ipadala", sent: "Naipadala na", badAmt: "Maglagay ng halagang hindi lalampas sa iyong balanse",
+        scan: "I-scan ang QR code ng tindahan", scanNo: "Hindi makapag-scan ang browser na ito. Hingin sa tindahan ang kanilang address at i-type o i-paste ito.", scanBad: "Walang wallet address sa QR code na iyon.", scanDenied: "Naka-block ang camera. Payagan ito sa settings ng browser, o i-type ang address.",
+        fxNote: (d, c) => `Halaga sa ${c} ayon sa palitan ng US dollar noong ${d} (exchangerate-api.com); ang 1 USDC ay katumbas ng 1 US dollar.`,
+        pinTitle: "Naka-lock ang card na ito. Ilagay ang 6-digit na PIN na ibinigay ng inyong ahensiya.", unlock: "I-unlock ang card", checking: "Sinusuri ang PIN…", pinBad: "Hindi nabubuksan ng PIN na iyan ang card na ito. Tingnan ang papel mula sa inyong ahensiya.", pinLeft: (n) => `${n} subok na lang bago ma-lock ang card na ito.`, pinLocked: "Na-lock ang card na ito dahil sa sobrang daming maling PIN. Humingi ng bagong card sa inyong ahensiya.", pinOffline: "Kailangan ng signal para masuri ang PIN. Subukan ulit kapag may signal na.",
+        alertBtn: "Abisuhan ako kapag bukas na ang pag-claim", alertOn: "Aabisuhan ka ng teleponong ito kapag bukas na ang pag-claim, kahit sarado ang app. Tatandaan nito ang iyong card para buksan ito ng abiso.",
+        alertNo: "Hindi makapag-check ang teleponong ito habang sarado ang app. Buksan ang pahinang ito kapag may babala sa baha, o makinig sa inyong ahensiya.",
+        alertDenied: "Naka-block ang notifications para sa site na ito. Payagan ang mga ito sa settings ng browser para matanggap ang babala.",
+        alertIos: "Sa iPhone, gumagana ang mga babala mula sa home screen: pindutin ang Share, saka ang Add to Home Screen, buksan ang Naungan mula roon at pindutin ulit.",
+        alertInstall: "Idagdag muna ang Naungan sa home screen (menu ng browser → Install app), saka pindutin ulit.",
+        unknownProgram: "Para sa programang wala sa network na ito ang card na ito. Siguraduhing Naungan card ang na-scan mo.",
+        notCard: "Hindi iyan code ng Naungan card. I-paste ang buong code na nakalimbag sa ilalim ng QR.", pinFormat: "Ilagay ang 6 na digit ng iyong PIN.",
+        joinClosed: "Nagsara ang pagpaparehistro nang buksan ng babala sa baha ang pag-claim, kaya hindi na makakasali ang teleponong ito ngayon. Magtanong sa inyong ahensiya tungkol sa susunod na programa.",
+        another: "Gumamit ng ibang card", pickWallet: "Wallet",
+        readAloud: "Basahin nang malakas", about: "mga", readNext: (b) => `Para matanggap ang pera, pindutin ang “${b}”.`, readPaid: (a) => `Nabayaran na. Nasa iyong wallet na ang ${a} USDC.`
     }
 }
 /** The language to show: the household's own saved choice (the language menu), else English. */
 export const pickLang = (saved: string | null): string => (saved && T[saved] ? saved : "en")
-export const NATIVE: Record<string, string> = { en: "English", id: "Bahasa Indonesia", bn: "বাংলা", es: "Español", sw: "Kiswahili", pt: "Português" }
+export const NATIVE: Record<string, string> = { en: "English", id: "Bahasa Indonesia", bn: "বাংলা", es: "Español", sw: "Kiswahili", pt: "Português", fil: "Filipino" }

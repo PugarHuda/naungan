@@ -6,10 +6,10 @@ import AxeBuilder from "@axe-core/playwright"
 export const MONEY = /\/(relay|transfer|pin)(\?|$)/
 
 // Noise from free public services under load, not from our code: rate limits (HTTP 429, the public RPC's
-// JSON-RPC -32007 "request limit reached") and the indexer's retries, and the browser's own log line when a
+// JSON-RPC -32007 "request limit reached"), the indexer's and the wide-range history RPCs' retries, and the browser's own log line when a
 // test deliberately takes the network away, or Open-Meteo not answering at all (the page then says so).
 const ignorable = (text: string, url: string) =>
-    /blockscout/.test(url + text) || /\b429\b|request limit reached|ERR_INTERNET_DISCONNECTED/.test(text) || MONEY.test(url) ||
+    /blockscout|gateway\.tenderly\.co|publicnode\.com/.test(url + text) || /\b429\b|request limit reached|ERR_INTERNET_DISCONNECTED/.test(text) || MONEY.test(url) ||
     (/open-meteo\.com/.test(url + text) && /ERR_TIMED_OUT|ERR_CONNECTION|ERR_FAILED|blocked by CORS policy/.test(text)) // refused without CORS headers
 
 export const test = base.extend<{ check: (page: Page) => Promise<void>; errors: string[] }>({

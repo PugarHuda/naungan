@@ -31,8 +31,19 @@ test("dashboard: the program picker updates the address", async ({ page }) => {
     await expect(page.locator("h1")).toHaveText(/Aguán/)
 })
 
-test("dashboard: with the free indexer down, the history comes from the open-data API, not thousands of RPC windows @desktop", async ({ page }) => {
-    await page.route(/blockscout\.com/, (r) => r.abort()) // the indexer is unreachable
+test("dashboard: the whole history comes from a wide-range RPC in one request, before the rate-limited indexer is asked @desktop", async ({ page }) => {
+    const asked: string[] = []
+    page.on("request", (r) => asked.push(r.url()))
+    await page.goto("/dashboard.html?program=1")
+    const rows = page.locator('[role="log"] .row')
+    await expect(rows.first()).toBeVisible({ timeout: 30e3 })
+    expect(await rows.count()).toBeGreaterThanOrEqual(5)
+    expect(asked.some((u) => u.startsWith("https://base-sepolia.gateway.tenderly.co"))).toBe(true)
+    expect(asked.some((u) => /blockscout\.com\/api\?module=logs/.test(u))).toBe(false)
+})
+
+test("dashboard: with the wide-range RPCs and the free indexer down, the history comes from the open-data API, not thousands of RPC windows @desktop", async ({ page }) => {
+    await page.route(/blockscout\.com|gateway\.tenderly\.co|publicnode\.com/, (r) => r.abort()) // every history source but our own is unreachable
     const api = page.waitForResponse((r) => r.url().includes("/api/programs?format=events"), { timeout: 60e3 })
     await page.goto("/dashboard.html?program=1")
     expect((await api).status()).toBe(200)

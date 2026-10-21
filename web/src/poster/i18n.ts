@@ -44,11 +44,17 @@ export const P: Record<string, Strings> = {
         per: (a, hz) => `${a} por agregado familiar, enviados antes de ${{ flood: "a cheia chegar", heat: "a onda de calor chegar", wind: "o ciclone chegar" }[hz]}`,
         steps: (hz) => ["Aponte a câmara do telemóvel para este código e abra a ligação.", "O seu telemóvel mostra um código. Mostre-o ao pessoal da organização.", `Quando se prever ${{ flood: "uma cheia", heat: "uma onda de calor", wind: "um ciclone" }[hz]}, abra a página de novo e toque em Pedir.`],
         privacy: "O seu nome nunca vai para a blockchain. Só o seu telemóvel pode pedir."
+    },
+    fil: {
+        title: "Magparehistro para sa maagang ayudang pera",
+        per: (a, hz) => `${a} bawat pamilya, ipinapadala bago dumating ang ${{ flood: "baha", heat: "matinding init", wind: "bagyo" }[hz]}`,
+        steps: (hz) => ["Itutok ang camera ng telepono sa code na ito at buksan ang link.", "May lalabas na code sa iyong telepono. Ipakita ito sa tauhan ng ahensiya.", `Kapag may tinatayang ${{ flood: "baha", heat: "matinding init", wind: "bagyo" }[hz]}, buksan ulit ang pahina at pindutin ang I-claim.`],
+        privacy: "Hindi kailanman napupunta sa blockchain ang iyong pangalan. Ang telepono mo lang ang makakapag-claim."
     }
 }
 
 /** ?lang= if we have it (the poster then carries English underneath), else English. */
 export function posterLang(asked: string | null): string {
-    const a = asked?.slice(0, 2).toLowerCase()
+    const a = asked?.split(/[-_]/)[0].toLowerCase() // "fil", "pt-MZ": the language subtag, not two letters
     return a && a in P ? a : "en"
 }

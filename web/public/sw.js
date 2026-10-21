@@ -43,7 +43,8 @@ const NOTE = {
     bn: (name, hz) => ({ title: `${{ heat: "তাপপ্রবাহ", wind: "ঘূর্ণিঝড়" }[hz] ?? "বন্যা"} সতর্কতা: দাবি খোলা হয়েছে`, body: `${name}: নাউঙ্গান খুলুন এবং সময় শেষ হওয়ার আগে "দাবি করুন" চাপুন।` }),
     es: (name, hz) => ({ title: `Alerta de ${{ heat: "ola de calor", wind: "ciclón" }[hz] ?? "inundación"}: reclamos abiertos`, body: `${name}: abra Naungan y toque Reclamar antes de que termine el plazo.` }),
     sw: (name, hz) => ({ title: `Tahadhari ya ${{ heat: "wimbi la joto", wind: "kimbunga" }[hz] ?? "mafuriko"}: madai yamefunguliwa`, body: `${name}: fungua Naungan na ubonyeze Dai kabla muda haujaisha.` }),
-    pt: (name, hz) => ({ title: `Alerta de ${{ heat: "onda de calor", wind: "ciclone" }[hz] ?? "cheia"}: pedidos abertos`, body: `${name}: abra o Naungan e toque em Pedir antes de o prazo terminar.` })
+    pt: (name, hz) => ({ title: `Alerta de ${{ heat: "onda de calor", wind: "ciclone" }[hz] ?? "cheia"}: pedidos abertos`, body: `${name}: abra o Naungan e toque em Pedir antes de o prazo terminar.` }),
+    fil: (name, hz) => ({ title: `Babala sa ${{ heat: "matinding init", wind: "bagyo" }[hz] ?? "baha"}: bukas na ang pag-claim`, body: `${name}: buksan ang Naungan at pindutin ang I-claim bago magsara ang panahon ng pag-claim.` })
 }
 const watchKey = (w) => `/__watch__/${w.naungan}/${w.pid}`
 

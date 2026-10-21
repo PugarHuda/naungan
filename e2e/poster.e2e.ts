@@ -56,3 +56,10 @@ test("poster: Beira (#10, Mozambique) prints in Portuguese, cyclone wording incl
     await expect(page.locator("ol li").nth(2)).toContainText("Quando se prever um ciclone")
     await check(page)
 })
+
+test("poster: Tacloban (#9, Philippines) prints in Filipino, bagyo for the typhoon @desktop", async ({ page }) => {
+    await page.goto("/poster?program=9&lang=fil")
+    await expect(page.locator("html")).toHaveAttribute("lang", "fil")
+    await expect(page.locator(".amount")).toContainText("bago dumating ang bagyo")
+    await expect(page.locator("ol li").nth(2)).toContainText("Kapag may tinatayang bagyo")
+})

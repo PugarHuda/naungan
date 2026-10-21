@@ -17,6 +17,7 @@ describe("embed widget languages", () => {
     it("follows the partner's ?lang=, else English", () => {
         expect(embedLang("bn")).toBe("bn")
         expect(embedLang("ID")).toBe("id")
+        expect([embedLang("fil-PH"), embedLang("pt-MZ")]).toEqual(["fil", "pt"])
         expect(embedLang("xx")).toBe("en")
         expect(embedLang(null)).toBe("en")
     })

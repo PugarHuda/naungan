@@ -101,6 +101,37 @@ async function fromApi(): Promise<{ events: Ev[]; toBlock: number }> {
     return { events, toBlock: j.toBlock }
 }
 
+/**
+ * eth_getLogs over wide ranges from public RPCs that allow it (deployment.json `logRpcs`, as lib/chain.js wideLogs
+ * reads them for the services). The span halves when a node refuses it.
+ */
+async function wideLogs(url: string, fromBlock: number, toBlock: number): Promise<Ev[]> {
+    const out: Ev[] = []
+    for (let b = fromBlock, span = 100_000; b <= toBlock; ) {
+        const to = Math.min(b + span - 1, toBlock)
+        const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, signal: AbortSignal.timeout(15e3), body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_getLogs", params: [{ address: c.target, fromBlock: "0x" + b.toString(16), toBlock: "0x" + to.toString(16) }] }) })
+        const r: { error?: { message: string }; result?: { topics: string[]; data: string; blockNumber: string; logIndex: string; transactionHash: string }[] } = await res.json()
+        if (r.error || !r.result) {
+            if (span <= 1000) throw new Error(r.error?.message ?? "no result")
+            span = Math.floor(span / 2)
+            continue
+        }
+        for (const l of r.result) {
+            const p = c.interface.parseLog({ topics: l.topics, data: l.data })
+            if (p) out.push({ args: p.args, fragment: p.fragment, blockNumber: Number(l.blockNumber), index: Number(l.logIndex), transactionHash: l.transactionHash })
+        }
+        b = to + 1
+    }
+    return out
+}
+
+/** Where the full history can come from, fastest first: wide-range RPCs, the Blockscout indexer, this site's open data. */
+const sources = (head: number): [string, () => Promise<{ events: Ev[]; upTo: number }>][] => [
+    ...(d.logRpcs ?? []).map((u): [string, () => Promise<{ events: Ev[]; upTo: number }>] => [new URL(u).host, async () => ({ events: await wideLogs(u, from, head), upTo: head })]),
+    ...(d.indexer ? [["indexer", async () => ({ events: await indexed(d.indexer!, from, head - 200), upTo: head - 200 })] as [string, () => Promise<{ events: Ev[]; upTo: number }>]] : []),
+    ["open-data API", async () => { const a = await fromApi(); return { events: a.events, upTo: a.toBlock } }]
+]
+
 // Every program's events, read once and then followed block by block.
 const events: Ev[] = [], have = new Set<string>()
 let next: number | undefined
@@ -117,23 +148,18 @@ async function tick() {
     dash.p = p
     dash.os = [...os]
     dash.reps = reps
-    // Public RPCs cap eth_getLogs at 200 blocks: history comes from the Blockscout indexer in one request,
-    // the newest 200 blocks (its lag margin) and every later tick from the RPC; RPC windows if it is down.
+    // Public RPCs cap eth_getLogs at 200 blocks: the whole history comes from the first source that answers
+    // (sources() below), every later tick from the RPC; RPC windows if none does.
     const head = await c.runner!.provider!.getBlockNumber()
-    if (next === undefined && d.indexer && head - from > 200) {
-        try {
-            for (const e of await indexed(d.indexer, from, head - 200)) have.add(e.transactionHash + e.index), events.push(e)
-            next = head - 199
-        } catch (e) {
-            events.length = 0
-            have.clear()
+    if (next === undefined && head - from > 200) {
+        for (const [name, read] of sources(head)) {
             try {
-                const api = await fromApi()
-                for (const x of api.events) have.add(x.transactionHash + x.index), events.push(x)
-                next = Math.min(api.toBlock, head) + 1 // a cached copy can be older than the head: the RPC reads the rest
-                console.warn((e as Error).message, "; history from the open-data API instead")
-            } catch (e2) {
-                console.warn((e as Error).message, ";", (e2 as Error).message, "; reading the RPC instead")
+                const h = await read()
+                for (const e of h.events) have.add(e.transactionHash + e.index), events.push(e)
+                next = Math.min(h.upTo, head) + 1 // a cached API copy can be older than the head: the RPC reads the rest
+                break
+            } catch (e) {
+                console.warn(`${name}: ${(e as Error).message}; trying the next history source`)
                 events.length = 0
                 have.clear()
             }

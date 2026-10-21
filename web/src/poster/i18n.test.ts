@@ -20,5 +20,6 @@ describe("registration poster languages", () => {
         expect(posterLang("BN")).toBe("bn")
         expect(posterLang("xx")).toBe("en")
         expect(posterLang(null)).toBe("en")
+        expect([posterLang("fil"), posterLang("fil-PH"), posterLang("pt_MZ")]).toEqual(["fil", "fil", "pt"]) // a three-letter language is not cut to "fi"
     })
 })

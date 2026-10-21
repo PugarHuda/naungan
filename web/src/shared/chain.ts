@@ -9,6 +9,7 @@ export type Deployment = {
     rpc: string
     explorer?: string
     indexer?: string
+    logRpcs?: string[] // public RPCs that serve eth_getLogs over wide ranges, for the history
     eas?: { address: string; registry: string; graphql: string; explorer: string }
     naungan: string
     usdc: string

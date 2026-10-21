@@ -70,11 +70,21 @@ export const E: Record<string, Strings> = {
         verify: "Verifique cada pagamento no Naungan ↗", loading: "A carregar o programa…", none: (id) => `Não existe o programa #${id}.`,
         noId: "Acrescente ?program=<id> ao endereço.", down: "Os dados do programa não estão disponíveis agora; a tentar de novo.",
         meter: (v, t) => `Última previsão ${v}% face a um limiar de ${t}%`
+    },
+    fil: {
+        open: (hz, until) => `Naabot ang antas ng ${{ flood: "baha", heat: "matinding init", wind: "bagyo" }[hz]}: bukas ang pag-claim hanggang ${until}`,
+        watching: (until) => `Binabantayan ang taya hanggang ${until}`,
+        closed: (since) => `Sarado ang pag-claim mula ${since}`,
+        latest: "Pinakabagong taya", trigger: "antas", reported: "iniulat",
+        pool: "Pondo", paid: "Naibayad", households: "Pamilyang nabayaran", each: "Bawat pamilya", of: "sa",
+        verify: "Suriin ang bawat bayad sa Naungan ↗", loading: "Nilo-load ang programa…", none: (id) => `Walang programang #${id}.`,
+        noId: "Idagdag ang ?program=<id> sa address.", down: "Hindi makuha ang datos ng programa ngayon; sinusubukan ulit.",
+        meter: (v, t) => `Pinakabagong taya ${v}% laban sa antas na ${t}%`
     }
 }
 
 /** The partner site's ?lang= if we have it, else English. */
 export const embedLang = (asked: string | null) => {
-    const a = asked?.slice(0, 2).toLowerCase()
+    const a = asked?.split(/[-_]/)[0].toLowerCase() // "fil", "pt-MZ": the language subtag, not two letters
     return a && a in E ? a : "en"
 }

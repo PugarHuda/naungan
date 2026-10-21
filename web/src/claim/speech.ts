@@ -40,10 +40,10 @@ export function speechText(step: Step, s: Strings, v: SpeechValues = {}): string
 /**
  * A voice for the app language: the program country's variant first (bn-BD before bn-IN), then any voice
  * of that language. Never another language's voice: Bengali read by an English voice is noise.
- * Older Android engines name Indonesian "in-ID".
+ * Older Android engines name Indonesian "in-ID", and some name Filipino by Tagalog, "tl-PH".
  */
 export function pickVoice<V extends { lang: string }>(voices: readonly V[], lang: string, country?: string): V | null {
-    const codes = lang === "id" ? ["id", "in"] : [lang]
+    const codes = lang === "id" ? ["id", "in"] : lang === "fil" ? ["fil", "tl"] : [lang]
     const norm = (l: string) => l.toLowerCase().replace("_", "-")
     const of = (v: V) => norm(v.lang).split("-")
     const mine = voices.filter((v) => codes.includes(of(v)[0]))
