@@ -29,6 +29,9 @@ function summarise({ programs, events, decimals = 6, base, now = Date.now() / 10
         const deadline = Number(p.claimDeadline), season = Number(p.seasonEnd)
         const state = deadline > 0 ? (now > deadline ? { state: "over", since: iso(deadline) } : { state: "claims open", until: iso(deadline) }) : now > season ? { state: "over", since: iso(season) } : { state: "watching", seasonEnds: iso(season) }
         const r = last.get(id)
+        // What the pool still lacks to pay every enrolled household not yet paid; 0 once the program is over (refunds, not claims).
+        const owed = (p.enrolled - p.claims) * p.amountPerHousehold, left = p.funded - p.claims * p.amountPerHousehold
+        const shortfall = state.state !== "over" && owed > left ? owed - left : 0n
         return {
             id,
             name: meta.name ?? `Program ${id}`,
@@ -38,7 +41,7 @@ function summarise({ programs, events, decimals = 6, base, now = Date.now() / 10
             lon: meta.lon ?? null,
             trigger: { rule: rule(meta, p.triggerThreshold.toString()), thresholdPercent: Number(p.triggerThreshold), lastIndexPercent: Number(p.lastIndex), quorum: Number(p.quorum) },
             ...state,
-            usdc: { perHousehold: usdc(p.amountPerHousehold), funded: usdc(p.funded), paidOut: usdc(p.claims * p.amountPerHousehold) },
+            usdc: { perHousehold: usdc(p.amountPerHousehold), funded: usdc(p.funded), paidOut: usdc(p.claims * p.amountPerHousehold), shortfall: usdc(shortfall) },
             households: { enrolled: Number(p.enrolled), paid: Number(p.claims) },
             latestReport: r ? { valuePercent: Number(r.args.value), agreeing: Number(r.args.agreeing), triggered: r.args.triggered, evidence: r.args.evidence, at: iso(r.timestamp), tx: r.transactionHash } : null,
             links: { dashboard: `${base}/dashboard?program=${id}`, join: `${base}/claim#join=${id}`, feed: `${base}/feed.xml?program=${id}` }
@@ -86,6 +89,7 @@ const HXL = [
     ["USDC per household", "#value+transfer+usd", (x) => x.usdc.perHousehold],
     ["USDC funded", "#value+funding+usd", (x) => x.usdc.funded],
     ["USDC paid out", "#value+disbursed+usd", (x) => x.usdc.paidOut],
+    ["USDC still needed", "#value+funding+gap+usd", (x) => x.usdc.shortfall],
     ["Households enrolled", "#targeted+hh+num", (x) => x.households.enrolled],
     ["Households paid", "#reached+hh+num", (x) => x.households.paid],
     ["Dashboard", "#meta+url", (x) => x.links.dashboard]

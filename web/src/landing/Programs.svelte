@@ -2,7 +2,7 @@
     // Every program on the contract as a card: where it runs (country from its on-chain coordinates), its
     // trigger rule and its state. Newest first.
     import { formatUnits } from "ethers"
-    import { isHeat, isOver, type Program, type ProgramMeta } from "../shared/chain"
+    import { isHeat, isOver, shortfall, type Program, type ProgramMeta } from "../shared/chain"
     import { flagOf, placeOf, type Place } from "../shared/place"
 
     let { programs, error }: { programs: { id: number; p: Program; meta: ProgramMeta }[] | null; error: string } = $props()
@@ -36,12 +36,14 @@
             {#if programs && places}
                 {#each programs.map((x, i) => ({ ...x, c: places![i] })).reverse() as { id, p, meta, c } (id)}
                     {@const [st, cls] = status(p)}
+                    {@const need = shortfall(p)}
                     <li>
                         <a class="panel" href="dashboard?program={id}">
                             <span class="where">{flagOf(c?.code)} {c?.name ?? "Unknown place"} · #{id}</span>
                             <h3>{(meta.name ?? `Program ${id}`).split(" · ")[0]}</h3>
                             <p class="rule">{rule(p, meta)}</p>
                             <div class="meta"><span class="st {cls}">{st}</span><span class="pool">{Number(formatUnits(p.funded, 6))} USDC · {p.claims}/{p.enrolled} paid</span></div>
+                            {#if need > 0n}<p class="need">Needs {Number(formatUnits(need, 6))} USDC more to pay every enrolled household</p>{/if}
                         </a>
                     </li>
                 {/each}

@@ -40,3 +40,22 @@ test("search engines find the open data: schema.org Dataset whose every download
     expect(urls).toContain("/dashboard")
     for (const u of urls) expect((await request.get(u)).status(), u).toBe(200)
 })
+
+test("hero: the phone never covers the headline, text or buttons, and the menu stays on one line, at every desktop width @desktop", async ({ page }) => {
+    await page.goto("/")
+    for (let w = 901; w <= 1960; w += 20) {
+        await page.setViewportSize({ width: w, height: 900 })
+        const r = await page.evaluate(() => {
+            const els = [...document.querySelectorAll(".hero .device, .hero .chip, .hero .ctas .btn, .hero .lede, .hero h1, .hero .eyebrow")]
+            const hits: string[] = []
+            for (let i = 0; i < els.length; i++)
+                for (let j = i + 1; j < els.length; j++) {
+                    const a = els[i].getBoundingClientRect(), b = els[j].getBoundingClientRect()
+                    if (Math.min(a.right, b.right) - Math.max(a.left, b.left) > 2 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 2) hits.push(`${els[i].className} × ${els[j].textContent!.trim().slice(0, 24)}`)
+                }
+            const nav = document.querySelector("nav .wrap")!
+            return { hits, wrapped: [...document.querySelectorAll("nav a")].filter((a) => a.getBoundingClientRect().height > 40).map((a) => a.textContent), navOverflow: nav.scrollWidth - nav.clientWidth }
+        })
+        expect(r, `${w} px`).toEqual({ hits: [], wrapped: [], navOverflow: 0 })
+    }
+})

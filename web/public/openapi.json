@@ -1092,6 +1092,10 @@
               },
               "paidOut": {
                 "type": "number"
+              },
+              "shortfall": {
+                "type": "number",
+                "description": "USDC the pool still lacks to pay every enrolled household not yet paid; 0 when covered or once the program is over"
               }
             }
           },

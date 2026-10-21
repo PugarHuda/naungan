@@ -124,5 +124,10 @@ export async function readPrograms(c: Contract = naungan()): Promise<{ id: numbe
 
 /** Claims are over: the window after a trigger has closed, or the season ended untriggered. Mirrors Naungan.closed(). */
 export const isOver = (p: Program, now = Date.now() / 1000) => (p.claimDeadline > 0n ? now > Number(p.claimDeadline) : now > Number(p.seasonEnd))
+/** USDC (token units) the pool still lacks to pay every enrolled household not yet paid; 0n once over. Same rule as api/programs.js. */
+export function shortfall(p: Program, now = Date.now() / 1000) {
+    const owed = (p.enrolled - p.claims) * p.amountPerHousehold, left = p.funded - p.claims * p.amountPerHousehold
+    return !isOver(p, now) && owed > left ? owed - left : 0n
+}
 export const isHeat = (m: ProgramMeta) => m.hazard === "heat"
 export const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`

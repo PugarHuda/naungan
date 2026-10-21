@@ -1,6 +1,6 @@
 <script lang="ts">
     import { Contract, parseUnits } from "ethers"
-    import { deployment as d, ERC20_ABI, isOver, type Program } from "../shared/chain"
+    import { deployment as d, ERC20_ABI, isOver, shortfall, type Program } from "../shared/chain"
     import { c, dash } from "./state.svelte"
     import { netName, short, txUrl, usd, type Part } from "./format"
     import { browserWallet, cancelled, sendBatch, walletSigner, why } from "../shared/wallet"
@@ -11,6 +11,12 @@
     let msg = $state<Part[]>([])
     // The contract takes no money once claims are over; each donor then pulls back their own share of what was not paid out.
     const over = $derived(!!dash.p && isOver(dash.p, dash.now))
+    // What the pool lacks to pay every enrolled household: offered as the amount, once per program.
+    const need = $derived(dash.p ? shortfall(dash.p, dash.now) : 0n)
+    let offered: bigint | undefined
+    $effect(() => {
+        if (need > 0n && offered !== dash.pid) ((offered = dash.pid), (amount = Number(need) / 1e6))
+    })
     const say = (text: string, href?: string, label = "View transaction") => (msg = href ? [text, " ", { href, label }] : [text])
 
     async function submit(ev: SubmitEvent) {
@@ -75,6 +81,7 @@
 <form class="give donate" onsubmit={submit}>
     <h2>{over ? "Take back your share" : "Add to the pool"}</h2>
     <p class="lead-in" style="margin:0">From any browser wallet on {netName}.{d.usdcIsCircle ? " Test USDC is free at faucet.circle.com." : ""}</p>
+    {#if need > 0n && !over}<p class="need">This pool is {usd(need)} USDC short of paying every enrolled household.</p>{/if}
     <label class="amount" for="donateAmt" hidden={over}>
         <input id="donateAmt" type="number" inputmode="decimal" min="0.01" step="0.01" required={!over} aria-label="Amount in USDC" bind:value={amount} /><span>USDC</span>
     </label>

@@ -74,7 +74,13 @@ describe("open data: Atom feed and program summary", () => {
         ]
         const [a, b] = summarise({ programs, events, base: "https://x.org", now: T0 + 86400, countries: { 2: "BD" } })
         expect(a).to.include({ id: 1, state: "claims open", until: new Date((T0 + 7 * 86400) * 1000).toISOString(), country: "ID", hazard: "flood" })
-        expect(a.usdc).to.deep.equal({ perHousehold: 2, funded: 6, paidOut: 6 })
+        expect(a.usdc).to.deep.equal({ perHousehold: 2, funded: 6, paidOut: 6, shortfall: 0 })
+        expect(b.usdc.shortfall).to.equal(0) // over: 6 USDC short of nothing, donors take their shares back
+        // The live program #3 before its top-up: 10 households × 0.25 owed, 1.52 in the pool. Exact in token units.
+        const [c3] = summarise({ programs: [{ id: 3, p: p({ amountPerHousehold: 250_000n, enrolled: 10n, funded: 1_520_000n }), meta: {} }], events: [], base: "", now: T0 })
+        expect(c3.usdc.shortfall).to.equal(0.98)
+        const [c4] = summarise({ programs: [{ id: 4, p: p({ amountPerHousehold: 100_000n, enrolled: 3n, funded: 300_000n }), meta: {} }], events: [], base: "", now: T0 })
+        expect(c4.usdc.shortfall).to.equal(0) // 0.1 × 3 is 0.30000000000000004 in floats; in token units it is exactly covered
         expect(a.households).to.deep.equal({ enrolled: 3, paid: 3 })
         expect(a.trigger.rule).to.equal("River flood: at least 60% of GloFAS members above the 1-in-5-year flood, 10-day lead")
         expect(a.latestReport).to.include({ valuePercent: 100, triggered: true })

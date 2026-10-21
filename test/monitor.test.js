@@ -34,13 +34,8 @@ describe("production monitor", () => {
 
     it("a program without the money to pay every enrolled household it has not paid yet", () => {
         const r = healthy()
-        const prog = (id, state, per, funded, paidOut, enrolled, paid) => ({ id, name: `P${id}`, state, latestReport: { at: iso(1) }, usdc: { perHousehold: per, funded, paidOut }, households: { enrolled, paid } })
-        r["/api/programs"].body.programs = [
-            prog(3, "watching", 0.25, 1.52, 0, 10, 0), // the live program #3: 2.5 owed, 1.52 in the pool
-            prog(2, "claims open", 1, 3, 2, 3, 2), // one household left, one USDC left: covered exactly
-            prog(4, "watching", 0.1, 0.3, 0, 3, 0), // 0.1 × 3 = 0.30000000000000004 in floats: still covered
-            prog(1, "over", 2, 1, 0, 3, 0) // closed: refunds, not claims
-        ]
+        const prog = (id, per, shortfall, enrolled, paid) => ({ id, name: `P${id}`, state: "watching", latestReport: { at: iso(1) }, usdc: { perHousehold: per, shortfall }, households: { enrolled, paid } })
+        r["/api/programs"].body.programs = [prog(3, 0.25, 0.98, 10, 0), prog(2, 1, 0, 3, 2)] // the live program #3 before it was topped up
         expect(assess(r, now)).to.deep.equal(["program #3 (P3): short by 0.98 USDC to pay its 10 unpaid households 0.25 USDC each; the last to claim would be refused"])
         r["/feed.xml"] = { status: 503, body: "chain unreachable" }
         expect(assess(r, now)).to.include("Atom feed /feed.xml answered 503")

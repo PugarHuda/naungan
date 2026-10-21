@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { currencyOf, languageOf, flagOf, localMoney, placeOf, type Rates } from "./place"
 import { compare, type GoEvent } from "./ifrc"
-import { isOver, parseMeta, type Program } from "./chain"
+import { isOver, parseMeta, shortfall, type Program } from "./chain"
 import { canBatch, batchOutcome } from "./wallet"
 
 describe("place", () => {
@@ -64,6 +64,13 @@ describe("chain helpers", () => {
         expect(isOver(p(0, 1000), 1001)).toBe(true)
         expect(isOver(p(500, 1000), 499)).toBe(false)
         expect(isOver(p(500, 1000), 501)).toBe(true) // a fired program is over at its deadline, not the season end
+    })
+    it("shortfall: what the pool lacks for every unpaid enrolled household, exact in token units, nothing once over", () => {
+        const q = (o: Record<string, bigint>) => ({ claimDeadline: 0n, seasonEnd: 2000n, amountPerHousehold: 250_000n, enrolled: 10n, claims: 0n, funded: 1_520_000n, ...o }) as unknown as Program
+        expect(shortfall(q({}), 1000)).toBe(980_000n) // the live program #3 before its top-up
+        expect(shortfall(q({ funded: 2_500_000n }), 1000)).toBe(0n)
+        expect(shortfall(q({ claims: 6n }), 1000)).toBe(980_000n) // paying some households does not shrink the gap: 0.02 left, 4 × 0.25 owed
+        expect(shortfall(q({}), 2001)).toBe(0n) // season over: donors take their shares back
     })
     it("reads metadata, and anything that is not a JSON object as an unnamed program", () => {
         expect(parseMeta('{"name":"Jamuna","lat":25.18}')).toEqual({ name: "Jamuna", lat: 25.18 })

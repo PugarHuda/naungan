@@ -28,11 +28,8 @@ function assess(r, now = Date.now() / 1000) {
     else {
         if (!a.body.programs?.length) out.push("open data lists no programs")
         for (const x of a.body.programs ?? []) {
-            // Money for every enrolled household not yet paid, in micro-USDC so 0.1 + 0.2 never misleads.
-            if (x.state !== "over" && x.usdc && x.households) {
-                const u = (v) => Math.round(v * 1e6), short = u(x.households.enrolled - x.households.paid) * u(x.usdc.perHousehold) / 1e6 - (u(x.usdc.funded) - u(x.usdc.paidOut))
-                if (short > 0) out.push(`program #${x.id} (${x.name}): short by ${short / 1e6} USDC to pay its ${x.households.enrolled - x.households.paid} unpaid households ${x.usdc.perHousehold} USDC each; the last to claim would be refused`)
-            }
+            // The API works the shortfall out in exact token units (api/programs.js); 0 once a program is over.
+            if (x.usdc?.shortfall > 0) out.push(`program #${x.id} (${x.name}): short by ${x.usdc.shortfall} USDC to pay its ${x.households.enrolled - x.households.paid} unpaid households ${x.usdc.perHousehold} USDC each; the last to claim would be refused`)
             if (x.state !== "watching") continue
             const at = x.latestReport ? Date.parse(x.latestReport.at) / 1000 : 0
             const h = (now - at) / 3600
