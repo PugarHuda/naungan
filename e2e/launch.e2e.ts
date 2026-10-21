@@ -32,3 +32,13 @@ test("launch: an out-of-range trigger is refused, naming the field, before any w
     await create.click()
     await expect(page.getByRole("status")).toHaveText(/No browser wallet found/)
 })
+
+test("launch: a cyclone wind trigger asks for the gust's return period and explains why it is not a storm category @desktop", async ({ page, check }) => {
+    await page.goto("/launch")
+    await page.getByLabel("Cyclone wind").check()
+    await expect(page.getByLabel("Gust size (1-in-N years)")).toHaveValue("10")
+    await expect(page.getByLabel("Lead time (days)")).toHaveAttribute("max", "16") // NOAA GEFS runs 16 days out
+    await expect(page.locator("select#preset")).toHaveValue("") // no Red Cross preset is a gust rule: a custom trigger
+    await expect(page.getByText(/ERA5 gives Haiyan 124 km\/h at Tacloban/)).toBeVisible()
+    await check(page)
+})

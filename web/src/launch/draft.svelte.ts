@@ -21,7 +21,7 @@ export const draft = $state({
     snapError: "",
     place: null as Place | null,
     society: null as Society | null,
-    hazard: "flood" as "flood" | "heat",
+    hazard: "flood" as "flood" | "heat" | "wind",
     preset: "urcs-flood",
     returnPeriod: 5,
     leadDays: 5,
@@ -38,7 +38,7 @@ export const draft = $state({
     quorum: 1
 })
 
-/** Where the oracle reads: the river cell for a flood (once snapped), the place itself for heat. */
+/** Where the oracle reads: the river cell for a flood (once snapped), the place itself for heat or wind. */
 export function point(): { lat: number; lon: number } | null {
     if (!draft.hit) return null
     if (draft.hazard === "flood") return draft.cell ? { lat: draft.cell.lat, lon: draft.cell.lon } : null
@@ -49,7 +49,7 @@ export function applyPreset(id: string) {
     draft.preset = id
     const p = PRESETS.find((x) => x.id === id) as (Preset & Record<string, unknown>) | undefined
     if (!p) return // custom: keep the fields as they are
-    draft.hazard = p.hazard as "flood" | "heat"
+    draft.hazard = p.hazard as "flood" | "heat" | "wind"
     draft.leadDays = p.leadDays
     draft.trigger = p.trigger
     if (p.hazard === "flood") draft.returnPeriod = p.returnPeriod as number
@@ -62,7 +62,7 @@ export const oracleList = () => draft.oracles.split(/[\s,]+/).filter(Boolean)
 export function suggestName() {
     if (draft.nameEdited || !draft.hit) return
     const where = [draft.hit.admin1 ?? draft.hit.name, draft.place?.name ?? draft.hit.country].filter(Boolean).join(", ")
-    draft.name = draft.hazard === "flood" ? `${draft.hit.name} flood · ${where}` : `${draft.hit.name} heatwave · ${where}`
+    draft.name = `${draft.hit.name} ${{ flood: "flood", heat: "heatwave", wind: "cyclone wind" }[draft.hazard]} · ${where}`
 }
 
 /** Metadata exactly as it goes on-chain, or the reason it cannot be built yet. */

@@ -1,7 +1,8 @@
 // The hero chart's geometry. Flood programs: GloFAS's 30-day river forecast for the program's cell against the
 // flood level its trigger uses (lib/hazard.mjs floodThreshold, the oracle's own climatology). Heat programs: the
 // 16-day NOAA GEFS maximum-temperature ensemble (the oracle's own request, heatForecast) against the heatwave
-// temperature. Both shade the trigger's lead window.
+// temperature. Cyclone wind programs: the 16-day GEFS peak-gust ensemble (windForecast) against the place's
+// 1-in-T-year gust (windThreshold). All shade the trigger's lead window.
 import type { ProgramMeta } from "../shared/chain"
 import { day } from "./format"
 
@@ -81,6 +82,34 @@ export async function heatChart(meta: ProgramMeta): Promise<Chart> {
         xs: ticks(g.x, [0, 5, 10, n - 1], time, n - 1),
         leadText: `Next ${lead} days: what the trigger looks at`,
         note: `NOAA GEFS run ${day(time[0])} for ${(meta.name ?? "").split(" · ")[0]}, ${f.series.length} ensemble members. The median hottest day in the next ${lead} days is ${peak.toFixed(1)} °C, ${peak > tmax ? "above" : `${(tmax - peak).toFixed(1)} °C below`} the heatwave level.`
+    }
+}
+
+export async function windChart(meta: ProgramMeta): Promise<Chart> {
+    const v = await import("../shared/verify.mjs")
+    const w = v.windParams(meta)
+    const [{ threshold }, f] = await Promise.all([v.windThreshold(w), v.windForecast({ cells: w.cells, leadDays: 16 })])
+    const at = (i: number) => (f.series as (number | null)[][]).map((s) => s[i]).filter((x): x is number => x != null).sort((a, b) => a - b)
+    const time: string[] = f.time
+    const empty = time.findIndex((_, i) => at(i).length === 0)
+    const n = empty < 0 ? time.length : empty
+    if (n < 2) throw new Error("GEFS returned no wind forecast")
+    const med = time.slice(0, n).map((_, i) => at(i)[at(i).length >> 1]), max = time.slice(0, n).map((_, i) => at(i).at(-1)!)
+    const lead = meta.leadDays ?? 0
+    const hi = Math.ceil(Math.max(threshold * 1.15, ...max))
+    const g = frame(n, 0, hi, lead)
+    const peak = Math.max(...med.slice(0, lead))
+    return {
+        lead: g.lead,
+        grid: g.grid,
+        area: `${g.line(max)}L${g.x(n - 1)},${g.y(0)}L${L},${g.y(0)}Z`,
+        areaFill: "rgba(90,120,220,.22)",
+        median: g.line(med),
+        level: { y: g.y(threshold), label: `1-in-${w.returnPeriod}-year gust ${Math.round(threshold)} km/h` },
+        axis: "km/h, daily peak gust",
+        xs: ticks(g.x, [0, 5, 10, n - 1], time, n - 1),
+        leadText: `Next ${lead} days: what the trigger looks at`,
+        note: `NOAA GEFS run ${day(time[0])} for ${(meta.name ?? "").split(" · ")[0]}, ${f.series.length} ensemble members. The median strongest gust in the next ${lead} days is ${Math.round(peak)} km/h, ${peak > threshold ? "above" : `${Math.round((1 - peak / threshold) * 100)}% below`} the place's 1-in-${w.returnPeriod}-year gust in ERA5.`
     }
 }
 

@@ -60,3 +60,20 @@ test("dashboard: official GDACS alerts near the program, read live; a heat progr
     await heat.scrollIntoViewIfNeeded()
     await expect(heat.getByRole("status")).toHaveText(/GDACS issues no heatwave alerts/)
 })
+
+test("dashboard: cyclone wind program (#9, Tacloban) draws the gust forecast, recomputes its oracle and replays the typhoons it would have paid on @desktop", async ({ page, check }) => {
+    await page.goto("/dashboard?program=9")
+    await expect(page.locator("h1")).toHaveText("Tacloban typhoon wind")
+    await expect(page.getByText(/No cyclone expected yet|A cyclone is forecast/)).toBeVisible()
+    await expect(page.locator('svg[aria-label^="Daily peak wind gust forecast"] path').first()).toBeVisible()
+    await expect(page.locator("figcaption")).toContainText(/1-in-10-year gust in ERA5/)
+    // The oracle's report recomputed from Open-Meteo in this browser: same code, same GEFS run if it is today's.
+    const oracle = page.locator(".oracle", { hasText: "Peak wind gusts (NOAA GEFS)" })
+    await oracle.getByRole("button", { name: "Recompute in my browser" }).click()
+    await expect(oracle.getByRole("status")).toHaveText(/✓ Matches|Not comparable with the posted/, { timeout: 90_000 })
+    await page.getByRole("button", { name: "Replay 40 years" }).click()
+    const record = page.locator("article", { has: page.getByRole("heading", { name: "Would it have paid before?" }) })
+    await expect(record.getByText(/8 Nov 2013, gusts 12\d km\/h/)).toBeVisible({ timeout: 90_000 }) // Haiyan
+    await expect(record.locator("p.fine")).toContainText("not a storm category")
+    await check(page)
+})

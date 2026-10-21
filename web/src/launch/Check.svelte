@@ -1,14 +1,14 @@
 <script lang="ts">
     // Step 3: check the trigger against live data before money depends on it. Every number is computed now, in
     // this browser, by the code the oracles run (lib/hazard.mjs), the dashboard's track record and IFRC GO.
-    import { assess, assessHeat } from "../../../lib/hazard.mjs"
+    import { assess, assessHeat, assessWind } from "../../../lib/hazard.mjs"
     import { trackRecord } from "../shared/verify.mjs"
     import { compare, eventsOf, societyOf, type GoEvent } from "../shared/ifrc"
     import { draft, metaOf } from "./draft.svelte"
 
     type Episode = { start: string; end: string; peak: number; peakDate: string }
     type Result = {
-        hazard: "flood" | "heat"
+        hazard: "flood" | "heat" | "wind"
         level: string
         live: string
         years: number
@@ -31,9 +31,13 @@
         error = ""
         r = null
         try {
-            const heat = meta.hazard === "heat"
+            const heat = meta.hazard === "heat", wind = meta.hazard === "wind"
             // Each pipeline's own wording of today's forecast, so the two result shapes never mix.
             const today = async () => {
+                if (wind) {
+                    const w = await assessWind(meta)
+                    return `${w.probability}% of ${w.members} NOAA GEFS members exceed it in the next ${meta.leadDays} days (median strongest gust ${Math.round(w.medianPeak)} km/h)`
+                }
                 if (heat) {
                     const h = await assessHeat(meta)
                     return `${h.probability}% of ${h.members} NOAA GEFS members forecast it in the next ${meta.leadDays} days (median hottest day ${h.medianHottest.toFixed(1)} °C)`
@@ -59,7 +63,9 @@
             } else ifrcNote = draft.place ? "No national society found for this country on IFRC GO." : "The country of this place is unknown (offline?), so IFRC GO cannot be matched."
             r = {
                 hazard: meta.hazard,
-                level: heat
+                level: wind
+                    ? `1-in-${meta.returnPeriod}-year gust: ${Math.round(record.flood.threshold)} km/h (ERA5 daily peak)`
+                    : heat
                     ? `${meta.heat.days}+ days above ${meta.heat.tmax} °C${meta.heat.tmin != null ? ` with nights above ${meta.heat.tmin} °C` : ""}`
                     : `1-in-${meta.returnPeriod}-year flood: ${Math.round(record.flood.threshold).toLocaleString("en")} m³/s`,
                 live,
@@ -92,16 +98,16 @@
             </dd>
         </dl>
         {#if r.paid.length === 0}
-            <p class="warnbox" role="alert">This trigger never paid in {Math.round(r.years)} years of reanalysis. Households would likely never receive anything: lower the {r.hazard === "heat" ? "temperature" : "flood size"}.</p>
+            <p class="warnbox" role="alert">This trigger never paid in {Math.round(r.years)} years of reanalysis. Households would likely never receive anything: lower the {{ heat: "temperature", wind: "gust size", flood: "flood size" }[r.hazard]}.</p>
         {:else if r.paidYears / r.years > 1 / 3}
-            <p class="warnbox" role="alert">It pays in {r.paidYears} of {Math.round(r.years)} years, more than one year in three: the pool would empty on ordinary seasons. Raise the {r.hazard === "heat" ? "temperature" : "flood size"}.</p>
+            <p class="warnbox" role="alert">It pays in {r.paidYears} of {Math.round(r.years)} years, more than one year in three: the pool would empty on ordinary seasons. Raise the {{ heat: "temperature", wind: "gust size", flood: "flood size" }[r.hazard]}.</p>
         {/if}
         <h3>IFRC responses in this country</h3>
         {#if r.ifrc && r.ifrc.total === 0}
-            <p class="fine">IFRC GO lists no {r.hazard === "heat" ? "heatwave" : "flood"} responses in this country over the record’s years.</p>
+            <p class="fine">IFRC GO lists no {{ heat: "heatwave", wind: "cyclone", flood: "flood" }[r.hazard]} responses in this country over the record’s years.</p>
         {:else if r.ifrc}
             <p>
-                Caught <b>{r.ifrc.caught} of {r.ifrc.total}</b> IFRC {r.hazard === "heat" ? "heatwave" : "flood"} responses within 30 days, over the record’s years.
+                Caught <b>{r.ifrc.caught} of {r.ifrc.total}</b> IFRC {{ heat: "heatwave", wind: "cyclone", flood: "flood" }[r.hazard]} responses within 30 days, over the record’s years.
                 <span class="fine">Country-level context: a response may concern another river or city, so this is not a skill score.</span>
             </p>
             {#if r.ifrc.rows.length}

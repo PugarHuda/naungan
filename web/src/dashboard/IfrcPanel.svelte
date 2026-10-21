@@ -1,5 +1,5 @@
 <script lang="ts">
-    // IFRC GO's record of the floods or heatwaves the Red Cross / Red Crescent responded to in this program's
+    // IFRC GO's record of the floods, heatwaves or cyclones the Red Cross / Red Crescent responded to in this program's
     // country, set against the trigger's replayed payouts. Country-level context, not a skill score.
     import { dash } from "./state.svelte"
     import { day } from "./format"
@@ -13,8 +13,7 @@
     let error = $state<string | null>(null)
     let early = $state<string | null>(null)
 
-    const heat = $derived(dash.meta.hazard === "heat")
-    const kind = $derived(heat ? "heatwave" : "flood")
+    const kind = $derived(({ heat: "heatwave", wind: "cyclone" } as Record<string, string>)[dash.meta.hazard ?? ""] ?? "flood")
 
     // GO's country list is ~250 kB once a month: fetch only when the panel comes into view.
     $effect(() => {
@@ -35,7 +34,7 @@
             const society = await societyOf(place.code)
             // GO sometimes files one response twice (same name, same day); count it once.
             const seenKeys = new Set<string>()
-            const events = (society ? await eventsOf(society, m.hazard === "heat" ? "heat" : "flood") : []).filter((e) => {
+            const events = (society ? await eventsOf(society, m.hazard === "heat" || m.hazard === "wind" ? m.hazard : "flood") : []).filter((e) => {
                 const k = `${e.start}|${e.name.toLowerCase()}`
                 return !seenKeys.has(k) && !!seenKeys.add(k)
             })

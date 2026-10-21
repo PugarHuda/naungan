@@ -14,7 +14,9 @@
     })
 
     const rule = (p: Program, m: ProgramMeta) =>
-        isHeat(m)
+        m.hazard === "wind"
+            ? `Cyclone wind: ≥${p.triggerThreshold}% of NOAA GEFS members above the 1-in-${m.wind?.returnPeriod ?? m.returnPeriod}-year gust (ERA5), ${m.leadDays}-day lead`
+            : isHeat(m)
             ? `Heatwave: ${m.heat?.days ?? 2}+ days above ${m.heat?.tmax ?? 38} °C${m.heat?.tmin != null ? `, nights above ${m.heat.tmin} °C` : ""}, ≥${p.triggerThreshold}% of NOAA GEFS members, ${m.leadDays}-day lead`
             : `River flood: ≥${p.triggerThreshold}% of GloFAS members above the 1-in-${m.returnPeriod}-year flood, ${m.leadDays}-day lead${m.rain ? ", confirmed by NOAA GEFS rainfall (2-of-2)" : ""}`
     const status = (p: Program): [string, string] => (isOver(p) ? ["Over", "over"] : p.claimDeadline > 0n ? ["Claims open", "open"] : [`Watching · ${p.lastIndex}%`, ""])

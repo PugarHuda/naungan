@@ -6,7 +6,7 @@
     import QRCode from "qrcode"
     import { P, posterLang } from "./i18n"
 
-    type Prog = { id: number; name: string; hazard: "flood" | "heat"; country: string | null; state: string; usdc: { perHousehold: number } }
+    type Prog = { id: number; name: string; hazard: "flood" | "heat" | "wind"; country: string | null; state: string; usdc: { perHousehold: number } }
     const q = new URLSearchParams(location.search)
     const id = Number(q.get("program"))
     const join = `${location.origin}/claim#join=${id}`
@@ -15,7 +15,7 @@
     let qr = $state("")
     let err = $state("")
     const lang = posterLang(q.get("lang"))
-    const heat = $derived(p?.hazard === "heat")
+    const hz = $derived(p?.hazard ?? "flood")
 
     onMount(async () => {
         if (!Number.isInteger(id) || id < 1) return void (err = "Add ?program=<id> to the address.")
@@ -45,12 +45,12 @@
         <h1>{P[lang].title}</h1>
         {#if lang !== "en"}<p class="en" lang="en">{P.en.title}</p>{/if}
         <p class="program">{p.name}</p>
-        <p class="amount">{P[lang].per(`${p.usdc.perHousehold} USDC`, heat)}</p>
+        <p class="amount">{P[lang].per(`${p.usdc.perHousehold} USDC`, hz)}</p>
         <div class="qr" role="img" aria-label="QR code that opens the registration page">{@html qr}</div>
         <p class="url">{join}</p>
         <ol>
-            {#each P[lang].steps(heat) as step, i (i)}
-                <li>{step}{#if lang !== "en"}<span class="en" lang="en">{P.en.steps(heat)[i]}</span>{/if}</li>
+            {#each P[lang].steps(hz) as step, i (i)}
+                <li>{step}{#if lang !== "en"}<span class="en" lang="en">{P.en.steps(hz)[i]}</span>{/if}</li>
             {/each}
         </ol>
         <p class="privacy">{P[lang].privacy}{#if lang !== "en"}<span class="en" lang="en">{P.en.privacy}</span>{/if}</p>

@@ -1,6 +1,6 @@
 # Hosted oracles: about every 6 hours (GloFAS and GEFS update daily), each key reports on every live program it is
 # an oracle of, found on-chain (`oracle.js --all`), so a program launched from launch.html needs no setup
-# here. Each oracle runs the pipeline its program's metadata assigns it (GloFAS, GEFS rainfall or heatwave).
+# here. Each oracle runs the pipeline its program's metadata assigns it (GloFAS, GEFS rainfall, heatwave or cyclone wind).
 # Setup: repository secrets ORACLE_KEY and, for 2-of-2 programs, RAIN_ORACLE_KEY (each with a little gas).
 # A key running low on gas shows up as a warning on the run. Each run ends by asking the relayer to push
 # "claims are open" to phones that opted in (POST /notify: idempotent, each phone is woken once).
@@ -20,14 +20,14 @@ jobs:
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - run: npx hardhat compile
-      # Flood/rain return levels come from 42 years of reanalysis and change once a year (lib/hazard.mjs memo):
+      # Flood/rain/wind return levels come from 42 years of reanalysis and change once a year (lib/hazard.mjs memo):
       # keep them between runs so hourly runs don't spend Open-Meteo's free daily quota refetching them.
       - uses: actions/cache@v6
         with:
           path: .hazard-cache
           key: hazard-${{ github.run_id }}
           restore-keys: hazard-
-      - name: Hosted oracle (GloFAS / heatwave)
+      - name: Hosted oracle (GloFAS / heatwave / cyclone wind)
         env:
           HAZARD_CACHE: .hazard-cache
           PRIVATE_KEY: ${{ secrets.ORACLE_KEY }}

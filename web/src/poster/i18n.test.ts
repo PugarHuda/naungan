@@ -6,10 +6,11 @@ describe("registration poster languages", () => {
         it(`${lang} is complete and translated`, () => {
             const t = P[lang], en = P.en
             expect(Object.keys(t).sort()).toEqual(Object.keys(en).sort())
-            for (const heat of [false, true]) {
-                expect(t.steps(heat)).toHaveLength(3)
-                t.steps(heat).forEach((s, i) => expect(s).not.toBe(en.steps(heat)[i]))
-                expect(t.per("2 USDC", heat)).toContain("2 USDC")
+            for (const hz of ["flood", "heat", "wind"] as const) {
+                expect(t.steps(hz)).toHaveLength(3)
+                t.steps(hz).forEach((s, i) => expect(s).not.toBe(en.steps(hz)[i]))
+                expect(t.per("2 USDC", hz)).toContain("2 USDC")
+                expect(t.per("2 USDC", hz)).not.toContain("undefined")
             }
             expect(t.title).not.toBe(en.title)
             expect(t.privacy).not.toBe(en.privacy)

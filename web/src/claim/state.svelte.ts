@@ -59,9 +59,9 @@ export const card = {
     ephemeral: null as HDNodeWallet | null
 }
 
-// Hazard-specific wording (a heat program says "heatwave", not "flood") falls back to the shared string.
+// Hazard-specific wording (a heat program says "heatwave", a wind program "cyclone", not "flood") falls back to the shared string.
 export function t(k: string): any {
-    return (ui.hazard === "heat" && T[ui.lang][k + "_heat"]) || T[ui.lang][k]
+    return ((ui.hazard === "heat" || ui.hazard === "wind") && T[ui.lang][`${k}_${ui.hazard}`]) || T[ui.lang][k]
 }
 /** The program's status line (watching, claims open until …, closed), shown on the card and read aloud. */
 export function statusOf(s: Snapshot | null) {

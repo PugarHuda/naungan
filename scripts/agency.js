@@ -129,7 +129,7 @@ async function enroll({ program, list, peer = [], "claim-url": claimUrl, cards, 
         const svg = await QRCode.toString(`${claimUrl}#${code}`, { type: "svg", errorCorrectionLevel: "M", margin: 1 })
         // In English; the claim app it opens lets the household pick its own language.
         return `<article><div class="qr">${svg}</div><div><h2>Naungan claim card #${i + 1}</h2><p class="who">${esc(r.name)} · ${esc(r.village)}</p>
-<p>${esc(meta.name)}</p><ol><li>Scan with your phone camera.</li>${withPin ? `<li>Enter the 6-digit PIN your agency gave you.</li>` : ""}<li>When the ${meta.hazard === "heat" ? "heatwave" : "flood"} alert opens claims, tap <b>Claim now</b>.</li></ol>
+<p>${esc(meta.name)}</p><ol><li>Scan with your phone camera.</li>${withPin ? `<li>Enter the 6-digit PIN your agency gave you.</li>` : ""}<li>When the ${({ heat: "heatwave", wind: "cyclone" })[meta.hazard] ?? "flood"} alert opens claims, tap <b>Claim now</b>.</li></ol>
 <p class="code">No camera? Open ${esc(claimUrl)} and enter: <code>${esc(code)}</code></p>
 <p class="warn">${withPin ? "Keep your PIN apart from this card. The card alone cannot be claimed." : "Keep this card private. Anyone holding it can claim once for this household."}</p></div></article>`
     }))

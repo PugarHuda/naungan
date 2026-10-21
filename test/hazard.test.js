@@ -2,7 +2,7 @@ const { expect } = require("chai")
 const fs = require("fs")
 const os = require("os")
 const path = require("path")
-const { annualMaxima, returnLevel, exceedance, rolling, assessRain, episodes, agree, longestRun, assessHeat, replayHeat, floodThreshold } = require("../lib/hazard.mjs")
+const { annualMaxima, returnLevel, exceedance, rolling, assessRain, episodes, agree, longestRun, assessHeat, replayHeat, floodThreshold, assessWind, replayWind, windHistory, PIPELINES, defaultPipeline } = require("../lib/hazard.mjs")
 
 describe("hazard (GloFAS trigger math)", () => {
     // Climatologies are cached on disk (lib/hazard.mjs memo): keep this suite's stubbed ones out of the real cache.
@@ -102,6 +102,40 @@ describe("hazard (GloFAS trigger math)", () => {
         }
     })
 
+    it("cyclone wind trigger: GEFS members above the place's own 1-in-T-year ERA5 gust, replayed the same way", async () => {
+        // 12 years of ERA5 daily peak gusts: calm 40 km/h days, one storm a year of 80 + 5·year km/h.
+        const time = [], gust = []
+        for (let y = 2000; y < 2012; y++) for (let d = 0; d < 365; d++) time.push(`${y}-${String(1 + Math.floor(d / 31)).padStart(2, "0")}-01`), gust.push(d === 200 ? 80 + 5 * (y - 2000) : 40)
+        const real = global.fetch
+        global.fetch = async (url) => ({
+            ok: true,
+            json: async () => !url.includes("archive")
+                // GEFS, 3 members over 3 days: member01 brings a 150 km/h gust, member02 and the control stay calm.
+                ? { latitude: 11.25, longitude: 125, daily: { time: ["d0", "d1", "d2"], wind_gusts_10m_max: [30, 35, 40], wind_gusts_10m_max_member01: [40, 150, 60], wind_gusts_10m_max_member02: [30, 50, 45] } }
+                : url.includes("start_date=2013-11-07")
+                ? { daily: { time: ["2013-11-07", "2013-11-08", "2013-11-09"], wind_gusts_10m_max: [95.4, 124.2, 54] } }
+                : { daily: { time, wind_gusts_10m_max: gust } }
+        })
+        try {
+            const m = { hazard: "wind", lat: 11.24, lon: 125.0, leadDays: 3, returnPeriod: 10 }
+            const r = await assessWind(m)
+            expect(r.threshold).to.be.within(120, 150) // storms of 80..135 km/h: the 1-in-10-year gust sits near the top
+            expect(r).to.include({ over: 1, members: 3, probability: 33, years: 12 })
+            expect(r.evidence).to.match(/^NOAA GEFS 0\.25 wind gusts via Open-Meteo .*1-in-10y gust \d+ km\/h \(Gumbel, 12y ERA5\) \| 1\/3 members exceed \| median strongest gust 50 km\/h$/) // member peaks 40, 150, 50
+            const past = await replayWind({ ...m, date: "2013-11-07" })
+            expect(past.evidence).to.match(/^REPLAY of ERA5 observed wind gusts .*window 2013-11-07\.\.2013-11-09 \| peak gust 124 km\/h on 2013-11-08/)
+            expect(past.probability).to.equal(124.2 > past.threshold ? 100 : 0)
+            const h = await windHistory(m)
+            expect(h.unit).to.equal("km/h")
+            expect(h.episodes.every((e) => e.peak > h.threshold)).to.equal(true)
+            // The oracle and the in-browser audit dispatch through one table; a wind program runs the wind pipeline by default.
+            expect(PIPELINES.wind).to.deep.equal([assessWind, replayWind])
+            expect([defaultPipeline(m), defaultPipeline({ hazard: "heat" }), defaultPipeline({})]).to.deep.equal(["wind", "heat", "glofas"])
+        } finally {
+            global.fetch = real
+        }
+    })
+
     it("the dashboard re-check reads which pipeline, run and replay window produced a report", async () => {
         const { parseEvidence } = await import("../web/src/shared/verify.mjs")
         expect(parseEvidence("GloFAS v4 via Open-Meteo | cell 5.575,95.325 | run 2026-10-18 | lead 10d")).to.deep.equal({ pipeline: "glofas", replay: null, run: "2026-10-18" })
@@ -110,6 +144,8 @@ describe("hazard (GloFAS trigger math)", () => {
         expect(parseEvidence("REPLAY of ERA5 observed rainfall via Open-Meteo (not a live forecast) | window 2025-11-20..2025-11-29")).to.include({ pipeline: "rain", replay: "2025-11-20" })
         expect(parseEvidence("NOAA GEFS 0.25 max temperature via Open-Meteo | mean of 1 cells | run 2026-10-19 | lead 7d")).to.deep.equal({ pipeline: "heat", replay: null, run: "2026-10-19" })
         expect(parseEvidence("REPLAY of ERA5 observed max temperature via Open-Meteo (not a live forecast) | mean of 1 cells | window 2024-04-15..2024-04-21")).to.include({ pipeline: "heat", replay: "2024-04-15" })
+        expect(parseEvidence("NOAA GEFS 0.25 wind gusts via Open-Meteo | mean of 1 cells | run 2026-10-21 | lead 5d")).to.deep.equal({ pipeline: "wind", replay: null, run: "2026-10-21" })
+        expect(parseEvidence("REPLAY of ERA5 observed wind gusts via Open-Meteo (not a live forecast) | mean of 1 cells | window 2013-11-07..2013-11-11")).to.include({ pipeline: "wind", replay: "2013-11-07" })
         expect(parseEvidence("trust me, 99%")).to.equal(null)
     })
 

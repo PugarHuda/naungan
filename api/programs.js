@@ -8,6 +8,7 @@ const CACHE = "public, s-maxage=300, stale-while-revalidate=600, stale-if-error=
 
 /** The trigger in words, as the landing page and dashboard state it. */
 function rule(m, threshold) {
+    if (m.hazard === "wind") return `Cyclone wind: at least ${threshold}% of NOAA GEFS members above the 1-in-${m.wind?.returnPeriod ?? m.returnPeriod}-year gust (ERA5), ${m.leadDays}-day lead`
     if (m.hazard === "heat") {
         const h = m.heat ?? {}
         return `Heatwave: ${h.days ?? 2}+ days above ${h.tmax ?? 38} °C${h.tmin != null ? `, nights above ${h.tmin} °C` : ""}, at least ${threshold}% of NOAA GEFS members, ${m.leadDays}-day lead`
@@ -35,7 +36,7 @@ function summarise({ programs, events, decimals = 6, base, now = Date.now() / 10
         return {
             id,
             name: meta.name ?? `Program ${id}`,
-            hazard: meta.hazard === "heat" ? "heat" : "flood",
+            hazard: ["heat", "wind"].includes(meta.hazard) ? meta.hazard : "flood",
             country: meta.country ?? countries[id] ?? null,
             lat: meta.lat ?? null,
             lon: meta.lon ?? null,

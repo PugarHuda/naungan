@@ -1,6 +1,7 @@
 // The embed widget in the claim app's five languages: English unless the partner site asks for another (?lang=).
+export type Hazard = "flood" | "heat" | "wind"
 type Strings = {
-    open: (heat: boolean, until: string) => string
+    open: (hz: Hazard, until: string) => string
     watching: (until: string) => string
     closed: (since: string) => string
     latest: string; trigger: string; reported: string
@@ -11,7 +12,7 @@ type Strings = {
 
 export const E: Record<string, Strings> = {
     en: {
-        open: (heat, until) => `${heat ? "Heatwave" : "Flood"} trigger fired: claims open until ${until}`,
+        open: (hz, until) => `${{ flood: "Flood", heat: "Heatwave", wind: "Cyclone" }[hz]} trigger fired: claims open until ${until}`,
         watching: (until) => `Watching the forecast until ${until}`,
         closed: (since) => `Claims closed ${since}`,
         latest: "Latest forecast", trigger: "trigger", reported: "reported",
@@ -21,7 +22,7 @@ export const E: Record<string, Strings> = {
         meter: (v, t) => `Latest forecast ${v}% against a trigger of ${t}%`
     },
     id: {
-        open: (heat, until) => `Pemicu ${heat ? "gelombang panas" : "banjir"} tercapai: klaim dibuka sampai ${until}`,
+        open: (hz, until) => `Pemicu ${{ flood: "banjir", heat: "gelombang panas", wind: "siklon" }[hz]} tercapai: klaim dibuka sampai ${until}`,
         watching: (until) => `Memantau prakiraan sampai ${until}`,
         closed: (since) => `Klaim ditutup ${since}`,
         latest: "Prakiraan terakhir", trigger: "pemicu", reported: "dilaporkan",
@@ -31,7 +32,7 @@ export const E: Record<string, Strings> = {
         meter: (v, t) => `Prakiraan terakhir ${v}% dibanding pemicu ${t}%`
     },
     bn: {
-        open: (heat, until) => `${heat ? "তাপপ্রবাহের" : "বন্যার"} ট্রিগার পূরণ হয়েছে: ${until} পর্যন্ত দাবি খোলা`,
+        open: (hz, until) => `${{ flood: "বন্যার", heat: "তাপপ্রবাহের", wind: "ঘূর্ণিঝড়ের" }[hz]} ট্রিগার পূরণ হয়েছে: ${until} পর্যন্ত দাবি খোলা`,
         watching: (until) => `${until} পর্যন্ত পূর্বাভাস পর্যবেক্ষণ চলছে`,
         closed: (since) => `দাবি বন্ধ হয়েছে ${since}`,
         latest: "সর্বশেষ পূর্বাভাস", trigger: "ট্রিগার", reported: "জানানো হয়েছে",
@@ -41,7 +42,7 @@ export const E: Record<string, Strings> = {
         meter: (v, t) => `সর্বশেষ পূর্বাভাস ${v}%, ট্রিগার ${t}%`
     },
     es: {
-        open: (heat, until) => `Se activó el disparador de ${heat ? "ola de calor" : "inundación"}: reclamos abiertos hasta el ${until}`,
+        open: (hz, until) => `Se activó el disparador de ${{ flood: "inundación", heat: "ola de calor", wind: "ciclón" }[hz]}: reclamos abiertos hasta el ${until}`,
         watching: (until) => `Vigilando el pronóstico hasta el ${until}`,
         closed: (since) => `Reclamos cerrados el ${since}`,
         latest: "Último pronóstico", trigger: "disparador", reported: "informado",
@@ -51,7 +52,7 @@ export const E: Record<string, Strings> = {
         meter: (v, t) => `Último pronóstico ${v}% frente a un disparador de ${t}%`
     },
     sw: {
-        open: (heat, until) => `Kichocheo cha ${heat ? "wimbi la joto" : "mafuriko"} kimefikiwa: madai yako wazi hadi ${until}`,
+        open: (hz, until) => `Kichocheo cha ${{ flood: "mafuriko", heat: "wimbi la joto", wind: "kimbunga" }[hz]} kimefikiwa: madai yako wazi hadi ${until}`,
         watching: (until) => `Inafuatilia utabiri hadi ${until}`,
         closed: (since) => `Madai yalifungwa ${since}`,
         latest: "Utabiri wa karibuni", trigger: "kichocheo", reported: "imeripotiwa",

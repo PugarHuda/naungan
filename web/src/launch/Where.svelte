@@ -27,7 +27,7 @@
         }
     }
 
-    // Only floods need the river cell (a heavy GloFAS request), so a heatwave launch never asks for it.
+    // Only floods need the river cell (a heavy GloFAS request), so a heatwave or wind launch never asks for it.
     function snap(h: Hit) {
         snapping = true
         return riverCell(h.latitude, h.longitude)
@@ -82,7 +82,7 @@
             <p class="fine">
                 {#if snapping}Finding the river’s main channel…
                 {:else if draft.cell}River cell {draft.cell.lat}, {draft.cell.lon}: moved {draft.cell.km.toFixed(1)} km to the main channel, mean {Math.round(draft.cell.flow).toLocaleString("en")} m³/s last year.
-                {:else if draft.snapError}No river for a flood trigger here ({draft.snapError}). A heatwave trigger still works.{/if}
+                {:else if draft.snapError}No river for a flood trigger here ({draft.snapError}). A heatwave or cyclone wind trigger still works.{/if}
             </p>
         </div>
     {/if}

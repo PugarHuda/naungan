@@ -1022,7 +1022,8 @@
             "type": "string",
             "enum": [
               "flood",
-              "heat"
+              "heat",
+              "wind"
             ]
           },
           "country": {

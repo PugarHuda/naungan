@@ -23,7 +23,7 @@ export const netName = d.network === "baseSepolia" ? "Base Sepolia" : d.network
 export const txUrl = (hash: string) => (d.explorer ? `${d.explorer}/tx/${hash}` : undefined)
 
 /** Words that change with the hazard a program insures against. */
-export const words = (m?: ProgramMeta) => (m?.hazard === "heat" ? { noun: "heatwave", Noun: "Heatwave" } : { noun: "flood", Noun: "Flood" })
+export const words = (m?: ProgramMeta) => (m?.hazard === "heat" ? { noun: "heatwave", Noun: "Heatwave" } : m?.hazard === "wind" ? { noun: "cyclone", Noun: "Cyclone" } : { noun: "flood", Noun: "Flood" })
 
 export function describe(e: Ev, metas: Record<string, ProgramMeta>): [string, string] {
     const a = e.args

@@ -40,3 +40,10 @@ test("poster: a program whose trigger fired warns that registration is closed @d
     await page.goto("/poster.html?program=1")
     await expect(page.getByRole("alert")).toContainText("Registration for this program is closed")
 })
+
+test("poster: a cyclone program says cyclone in every language (#9, Swahili with English underneath) @desktop", async ({ page }) => {
+    await page.goto("/poster?program=9&lang=sw")
+    await expect(page.locator(".amount")).toContainText("kabla kimbunga hakijafika")
+    await expect(page.locator("ol li").nth(2)).toContainText("Kimbunga kikitabiriwa")
+    await expect(page.locator("ol li").nth(2).locator(".en")).toContainText("When a cyclone is forecast")
+})

@@ -5,7 +5,7 @@
 
     let { oracle, report, last, kind, threshold, triggered }: { oracle: string; report: Report; last?: Ev; kind: string; threshold: bigint; triggered: boolean } = $props()
 
-    const NAMES: Record<string, string> = { glofas: "River flow (GloFAS)", rain: "Rainfall (NOAA GEFS)", heat: "Max temperature (NOAA GEFS)" }
+    const NAMES: Record<string, string> = { glofas: "River flow (GloFAS)", rain: "Rainfall (NOAA GEFS)", heat: "Max temperature (NOAA GEFS)", wind: "Peak wind gusts (NOAA GEFS)" }
     const ago = (t: number) => {
         const h = (dash.now - t) / 3600
         return h < 1 ? `${Math.round(h * 60)} min ago` : h < 48 ? `${Math.round(h)} h ago` : `${Math.round(h / 24)} days ago`

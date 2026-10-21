@@ -1,5 +1,5 @@
 <script lang="ts" module>
-    import { floodChart, heatChart, type Chart } from "./chart"
+    import { floodChart, heatChart, windChart, type Chart } from "./chart"
     // One forecast fetch per program per page view; switching back and forth reuses it.
     const cache = new Map<string, Promise<Chart>>()
 </script>
@@ -10,18 +10,20 @@
     let { id, meta }: { id: bigint; meta: ProgramMeta } = $props()
 
     const heat = $derived(meta.hazard === "heat")
+    const wind = $derived(meta.hazard === "wind")
+    const what = $derived(heat ? "temperature" : wind ? "wind" : "river")
     let chart = $state<Chart | null>(null)
     let note = $state("")
 
     $effect(() => {
-        const key = String(id), isHeat = heat, m = meta
+        const key = String(id), m = meta, kind = what
         chart = null
-        note = isHeat ? "Fetching the NOAA GEFS temperature forecast…" : "Fetching the GloFAS river forecast…"
+        note = kind === "river" ? "Fetching the GloFAS river forecast…" : `Fetching the NOAA GEFS ${kind} forecast…`
         let live = true
-        if (!cache.has(key)) cache.set(key, isHeat ? heatChart(m) : floodChart(m))
+        if (!cache.has(key)) cache.set(key, kind === "temperature" ? heatChart(m) : kind === "wind" ? windChart(m) : floodChart(m))
         cache.get(key)!.then(
             (c) => live && ((chart = c), (note = c.note)),
-            (e) => live && (note = `The ${isHeat ? "temperature" : "river"} forecast is unavailable right now (${e.message}). The trigger panel still shows what the oracles posted.`)
+            (e) => live && (note = `The ${kind} forecast is unavailable right now (${e.message}). The trigger panel still shows what the oracles posted.`)
         )
         return () => (live = false)
     })
@@ -30,9 +32,9 @@
 
 <figure class="hydro" class:heat>
     <div class="legend" aria-hidden="true">
-        <span>Median forecast</span><span class="l-band">{heat ? "Hottest ensemble member" : "Wettest ensemble member"}</span><span class="l-flood">{heat ? "Heatwave level" : "Flood level"}</span><span class="l-lead">Trigger window</span>
+        <span>Median forecast</span><span class="l-band">{heat ? "Hottest ensemble member" : wind ? "Windiest ensemble member" : "Wettest ensemble member"}</span><span class="l-flood">{heat ? "Heatwave level" : wind ? "Return-period gust" : "Flood level"}</span><span class="l-lead">Trigger window</span>
     </div>
-    <svg viewBox="0 0 {W} {H}" role="img" aria-label={heat ? "Daily maximum temperature forecast against the program's heatwave level" : "River discharge forecast for the next 30 days against the program's flood level"}>
+    <svg viewBox="0 0 {W} {H}" role="img" aria-label={heat ? "Daily maximum temperature forecast against the program's heatwave level" : wind ? "Daily peak wind gust forecast against the program's return-period gust" : "River discharge forecast for the next 30 days against the program's flood level"}>
         {#if chart}
             <rect x={chart.lead.x} y={chart.lead.y} width={chart.lead.w} height={chart.lead.h} fill="#F0F2F4" rx="6" />
             {#each chart.grid as g (g.y)}

@@ -34,7 +34,7 @@
         <div class="copy">
             <div class="eyebrow">Anticipatory cash · Asia, Africa, the Americas</div>
             <h1 id="h1">Cash before the flood</h1>
-            <p class="lede">Naungan (“shelter”) pays families days before a forecast flood or heatwave, never twice, and never reveals who they are.</p>
+            <p class="lede">Naungan (“shelter”) pays families days before a forecast flood, cyclone or heatwave, never twice, and never reveals who they are.</p>
             <div class="ctas">
                 <a class="btn go" href="dashboard">See it live on Base</a>
                 <a class="btn plain" href="claim">Claim with a card →</a>

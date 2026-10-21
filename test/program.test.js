@@ -12,6 +12,10 @@ describe("program metadata and river snapping", () => {
         const heat = buildMeta({ name: "Karachi", hazard: "heat", lat: 24.9, lon: 67.1, tmax: 42, tmin: 30, days: 2, leadDays: 7 })
         expect(heat.heat).to.deep.equal({ tmax: 42, tmin: 30, days: 2, cells: [[24.9, 67.1]] })
         expect(buildMeta({ name: "Dhaka", hazard: "heat", lat: 23.8, lon: 90.4, tmax: 38, days: 2, leadDays: 7, tmin: "" }).heat).to.not.have.property("tmin")
+        const wind = buildMeta({ name: "Tacloban typhoon wind", hazard: "wind", lat: 11.24, lon: 125.0, returnPeriod: 10, leadDays: 5, country: "PH" })
+        expect(wind).to.deep.include({ hazard: "wind", returnPeriod: 10, leadDays: 5, wind: { cells: [[11.24, 125.0]] }, unit: "% of ensemble members above the return-period gust" })
+        expect(() => buildMeta({ name: "x", hazard: "wind", lat: 1, lon: 1, returnPeriod: 10, leadDays: 20 })).to.throw(/^leadDays/) // GEFS stops at 16 days
+        expect(() => buildMeta({ name: "x", hazard: "quake", lat: 1, lon: 1, returnPeriod: 10, leadDays: 5 })).to.throw(/^hazard is flood, heat or wind/)
         expect(() => buildMeta({ name: "x", lat: 1, lon: 200, returnPeriod: 5, leadDays: 5 })).to.throw(/^lon must be/)
         expect(() => buildMeta({ name: "x", hazard: "heat", lat: 1, lon: 1, tmax: 42, days: 2, leadDays: 20 })).to.throw(/^leadDays/) // GEFS stops at 16 days
         expect(() => buildMeta({ name: "", lat: 1, lon: 1, returnPeriod: 5, leadDays: 5 })).to.throw(/^name/)

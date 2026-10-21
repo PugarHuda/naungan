@@ -7,7 +7,7 @@
     import { E, embedLang } from "./i18n"
 
     type P = {
-        id: number; name: string; hazard: "flood" | "heat"; country: string | null; state: "watching" | "claims open" | "over"
+        id: number; name: string; hazard: "flood" | "heat" | "wind"; country: string | null; state: "watching" | "claims open" | "over"
         until?: string; since?: string; seasonEnds?: string
         trigger: { rule: string; thresholdPercent: number; lastIndexPercent: number }
         usdc: { perHousehold: number; funded: number; paidOut: number }; households: { enrolled: number; paid: number }
@@ -54,7 +54,7 @@
             <h1>{p.name}</h1>
         </header>
         <p class="state {p.state.replace(' ', '-')}">
-            {#if p.state === "claims open"}{s.open(p.hazard === "heat", day(p.until))}
+            {#if p.state === "claims open"}{s.open(p.hazard, day(p.until))}
             {:else if p.state === "watching"}{s.watching(day(p.seasonEnds))}
             {:else}{s.closed(day(p.since))}{/if}
         </p>

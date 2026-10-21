@@ -26,8 +26,8 @@
             programs = all
             if (!all.length) return void (live.pname = "No program yet")
             // The river chart and track record are flood views: feature the newest 2-of-2 flood program
-            // (GloFAS + rainfall), else the newest flood program. Heat programs have their own dashboard view.
-            const flood = (m: ProgramMeta) => Boolean(m.lat) && m.hazard !== "heat"
+            // (GloFAS + rainfall), else the newest flood program. Heat and wind programs have their own dashboard views.
+            const flood = (m: ProgramMeta) => Boolean(m.lat) && (m.hazard ?? "flood") === "flood"
             let at = all.findLastIndex((x) => flood(x.meta) && x.meta.rain)
             if (at < 0) at = all.findLastIndex((x) => flood(x.meta))
             if (at < 0) at = all.length - 1

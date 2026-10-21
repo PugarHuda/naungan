@@ -19,7 +19,7 @@ const el = (tag, v) => (v == null || v === "" ? "" : `<${tag}>${esc(v)}</${tag}>
  */
 function capAlert({ id, p, meta, report, country, d, base, decimals = 6 }) {
     const usdc = Number(p.amountPerHousehold) / 10 ** decimals
-    const heat = meta.hazard === "heat"
+    const heat = meta.hazard === "heat", wind = meta.hazard === "wind"
     const replay = /^REPLAY/.test(report.args.evidence)
     const exercise = TESTNETS.has(Number(d.chainId)) || replay
     const place = (meta.name ?? `Program ${id}`).split(" · ")
@@ -47,12 +47,12 @@ ${el("note", note)}
 <info>
 <language>en-US</language>
 <category>Met</category>
-${el("event", heat ? "Heatwave forecast" : "River flood forecast")}
+${el("event", heat ? "Heatwave forecast" : wind ? "Tropical cyclone wind forecast" : "River flood forecast")}
 <responseType>Prepare</responseType>
 <urgency>Future</urgency>
 ${el("severity", heat || (meta.returnPeriod ?? 5) >= 10 ? "Severe" : "Moderate")}
 ${el("certainty", value > 50 ? "Likely" : "Possible")}
-<eventCode><valueName>naungan:hazard</valueName><value>${heat ? "heat" : "flood"}</value></eventCode>
+<eventCode><valueName>naungan:hazard</valueName><value>${heat ? "heat" : wind ? "wind" : "flood"}</value></eventCode>
 ${el("effective", capTime(report.timestamp))}
 ${el("expires", capTime(p.claimDeadline))}
 <senderName>Naungan anticipatory cash</senderName>
@@ -78,7 +78,7 @@ function capIndex({ alerts, base, now = Date.now() / 1000 }) {
         .sort((a, b) => b.report.timestamp - a.report.timestamp)
         .map((a) => `<entry>
 <id>${esc(`${base}/api/cap?program=${a.id}`)}</id>
-<title>${esc(`${a.meta.hazard === "heat" ? "Heatwave" : "River flood"} forecast: ${(a.meta.name ?? `Program ${a.id}`).split(" · ")[0]}`)}</title>
+<title>${esc(`${{ heat: "Heatwave", wind: "Tropical cyclone wind" }[a.meta.hazard] ?? "River flood"} forecast: ${(a.meta.name ?? `Program ${a.id}`).split(" · ")[0]}`)}</title>
 <updated>${capTime(a.report.timestamp)}</updated>
 <link rel="alternate" type="application/cap+xml" href="${esc(`${base}/api/cap?program=${a.id}`)}"/>
 <link rel="related" type="text/html" href="${esc(`${base}/dashboard?program=${a.id}`)}"/>

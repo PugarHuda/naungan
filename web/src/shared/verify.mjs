@@ -8,8 +8,9 @@ import * as hazard from "../../../lib/hazard.mjs"
  * are deterministic; live readings name the forecast run, which Open-Meteo replaces daily.
  */
 export function parseEvidence(evidence) {
-    // Heat first: its evidence also starts with "NOAA GEFS" / "REPLAY of ERA5".
+    // Heat and wind first: their evidence also starts with "NOAA GEFS" / "REPLAY of ERA5".
     const pipeline = /^(REPLAY of ERA5 observed max temperature|NOAA GEFS 0\.25 max temperature)/.test(evidence) ? "heat"
+        : /^(REPLAY of ERA5 observed wind gusts|NOAA GEFS 0\.25 wind gusts)/.test(evidence) ? "wind"
         : /^(REPLAY of ERA5|NOAA GEFS)/.test(evidence) ? "rain"
         : /^(REPLAY of GloFAS|GloFAS)/.test(evidence) ? "glofas" : null
     if (!pipeline) return null
@@ -20,7 +21,7 @@ export function parseEvidence(evidence) {
 
 /** Recompute one report. Returns { value, evidence, comparable, why } where comparable means same inputs. */
 /** Same climatology code the oracles run, for the landing page's live forecast chart. */
-export const { floodThreshold, heatParams, heatForecast } = hazard
+export const { floodThreshold, heatParams, heatForecast, windParams, windThreshold, windForecast } = hazard
 
 /**
  * A program's track record over the reanalysis: when each oracle's hazard was above its trigger level
@@ -29,9 +30,9 @@ export const { floodThreshold, heatParams, heatForecast } = hazard
  */
 export async function trackRecord(meta) {
     // A heat program's primary hazard is temperature; the result keeps one shape for every hazard.
-    if (meta.hazard === "heat") {
-        const heat = await hazard.heatHistory(meta)
-        return { flood: heat, rain: null, paid: heat.episodes, rainOnly: [] }
+    if (meta.hazard === "heat" || meta.hazard === "wind") {
+        const h = await (meta.hazard === "heat" ? hazard.heatHistory : hazard.windHistory)(meta)
+        return { flood: h, rain: null, paid: h.episodes, rainOnly: [] }
     }
     const flood = await hazard.floodHistory(meta)
     if (!meta.rain) return { flood, rain: null, paid: flood.episodes, rainOnly: [] }
@@ -45,7 +46,7 @@ export async function trackRecord(meta) {
 export async function recheck(meta, report) {
     const e = parseEvidence(report.evidence)
     if (!e) throw new Error("this report's evidence names no known pipeline")
-    const [live, past] = { rain: [hazard.assessRain, hazard.replayRain], heat: [hazard.assessHeat, hazard.replayHeat], glofas: [hazard.assess, hazard.replay] }[e.pipeline]
+    const [live, past] = hazard.PIPELINES[e.pipeline]
     const r = e.replay ? await past({ ...meta, date: e.replay }) : await live(meta)
     const runNow = parseEvidence(r.evidence).run
     const comparable = Boolean(e.replay) || runNow === e.run

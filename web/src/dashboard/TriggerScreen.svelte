@@ -26,7 +26,7 @@
     {#if p}
         {#each dash.os as o, i (o)}
             {#if dash.reps[i]}
-                <OracleRow oracle={o} report={dash.reps[i]} last={reports.findLast((e) => e.args.oracle === o)} kind={pipes[o.toLowerCase()] ?? (dash.meta.hazard === "heat" ? "heat" : dash.meta.source ? "glofas" : "")} threshold={p.triggerThreshold} triggered={on} />
+                <OracleRow oracle={o} report={dash.reps[i]} last={reports.findLast((e) => e.args.oracle === o)} kind={pipes[o.toLowerCase()] ?? (dash.meta.hazard === "heat" || dash.meta.hazard === "wind" ? dash.meta.hazard : dash.meta.source ? "glofas" : "")} threshold={p.triggerThreshold} triggered={on} />
             {/if}
         {/each}
     {/if}

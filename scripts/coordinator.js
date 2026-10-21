@@ -6,6 +6,8 @@
 //        [--pipelines glofas,rain --rain-cells "5.5,95.5;5.25,95.5" --rain-return-period 2]   one pipeline per oracle
 //   node scripts/coordinator.js create --hazard heat --name "Dhaka heatwave" --lat 23.81 --lon 90.41 --tmax 38 --heat-days 2 [--tmin 30]
 //        --lead-days 7 --trigger 50 --amount 1 --claim-days 7 --season-days 180     (heatwave: NOAA GEFS max temperature)
+//   node scripts/coordinator.js create --hazard wind --name "Tacloban typhoon wind" --lat 11.24 --lon 125.0 --return-period 10
+//        --lead-days 5 --trigger 50 --amount 1 --claim-days 7 --season-days 180     (cyclone wind: GEFS peak gusts vs ERA5's 1-in-T-year gust)
 //   node scripts/coordinator.js create --preset urcs-flood --snap --name "Mpologoma river flood · Butaleja, Uganda" --lat 0.93 --lon 33.95 //        --amount 0.5 --claim-days 7 --season-days 223     (trigger from a society's EAP; --snap moves to the river's main cell)
 //   node scripts/coordinator.js add-agency    --program 1 --agency 0x..
 //   node scripts/coordinator.js remove-agency --program 1 --agency 0x..

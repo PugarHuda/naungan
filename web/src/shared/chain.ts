@@ -22,7 +22,7 @@ export const deployment: Deployment = raw
 /** Program metadata as written on-chain at creation (scripts/coordinator.js create). */
 export type ProgramMeta = {
     name?: string
-    hazard?: "flood" | "heat"
+    hazard?: "flood" | "heat" | "wind"
     source?: string
     lat?: number
     lon?: number
@@ -30,9 +30,10 @@ export type ProgramMeta = {
     returnPeriod?: number
     leadDays?: number
     unit?: string
-    pipelines?: Record<string, "glofas" | "rain" | "heat">
+    pipelines?: Record<string, "glofas" | "rain" | "heat" | "wind">
     rain?: { returnPeriod: number; cells: [number, number][] }
     heat?: { tmax: number; tmin?: number; days: number; cells: [number, number][] }
+    wind?: { returnPeriod?: number; cells: [number, number][] }
 }
 
 /** Naungan.programs(id), as ethers returns the struct. */
@@ -130,4 +131,5 @@ export function shortfall(p: Program, now = Date.now() / 1000) {
     return !isOver(p, now) && owed > left ? owed - left : 0n
 }
 export const isHeat = (m: ProgramMeta) => m.hazard === "heat"
+export const isWind = (m: ProgramMeta) => m.hazard === "wind"
 export const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`

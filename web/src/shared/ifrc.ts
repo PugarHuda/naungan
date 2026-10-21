@@ -1,10 +1,10 @@
 // IFRC GO (go.ifrc.org), the Red Cross and Red Crescent's public emergency database: who the national society
-// is, and every flood or heatwave the movement responded to in a country (DREF, Emergency Appeal, EAP). Read
+// is, and every flood, heatwave or cyclone the movement responded to in a country (DREF, Emergency Appeal, EAP). Read
 // from the browser (the API allows any origin, needs no key), cached in localStorage.
 
 const GO = "https://goadmin.ifrc.org/api/v2"
-/** GO disaster types: Flood, Pluvial/Flash Flood, Heat Wave. */
-const DTYPES = { flood: [12, 27], heat: [19] } as const
+/** GO disaster types: Flood, Pluvial/Flash Flood; Heat Wave; Cyclone, Storm Surge. */
+const DTYPES = { flood: [12, 27], heat: [19], wind: [4, 23] } as const
 
 export type Society = { id: number; iso: string; country: string; society: string; url?: string }
 export type GoEvent = { id: number; name: string; start: string; affected: number | null; appeals: string[]; url: string }
@@ -37,8 +37,8 @@ export async function societyOf(cc: string): Promise<Society | null> {
     return all.find((c) => c.iso === cc) ?? null
 }
 
-/** Floods (or heatwaves) IFRC GO records for a country, newest first. */
-export async function eventsOf(society: Society, hazard: "flood" | "heat"): Promise<GoEvent[]> {
+/** Floods (or heatwaves, or cyclones) IFRC GO records for a country, newest first. */
+export async function eventsOf(society: Society, hazard: keyof typeof DTYPES): Promise<GoEvent[]> {
     return cached(`naungan-ifrc-events:${society.id}:${hazard}`, 1, async () => {
         const lists = await Promise.all(
             DTYPES[hazard].map((t) => getJSON(`${GO}/event/?countries__in=${society.id}&dtype=${t}&limit=200&ordering=-disaster_start_date`))

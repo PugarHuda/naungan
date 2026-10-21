@@ -15,10 +15,10 @@
     const shown = $derived(p ? (on ? Number(p.lastIndex) : level(p, dash.reps, dash.now)) : 0)
     // A demo program can be opened by a replay of a past flood; its evidence says so, and so must this page.
     const fired = $derived(dash.current?.findLast((e) => e.fragment.name === "IndexReported" && e.args.triggered))
-    // A flood replay names its peak day; a heatwave replay only its window, so fall back to the window start.
+    // A flood or wind replay names its peak day; a heatwave replay only its window, so fall back to the window start.
     const replay = $derived.by(() => {
         const ev: string = fired?.args.evidence ?? ""
-        return !/^REPLAY/.test(ev) ? null : (ev.match(/peak [\d.]+ m3\/s on (\d{4}-\d{2}-\d{2})/)?.[1] ?? ev.match(/window (\d{4}-\d{2}-\d{2})/)?.[1] ?? "a past date")
+        return !/^REPLAY/.test(ev) ? null : (ev.match(/peak (?:gust )?[\d.]+ (?:m3\/s|km\/h) on (\d{4}-\d{2}-\d{2})/)?.[1] ?? ev.match(/window (\d{4}-\d{2}-\d{2})/)?.[1] ?? "a past date")
     })
     const line = $derived.by(() => {
         if (!p) return "Reading the contract on Base."
