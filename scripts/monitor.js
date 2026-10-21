@@ -28,6 +28,11 @@ function assess(r, now = Date.now() / 1000) {
     else {
         if (!a.body.programs?.length) out.push("open data lists no programs")
         for (const x of a.body.programs ?? []) {
+            // Money for every enrolled household not yet paid, in micro-USDC so 0.1 + 0.2 never misleads.
+            if (x.state !== "over" && x.usdc && x.households) {
+                const u = (v) => Math.round(v * 1e6), short = u(x.households.enrolled - x.households.paid) * u(x.usdc.perHousehold) / 1e6 - (u(x.usdc.funded) - u(x.usdc.paidOut))
+                if (short > 0) out.push(`program #${x.id} (${x.name}): short by ${short / 1e6} USDC to pay its ${x.households.enrolled - x.households.paid} unpaid households ${x.usdc.perHousehold} USDC each; the last to claim would be refused`)
+            }
             if (x.state !== "watching") continue
             const at = x.latestReport ? Date.parse(x.latestReport.at) / 1000 : 0
             const h = (now - at) / 3600
@@ -38,6 +43,8 @@ function assess(r, now = Date.now() / 1000) {
     if (cap?.status !== 200 || !/<feed xmlns="http:\/\/www.w3.org\/2005\/Atom">/.test(cap.body ?? "")) out.push(`CAP alert index /cap.xml answered ${cap?.status ?? "nothing"}`)
     const iati = r["/iati.xml"]
     if (iati?.status !== 200 || !/<iati-activities version="2\.03"/.test(iati.body ?? "")) out.push(`IATI activities /iati.xml answered ${iati?.status ?? "nothing"}`)
+    const feed = r["/feed.xml"]
+    if (feed?.status !== 200 || !/<feed xmlns="http:\/\/www.w3.org\/2005\/Atom"/.test(feed.body ?? "")) out.push(`Atom feed /feed.xml answered ${feed?.status ?? "nothing"}`)
     const k = r["/push-key"]
     if (k?.status !== 200 || !/^[A-Za-z0-9_-]{87}$/.test(k.body?.key ?? "")) out.push(`/push-key answered ${k?.status ?? "nothing"}: phones cannot subscribe to alerts`)
     return out
@@ -58,7 +65,7 @@ async function get(base, path) {
 
 async function main() {
     const { values } = parseArgs({ options: { base: { type: "string", default: "https://naungan.vercel.app" } } })
-    const paths = [...PAGES, "/health", "/api/programs", "/cap.xml", "/iati.xml", "/push-key"]
+    const paths = [...PAGES, "/health", "/api/programs", "/cap.xml", "/feed.xml", "/iati.xml", "/push-key"]
     const r = Object.fromEntries(await Promise.all(paths.map(async (p) => [p, await get(values.base, p)])))
     for (const p of paths) console.log(`${String(r[p].status).padEnd(4)} ${String(r[p].ms).padStart(6)} ms  ${p}`)
     const problems = assess(r)

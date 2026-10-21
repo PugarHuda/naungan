@@ -20,6 +20,9 @@ test("embed: a partner site on another origin shows a program's live status in a
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark")
     await expect(page.getByRole("heading", { level: 1 })).toContainText("Mpologoma")
     await check(page)
+    await page.goto("/embed.html?program=7&theme=light") // the link's green must pass contrast on white too
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("Mpologoma")
+    await check(page)
     await page.goto("/embed.html?program=999&lang=es")
     await expect(page.getByText("No existe el programa #999.")).toBeVisible()
 })

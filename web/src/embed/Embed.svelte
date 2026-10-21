@@ -78,7 +78,7 @@
 </main>
 
 <style>
-    :global(:root) { --bg: #ffffff; --fg: #14181f; --muted: #5b6472; --line: #e3e6ea; --accent: #1f9d55; --warn: #c2410c; color-scheme: light }
+    :global(:root) { --bg: #ffffff; --fg: #14181f; --muted: #5b6472; --line: #e3e6ea; --accent: #157a41; --warn: #c2410c; color-scheme: light }
     @media (prefers-color-scheme: dark) { :global(:root:not([data-theme="light"])) { --bg: #12161c; --fg: #eef1f4; --muted: #a3acb8; --line: #2a313b; --accent: #3dd27b; --warn: #fb923c; color-scheme: dark } }
     :global(:root[data-theme="dark"]) { --bg: #12161c; --fg: #eef1f4; --muted: #a3acb8; --line: #2a313b; --accent: #3dd27b; --warn: #fb923c; color-scheme: dark }
     :global(body) { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif }
