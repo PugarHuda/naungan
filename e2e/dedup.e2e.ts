@@ -64,6 +64,6 @@ test("dedup: the answer marks each household, the new ones export, and those wit
     expect(dl.suggestedFilename()).toBe("households.new.csv")
     expect(await (await dl.createReadStream()).toArray().then((c) => Buffer.concat(c).toString())).toBe('name,birthYear,village,commitment\r\n"Mohammed Rafiq","2001","Kamp Aceh Timur","12345678901234567890"\r\n')
     await page.getByRole("button", { name: "Enroll the 1 new with registration codes" }).click()
-    await expect(page).toHaveURL(/enroll\.html\?program=7$/)
+    await expect(page).toHaveURL(/enroll\?program=7$/)
     await expect(page.getByText("1 household ready to enroll")).toBeVisible()
 })

@@ -198,14 +198,6 @@ export const T: Record<string, Record<string, Entry>> = {
         readAloud: "Nisomee kwa sauti", about: "takriban", readNext: (b) => `Ili kupokea pesa, bonyeza “${b}”.`, readPaid: (a) => `Imelipwa. USDC ${a} sasa iko kwenye pochi yako.`
     }
 }
-/**
- * The language to show: the household's own saved choice, else the phone's language when we have it (an
- * English phone does not count, so the program's local language can still win), else the language of the
- * program's country once it is known, else English.
- */
-export function pickLang(saved: string | null, phone: readonly string[] | undefined, country?: string | null): string {
-    if (saved && T[saved]) return saved
-    const p = phone?.map((l) => l.slice(0, 2)).find((l) => T[l] && l !== "en")
-    return p ?? (country && T[country] ? country : "en")
-}
+/** The language to show: the household's own saved choice (the language menu), else English. */
+export const pickLang = (saved: string | null): string => (saved && T[saved] ? saved : "en")
 export const NATIVE: Record<string, string> = { en: "English", id: "Bahasa Indonesia", bn: "বাংলা", es: "Español", sw: "Kiswahili" }

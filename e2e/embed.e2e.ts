@@ -14,7 +14,7 @@ test("embed: a partner site on another origin shows a program's live status in a
     await expect(f.getByRole("heading", { level: 1 })).toContainText("Mpologoma")
     await expect(f.getByText(/Watching the forecast until|claims open until|Claims closed/)).toBeVisible()
     await expect(f.getByText("Households paid")).toBeVisible()
-    await expect(f.getByRole("link", { name: /Verify every payout/ })).toHaveAttribute("href", /dashboard\.html\?program=7$/)
+    await expect(f.getByRole("link", { name: /Verify every payout/ })).toHaveAttribute("href", /dashboard\?program=7$/)
 
     await page.goto("/embed.html?program=7&theme=dark")
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark")
@@ -25,14 +25,14 @@ test("embed: a partner site on another origin shows a program's live status in a
 })
 
 test("embed: only the widget may be framed; every other page refuses @desktop", async ({ request }) => {
-    const embed = (await request.get("/embed.html")).headers()["content-security-policy"]
+    const embed = (await request.get("/embed")).headers()["content-security-policy"]
     expect(embed).toContain("frame-ancestors *")
     expect(embed).toMatch(/connect-src 'self'(;|$)/) // the widget talks to nothing but our own API
-    for (const p of ["/", "/dashboard.html", "/claim.html", "/launch.html"]) expect((await request.get(p)).headers()["content-security-policy"], p).toContain("frame-ancestors 'none'")
+    for (const p of ["/", "/dashboard", "/claim", "/launch"]) expect((await request.get(p)).headers()["content-security-policy"], p).toContain("frame-ancestors 'none'")
 })
 
 test("dashboard: the embed code points at this program @desktop", async ({ page }) => {
     await page.goto("/dashboard.html?program=7")
     await page.getByText("Embed this program on your site").click()
-    await expect(page.getByRole("textbox", { name: "Embed code" })).toHaveValue(/<iframe src="http:\/\/localhost:4173\/embed\.html\?program=7"/)
+    await expect(page.getByRole("textbox", { name: "Embed code" })).toHaveValue(/<iframe src="http:\/\/localhost:4173\/embed\?program=7"/)
 })

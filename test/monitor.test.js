@@ -19,7 +19,7 @@ describe("production monitor", () => {
 
     it("names each problem a person must act on", () => {
         const r = healthy()
-        r["/claim.html"] = { status: 500 }
+        r["/claim"] = { status: 500 }
         r["/health"].body.lowGas = true
         r["/health"].body.pinStore = "memory"
         r["/api/programs"].body.programs.push({ id: 7, name: "Mpologoma", state: "watching", latestReport: { at: iso(20) } }, { id: 9, name: "New", state: "watching", latestReport: null })
@@ -27,7 +27,7 @@ describe("production monitor", () => {
         r["/iati.xml"] = { status: 200, body: "<html>an error page</html>" }
         const p = assess(r, now)
         expect(p).to.have.length(7)
-        expect(p[0]).to.equal("page /claim.html answered 500")
+        expect(p[0]).to.equal("page /claim answered 500")
         expect(p.join("\n")).to.include("low on gas").and.include("without its shared store").and.include("#7 (Mpologoma): no oracle report for 20 h").and.include("#9 (New): no oracle report for ever").and.include("/push-key answered 503").and.include("IATI activities /iati.xml answered 200")
     })
 

@@ -41,7 +41,7 @@ function summarise({ programs, events, decimals = 6, base, now = Date.now() / 10
             usdc: { perHousehold: usdc(p.amountPerHousehold), funded: usdc(p.funded), paidOut: usdc(p.claims * p.amountPerHousehold) },
             households: { enrolled: Number(p.enrolled), paid: Number(p.claims) },
             latestReport: r ? { valuePercent: Number(r.args.value), agreeing: Number(r.args.agreeing), triggered: r.args.triggered, evidence: r.args.evidence, at: iso(r.timestamp), tx: r.transactionHash } : null,
-            links: { dashboard: `${base}/dashboard.html?program=${id}`, join: `${base}/claim.html#join=${id}`, feed: `${base}/feed.xml?program=${id}` }
+            links: { dashboard: `${base}/dashboard?program=${id}`, join: `${base}/claim#join=${id}`, feed: `${base}/feed.xml?program=${id}` }
         }
     })
 }

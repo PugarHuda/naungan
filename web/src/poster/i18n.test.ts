@@ -14,13 +14,10 @@ describe("registration poster languages", () => {
             expect(t.title).not.toBe(en.title)
             expect(t.privacy).not.toBe(en.privacy)
         })
-    it("prints in ?lang=, else the program country's language, else English", () => {
-        expect(posterLang("es", "BD")).toBe("es")
-        expect(posterLang(null, "BD")).toBe("bn")
-        expect(posterLang(null, "ID")).toBe("id")
-        expect(posterLang(null, "UG")).toBe("sw")
-        expect(posterLang(null, "HN")).toBe("es")
-        expect(posterLang(null, "FR")).toBe("en")
-        expect(posterLang("xx", null)).toBe("en")
+    it("prints in ?lang=, else English", () => {
+        expect(posterLang("es")).toBe("es")
+        expect(posterLang("BN")).toBe("bn")
+        expect(posterLang("xx")).toBe("en")
+        expect(posterLang(null)).toBe("en")
     })
 })

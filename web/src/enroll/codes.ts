@@ -1,4 +1,4 @@
-// Registration codes a household's phone shows after self-registering (claim.html#join=<program>):
+// Registration codes a household's phone shows after self-registering (claim#join=<program>):
 // "naungan-commitment:<program>:<commitment>". The commitment is public by design (it goes on-chain at enrollment);
 // the identity secret behind it never leaves the phone, so the agency enrolls someone it can never claim for.
 

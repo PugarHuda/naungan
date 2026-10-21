@@ -54,7 +54,7 @@
             const ev = rcpt.logs.map((l: { topics: string[]; data: string }) => { try { return c.interface.parseLog(l) } catch { return null } }).find((e: { name?: string } | null) => e?.name === "ProgramCreated")
             if (!ev) throw new Error("the transaction succeeded but emitted no ProgramCreated event")
             const id = String(ev.args.programId)
-            const join = `${location.origin}/claim.html#join=${id}`
+            const join = `${location.origin}/claim#join=${id}`
             done = { id, tx: tx.hash, join, qr: await QRCode.toString(join, { type: "svg", margin: 1, errorCorrectionLevel: "M" }) }
             msg = ""
         } catch (e) {
@@ -94,11 +94,11 @@
     {#if done}
         <p class="verdict ok">Program #{done.id} is live. {#if d.explorer}<a href="{d.explorer}/tx/{done.tx}" target="_blank" rel="noopener">View the transaction</a>{/if}</p>
         <ol class="next">
-            <li><a class="btn dark" href="dashboard.html?program={done.id}#fund">Fund program #{done.id}</a> so it can pay.</li>
+            <li><a class="btn dark" href="dashboard?program={done.id}#fund">Fund program #{done.id}</a> so it can pay.</li>
             <li>
-                Households register with their own phones at this link, and agency staff <a href="enroll.html?program={done.id}">enroll their codes</a> by scanning them:
+                Households register with their own phones at this link, and agency staff <a href="enroll?program={done.id}">enroll their codes</a> by scanning them:
                 <div class="joinqr" aria-hidden="true">{@html done.qr}</div>
-                <code class="joinurl">{done.join}</code> <a href="poster.html?program={done.id}" target="_blank" rel="noopener">Print a poster with this code</a>
+                <code class="joinurl">{done.join}</code> <a href="poster?program={done.id}" target="_blank" rel="noopener">Print a poster with this code</a>
             </li>
             <li>
                 {#if oracleList().some((o) => o.toLowerCase() === HOSTED_ORACLE.toLowerCase())}

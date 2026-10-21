@@ -1,6 +1,6 @@
 <script lang="ts">
-    // Printable A4 registration poster for one program (poster.html?program=N[&lang=xx]): a large QR code for
-    // claim.html#join=N, three steps in the program's language with English underneath, and the privacy promise.
+    // Printable A4 registration poster for one program (poster?program=N[&lang=xx]): a large QR code for
+    // claim#join=N, three steps in English (or ?lang= with English underneath), and the privacy promise.
     // Reads the edge-cached /api/programs; the QR is drawn here as SVG, so it prints sharp at any size.
     import { onMount } from "svelte"
     import QRCode from "qrcode"
@@ -9,12 +9,12 @@
     type Prog = { id: number; name: string; hazard: "flood" | "heat"; country: string | null; state: string; usdc: { perHousehold: number } }
     const q = new URLSearchParams(location.search)
     const id = Number(q.get("program"))
-    const join = `${location.origin}/claim.html#join=${id}`
+    const join = `${location.origin}/claim#join=${id}`
 
     let p = $state<Prog | null>(null)
     let qr = $state("")
     let err = $state("")
-    const lang = $derived(p ? posterLang(q.get("lang"), p.country) : "en")
+    const lang = posterLang(q.get("lang"))
     const heat = $derived(p?.hazard === "heat")
 
     onMount(async () => {
@@ -38,7 +38,7 @@
     <header class="bar">
         <button type="button" onclick={() => print()}>Print this poster</button>
         {#if p.state !== "watching"}<p role="alert">Registration for this program is closed ({p.state}); phones that scan it cannot join now.</p>{/if}
-        <a href="enroll.html?program={p.id}">Enroll the codes households show →</a>
+        <a href="enroll?program={p.id}">Enroll the codes households show →</a>
     </header>
     <main>
     <article class="poster">

@@ -36,8 +36,8 @@
             <h1 id="h1">Cash before the flood</h1>
             <p class="lede">Naungan (“shelter”) pays families days before a forecast flood or heatwave, never twice, and never reveals who they are.</p>
             <div class="ctas">
-                <a class="btn go" href="dashboard.html">See it live on Base</a>
-                <a class="btn plain" href="claim.html">Claim with a card →</a>
+                <a class="btn go" href="dashboard">See it live on Base</a>
+                <a class="btn plain" href="claim">Claim with a card →</a>
                 <a class="btn plain" href="#demo">Watch the 2-minute demo</a>
             </div>
         </div>

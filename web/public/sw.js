@@ -3,7 +3,7 @@
 const SHELL = "naungan-shell-v9"
 const ARTIFACTS = "naungan-artifacts-v1" // proving keys are immutable per version: cache forever
 const WATCH = "naungan-watch" // programs this phone waits on: chain address + program id only, no identity
-const PRECACHE = ["claim.html", "claim.js", "manifest.webmanifest", "icon.svg", "deployment.json"]
+const PRECACHE = ["claim", "claim.js", "manifest.webmanifest", "icon.svg", "deployment.json"]
 
 self.addEventListener("install", (e) => e.waitUntil(caches.open(SHELL).then((c) => c.addAll(PRECACHE)).then(() => self.skipWaiting())))
 self.addEventListener("activate", (e) =>
@@ -26,7 +26,9 @@ async function networkFirst(req) {
         return res
     } catch {
         // ignoreVary: module scripts are fetched with an Origin header, and a "Vary: Origin" answer would miss offline
-        const hit = await caches.match(req, { ignoreSearch: true, ignoreVary: true })
+        // A card printed before clean URLs (claim.html#…) opens the same cached page: offline it cannot follow the redirect.
+        const old = req.mode === "navigate" && new URL(req.url).pathname.endsWith("/claim.html")
+        const hit = await caches.match(old ? "claim" : req, { ignoreSearch: true, ignoreVary: true })
         if (hit) return hit
         throw new Error("offline and not cached")
     }
@@ -34,7 +36,7 @@ async function networkFirst(req) {
 
 // Flood alerts, two ways to wake: Periodic Background Sync (the phone polls the chain itself, no server; only
 // installed Chromium apps, at a rate the browser picks) and a payload-free Web Push from the relayer's /notify
-// (any browser with push). Either way the notification is written here, from the chain, in the phone's language.
+// (any browser with push). Either way the notification is written here, from the chain, in the language the household chose.
 const NOTE = {
     en: (name, heat) => ({ title: `${heat ? "Heatwave" : "Flood"} alert: claims are open`, body: `${name}: open Naungan and tap Claim before the window closes.` }),
     id: (name, heat) => ({ title: `Peringatan ${heat ? "gelombang panas" : "banjir"}: klaim dibuka`, body: `${name}: buka Naungan dan tekan Klaim sebelum masa klaim berakhir.` }),
@@ -65,7 +67,7 @@ async function checkWatches() {
         if (w.notified) continue
         const n = (NOTE[w.lang] ?? NOTE.en)(w.name, w.hazard === "heat")
         try {
-            await self.registration.showNotification(n.title, { body: n.body, tag: watchKey(w), icon: "icon.svg", badge: "icon.svg", requireInteraction: true, data: { url: "claim.html" } })
+            await self.registration.showNotification(n.title, { body: n.body, tag: watchKey(w), icon: "icon.svg", badge: "icon.svg", requireInteraction: true, data: { url: "claim" } })
         } catch { continue } // permission revoked: leave it un-notified so a later grant still alerts, and check the rest
         await cache.put(req, new Response(JSON.stringify({ ...w, notified: true })))
         shown++
@@ -79,7 +81,7 @@ self.addEventListener("push", (e) => e.waitUntil((async () => {
     if (await checkWatches().catch(() => 0)) return
     const w = await (async () => { const c = await caches.open(WATCH); const k = (await c.keys())[0]; return k && (await c.match(k)).json() })().catch(() => null)
     const n = (NOTE[w?.lang] ?? NOTE.en)(w?.name ?? "Naungan", w?.hazard === "heat")
-    await self.registration.showNotification(n.title, { body: n.body, tag: "naungan-push", icon: "icon.svg", badge: "icon.svg", data: { url: "claim.html" } })
+    await self.registration.showNotification(n.title, { body: n.body, tag: "naungan-push", icon: "icon.svg", badge: "icon.svg", data: { url: "claim" } })
 })()))
 
 self.addEventListener("periodicsync", (e) => { if (e.tag === "naungan-watch") e.waitUntil(checkWatches()) })
@@ -87,8 +89,8 @@ self.addEventListener("periodicsync", (e) => { if (e.tag === "naungan-watch") e.
 self.addEventListener("notificationclick", (e) => {
     e.notification.close()
     e.waitUntil((async () => {
-        const open = (await self.clients.matchAll({ type: "window" })).find((c) => new URL(c.url).pathname.endsWith("/claim.html"))
-        return open ? open.focus() : self.clients.openWindow(e.notification.data?.url ?? "claim.html")
+        const open = (await self.clients.matchAll({ type: "window" })).find((c) => /\/claim(\.html)?$/.test(new URL(c.url).pathname))
+        return open ? open.focus() : self.clients.openWindow(e.notification.data?.url ?? "claim")
     })())
 })
 

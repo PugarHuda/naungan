@@ -6,7 +6,7 @@
 // Agency A dedups against B, enrolls the households B does not already serve, prints QR claim cards
 // (possible matches, birth year one off or a one-letter typo, go to <list>.review.csv instead of being enrolled):
 //   node scripts/agency.js enroll --program 1 --list data/zakat.csv --peer http://localhost:7001 \
-//        --claim-url http://localhost:5173/claim.html --cards cards/zakat.html [--pin]
+//        --claim-url http://localhost:5173/claim --cards cards/zakat.html [--pin]
 //   --names id|basic picks how names are normalised before matching (default id: Indonesian/Malay titles
 //   and spelling; basic: accents, case and common honorifics only). Both agencies must use the same one.
 //   --pin locks each card with a 6-digit PIN printed on a separate slip (cards/zakat.pins.html). The key also
@@ -127,21 +127,21 @@ async function enroll({ program, list, peer = [], "claim-url": claimUrl, cards, 
     const cardHtml = await Promise.all(carded.map(async (r, i) => {
         const code = codes[i]
         const svg = await QRCode.toString(`${claimUrl}#${code}`, { type: "svg", errorCorrectionLevel: "M", margin: 1 })
-        // Indonesian first: the households read the card; English below for agency staff.
-        return `<article><div class="qr">${svg}</div><div><h2>Kartu klaim Naungan #${i + 1} <span lang="en">· claim card</span></h2><p class="who">${esc(r.name)} · ${esc(r.village)}</p>
-<p>${esc(meta.name)}</p><ol><li>Pindai dengan kamera HP. <span lang="en">Scan with your phone camera.</span></li>${withPin ? `<li>Masukkan PIN 6 angka dari lembaga. <span lang="en">Enter the 6-digit PIN your agency gave you.</span></li>` : ""}<li>Saat peringatan banjir membuka klaim, ketuk <b>Klaim sekarang</b>. <span lang="en">When the flood alert opens claims, tap <b>Claim now</b>.</span></li></ol>
-<p class="code">Tidak ada kamera? Buka ${esc(claimUrl)} lalu masukkan: <span lang="en">No camera? Open it and enter:</span> <code>${esc(code)}</code></p>
-<p class="warn">${withPin ? `Simpan PIN terpisah dari kartu ini. Kartu saja tidak bisa dipakai klaim. <span lang="en">Keep your PIN apart from this card. The card alone cannot be claimed.</span>` : `Rahasiakan kartu ini. Siapa pun yang memegangnya bisa klaim sekali untuk rumah tangga ini. <span lang="en">Keep this card private. Anyone holding it can claim once for this household.</span>`}</p></div></article>`
+        // In English; the claim app it opens lets the household pick its own language.
+        return `<article><div class="qr">${svg}</div><div><h2>Naungan claim card #${i + 1}</h2><p class="who">${esc(r.name)} · ${esc(r.village)}</p>
+<p>${esc(meta.name)}</p><ol><li>Scan with your phone camera.</li>${withPin ? `<li>Enter the 6-digit PIN your agency gave you.</li>` : ""}<li>When the ${meta.hazard === "heat" ? "heatwave" : "flood"} alert opens claims, tap <b>Claim now</b>.</li></ol>
+<p class="code">No camera? Open ${esc(claimUrl)} and enter: <code>${esc(code)}</code></p>
+<p class="warn">${withPin ? "Keep your PIN apart from this card. The card alone cannot be claimed." : "Keep this card private. Anyone holding it can claim once for this household."}</p></div></article>`
     }))
     if (withPin) {
         const pinFile = cards.replace(/\.html?$/, "") + ".pins.html"
-        fs.writeFileSync(pinFile, `<!doctype html><html lang="id"><meta charset="utf-8"><title>Slip PIN Naungan</title><style>body{font:15px system-ui,sans-serif;margin:16px}[lang=en]{color:#555;font-size:.85em}
+        fs.writeFileSync(pinFile, `<!doctype html><html lang="en"><meta charset="utf-8"><title>Naungan PIN slips</title><style>body{font:15px system-ui,sans-serif;margin:16px}
 p{border:1px dashed #999;border-radius:8px;padding:12px;max-width:420px;page-break-inside:avoid}b{font:700 24px ui-monospace,monospace;letter-spacing:4px}</style>
-${carded.map((r, i) => `<p>Kartu #${i + 1} · ${esc(r.name)} · ${esc(r.village)}<br>PIN <b>${pins[i]}</b><br>Serahkan terpisah dari kartu. <span lang="en">Hand over separately from the card.</span></p>`).join("\n")}`)
+${carded.map((r, i) => `<p>Card #${i + 1} · ${esc(r.name)} · ${esc(r.village)}<br>PIN <b>${pins[i]}</b><br>Hand over separately from the card.</p>`).join("\n")}`)
         console.log(`wrote ${carded.length} PIN slips → ${pinFile} (print and hand out apart from the cards)`)
     }
     fs.mkdirSync(path.dirname(cards), { recursive: true })
-    fs.writeFileSync(cards, `<!doctype html><html lang="id"><meta charset="utf-8"><title>Kartu klaim Naungan</title><style>[lang=en]{color:#555;font-size:.9em}
+    fs.writeFileSync(cards, `<!doctype html><html lang="en"><meta charset="utf-8"><title>Naungan claim cards</title><style>
 body{font:14px/1.4 system-ui,sans-serif;margin:16px}article{display:flex;gap:16px;border:1px solid #999;border-radius:10px;padding:14px;margin:0 0 12px;page-break-inside:avoid;max-width:640px}
 .qr{width:180px;flex:none}h2{margin:0 0 4px;font-size:17px}.who{font-weight:600}.warn{color:#b5541c;font-size:12px}ol{padding-left:18px;margin:6px 0}.code{font-size:11px;word-break:break-all}
 </style>${cardHtml.join("\n")}`)

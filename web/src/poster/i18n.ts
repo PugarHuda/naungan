@@ -1,5 +1,5 @@
-// Registration poster text in the claim app's five languages. The poster prints in the program's own language
-// (from its country, or ?lang=) with English underneath when that differs, so field staff can read it too.
+// Registration poster text in the claim app's five languages. The poster prints in English, or in the language an
+// agency asks for (?lang=) with English underneath, so field staff can read it too.
 type Strings = {
     title: string
     per: (amount: string, heat: boolean) => string
@@ -40,13 +40,8 @@ export const P: Record<string, Strings> = {
     }
 }
 
-/** ?lang= if we have it, else the language of the program's country (Intl's likely-subtags data), else English. */
-export function posterLang(asked: string | null, country: string | null): string {
+/** ?lang= if we have it (the poster then carries English underneath), else English. */
+export function posterLang(asked: string | null): string {
     const a = asked?.slice(0, 2).toLowerCase()
-    if (a && a in P) return a
-    if (country && /^[A-Z]{2}$/.test(country)) {
-        const l = new Intl.Locale(`und-${country}`).maximize().language
-        if (l in P) return l
-    }
-    return "en"
+    return a && a in P ? a : "en"
 }

@@ -54,7 +54,7 @@ describe("open data: Atom feed and program summary", () => {
         ].map((t) => (t === "Program #2" ? "New program: Program #2" : t)))
         expect(f.updated).to.equal(new Date((T0 + 2 * 86400) * 1000).toISOString())
         const opened = f.entries[3]
-        expect(opened.links).to.deep.equal(["https://naungan.vercel.app/dashboard.html?program=1", `https://sepolia.basescan.org/tx/0x${(4).toString(16).padStart(64, "0")}`])
+        expect(opened.links).to.deep.equal(["https://naungan.vercel.app/dashboard?program=1", `https://sepolia.basescan.org/tx/0x${(4).toString(16).padStart(64, "0")}`])
         expect(f.entries[0].links).to.have.length(1) // a claim group links the dashboard only, never the claim transactions
     })
 
@@ -78,7 +78,7 @@ describe("open data: Atom feed and program summary", () => {
         expect(a.households).to.deep.equal({ enrolled: 3, paid: 3 })
         expect(a.trigger.rule).to.equal("River flood: at least 60% of GloFAS members above the 1-in-5-year flood, 10-day lead")
         expect(a.latestReport).to.include({ valuePercent: 100, triggered: true })
-        expect(a.links.join).to.equal("https://x.org/claim.html#join=1")
+        expect(a.links.join).to.equal("https://x.org/claim#join=1")
         expect(b).to.include({ state: "over", country: "BD", hazard: "heat", latestReport: null })
         expect(b.trigger.rule).to.match(/^Heatwave: 2\+ days above 42 °C, nights above 30 °C/)
     })

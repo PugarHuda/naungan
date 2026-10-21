@@ -9,9 +9,8 @@ import { Identity } from "@semaphore-protocol/identity"
 import { poseidon2 } from "poseidon-lite/poseidon2" // the package root bundles every arity's constants (~530 KB)
 const proving = () => Promise.all([import("@semaphore-protocol/proof"), import("@semaphore-protocol/group")])
 import { deployment as d, naungan, provider, parseMeta, ERC20_ABI } from "../shared/chain"
-import { placeOf, languageOf, usdRates } from "../shared/place"
-import { ui, card, store, t, savedLang, type Snapshot } from "./state.svelte"
-import { pickLang } from "./i18n"
+import { placeOf, usdRates } from "../shared/place"
+import { ui, card, store, t, type Snapshot } from "./state.svelte"
 
 export const RELAYER = d.relayer ?? "http://localhost:8788"
 const PENDING = "naungan-pending"
@@ -173,17 +172,12 @@ async function relay(job: Job) {
     return body
 }
 
-/**
- * Which country the program runs in (`country` in newer metadata, else from its on-chain coordinates),
- * for local money and, when the household has not chosen a language, the country's language.
- */
+/** Which country the program runs in (`country` in newer metadata, else from its on-chain coordinates), for local money. */
 async function place(meta: Snapshot["meta"]) {
     const old = store.get(`naungan-place:${d.naungan}:${card.pid}`) // the key versions before the Svelte port kept
     const cc = meta.country ?? (typeof old === "string" ? old : null) ?? (Number.isFinite(meta.lat) ? (await placeOf(meta.lat!, meta.lon!))?.code : null)
     if (!cc) return // offline: amounts stay in USDC until the next visit
     ui.country = cc
-    const local = languageOf(cc) // CLDR likely language: BD → bn, HN → es
-    ui.lang = pickLang(savedLang(), navigator.languages, local)
 }
 
 function showPaid(body: { txHash: string; payout: string }, amount: bigint, dec: number) {

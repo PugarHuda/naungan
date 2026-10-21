@@ -59,7 +59,7 @@ ${el("expires", capTime(p.claimDeadline))}
 ${el("headline", `Anticipatory cash released: ${place[0]} (${value}% forecast probability)`)}
 ${el("description", `${rule(meta, p.triggerThreshold.toString())}. The oracle quorum reported ${value}% (trigger ${p.triggerThreshold}%), so enrolled households can claim ${usdc} USDC each until the claim window closes. Evidence: ${report.args.evidence}`)}
 ${el("instruction", "Households enrolled in this program: open your Naungan card and tap Claim before the window closes. Agencies: tell enrolled households that claims are open.")}
-${el("web", `${base}/dashboard.html?program=${id}`)}
+${el("web", `${base}/dashboard?program=${id}`)}
 ${params.map(([k, v]) => `<parameter><valueName>${esc(k)}</valueName><value>${esc(v)}</value></parameter>`).join("\n")}
 <area>
 ${el("areaDesc", place.slice(1).join(", ") || place[0])}
@@ -81,7 +81,7 @@ function capIndex({ alerts, base, now = Date.now() / 1000 }) {
 <title>${esc(`${a.meta.hazard === "heat" ? "Heatwave" : "River flood"} forecast: ${(a.meta.name ?? `Program ${a.id}`).split(" · ")[0]}`)}</title>
 <updated>${capTime(a.report.timestamp)}</updated>
 <link rel="alternate" type="application/cap+xml" href="${esc(`${base}/api/cap?program=${a.id}`)}"/>
-<link rel="related" type="text/html" href="${esc(`${base}/dashboard.html?program=${a.id}`)}"/>
+<link rel="related" type="text/html" href="${esc(`${base}/dashboard?program=${a.id}`)}"/>
 <summary>${esc(`Trigger fired at ${a.report.args.value}%; claims open until ${capTime(a.p.claimDeadline)}`)}</summary>
 </entry>`)
     return `<?xml version="1.0" encoding="UTF-8"?>

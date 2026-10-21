@@ -2,7 +2,7 @@
   "name": "Naungan Claim",
   "short_name": "Naungan",
   "description": "Claim flood cash support privately with your Naungan card.",
-  "start_url": "claim.html",
+  "start_url": "claim",
   "scope": "./",
   "display": "standalone",
   "lang": "id",
@@ -12,7 +12,7 @@
     { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
   ],
   "shortcuts": [
-    { "name": "Kartu saya / My card", "short_name": "Kartu", "description": "Open the card saved on this phone", "url": "claim.html", "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }] },
-    { "name": "Status program / Program status", "short_name": "Status", "description": "Public dashboard: river forecast, oracles and payouts", "url": "dashboard.html", "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }] }
+    { "name": "My card", "short_name": "Card", "description": "Open the card saved on this phone", "url": "claim", "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }] },
+    { "name": "Program status", "short_name": "Status", "description": "Public dashboard: river forecast, oracles and payouts", "url": "dashboard", "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }] }
   ]
 }

@@ -68,7 +68,7 @@ ${located ? `<location><location-reach code="2"/>${text("name", name.split(" · 
 <default-finance-type code="110"/>
 <default-aid-type code="1" vocabulary="4"/>
 ${tx.sort((a, b) => a.match(/iso-date="([^"]+)"/)[1].localeCompare(b.match(/iso-date="([^"]+)"/)[1])).join("\n")}
-<document-link format="text/html" url="${esc(`${base}/dashboard.html?program=${id}`)}">${text("title", "Live program dashboard: trigger, pool and payouts read from the chain")}<category code="A12"/><language code="en"/></document-link>
+<document-link format="text/html" url="${esc(`${base}/dashboard?program=${id}`)}">${text("title", "Live program dashboard: trigger, pool and payouts read from the chain")}<category code="A12"/><language code="en"/></document-link>
 </iati-activity>`.replace(/\n{2,}/g, "\n")
     })
     return `<?xml version="1.0" encoding="UTF-8"?>

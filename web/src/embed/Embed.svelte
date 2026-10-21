@@ -1,8 +1,8 @@
 <script lang="ts">
-    // Embeddable status card: <iframe src="https://naungan.vercel.app/embed.html?program=N">. It reads the edge-cached
+    // Embeddable status card: <iframe src="https://naungan.vercel.app/embed?program=N">. It reads the edge-cached
     // /api/programs (one CDN answer serves every site that embeds it, so no RPC load), refreshes every 5 minutes,
     // and links to the dashboard where every payout can be re-verified. ?theme=dark|light, else the visitor's;
-    // ?lang=en|id|bn|es|sw, else the visitor's browser language (see i18n.ts).
+    // ?lang=en|id|bn|es|sw, else English (see i18n.ts).
     import { onMount } from "svelte"
     import { E, embedLang } from "./i18n"
 
@@ -17,7 +17,7 @@
     const id = Number(q.get("program"))
     const theme = q.get("theme")
     if (theme === "dark" || theme === "light") document.documentElement.dataset.theme = theme
-    const lang = embedLang(q.get("lang"), navigator.languages)
+    const lang = embedLang(q.get("lang"))
     const s = E[lang]
     document.documentElement.lang = lang
 

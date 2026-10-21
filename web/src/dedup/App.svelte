@@ -156,7 +156,7 @@
         try { list = JSON.parse(localStorage.getItem(k) ?? "[]") } catch {}
         const add = fresh.filter((r) => r.commitment !== undefined).map((r) => r.commitment!.toString())
         try { localStorage.setItem(k, JSON.stringify([...new Set([...list, ...add])])) } catch {}
-        location.href = `enroll.html?program=${p}`
+        location.href = `enroll?program=${p}`
     }
     function done() {
         try { sessionStorage.removeItem(PENDING) } catch {}
@@ -169,7 +169,7 @@
         <a class="brand" href="./">NAUNGAN</a>
         <div class="navlinks">
             <span class="net">{d.network} {#if d.explorer}<a href="{d.explorer}/address/{d.naungan}" target="_blank" rel="noopener">{short(d.naungan)}</a>{:else}{short(d.naungan)}{/if}</span>
-            <a class="btn ghost" href="enroll.html">Enroll</a>
+            <a class="btn ghost" href="enroll">Enroll</a>
         </div>
     </nav>
     <main class="launch">
@@ -240,7 +240,7 @@
                                 <button class="btn go" type="button" onclick={toEnroll}>Enroll the {fresh.filter((r) => r.commitment !== undefined).length} new with registration codes</button>
                             {/if}
                         </div>
-                        {#if fresh.some((r) => r.commitment === undefined)}<p class="fine cli">New households without a registration code need printed claim cards: <code>node scripts/agency.js enroll --program {waiting?.request.program} --list {base()}.new.csv --claim-url {location.origin}/claim.html --cards cards.html --pin</code></p>{/if}
+                        {#if fresh.some((r) => r.commitment === undefined)}<p class="fine cli">New households without a registration code need printed claim cards: <code>node scripts/agency.js enroll --program {waiting?.request.program} --list {base()}.new.csv --claim-url {location.origin}/claim --cards cards.html --pin</code></p>{/if}
                         <button class="link" type="button" onclick={done}>Check another list</button>
                     {/if}
                 </article>

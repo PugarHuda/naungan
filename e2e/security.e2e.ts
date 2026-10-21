@@ -2,7 +2,7 @@ import { test, expect, pickPlace } from "./fixtures"
 
 // The preview serves vercel.json's headers (vite.config.mjs), so this checks the policy production sends.
 test("security headers: present, and the CSP allows every host the pages actually fetch @desktop", async ({ page, request }) => {
-    const res = await request.get("/claim.html")
+    const res = await request.get("/claim")
     const h = res.headers()
     expect(h["x-content-type-options"]).toBe("nosniff")
     expect(h["referrer-policy"]).toBe("no-referrer") // a claim card's link never leaks to another site
@@ -38,7 +38,7 @@ test("security.txt (RFC 9116) and link previews on every page @desktop", async (
     expect(txt).toMatch(/^Contact: https:\/\//m)
     const expires = new Date(txt.match(/^Expires: (.+)$/m)![1])
     expect(expires.getTime() - Date.now()).toBeGreaterThan(30 * 864e5) // renew it before it lapses
-    for (const p of ["/", "/dashboard.html", "/claim.html", "/launch.html"]) {
+    for (const p of ["/", "/dashboard", "/claim", "/launch"]) {
         const html = await (await request.get(p)).text()
         for (const m of ['name="description"', 'property="og:title"', 'property="og:description"', 'property="og:image" content="https://'])
             expect(html, `${p} ${m}`).toContain(m)

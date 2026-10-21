@@ -1,4 +1,4 @@
-// Household claim app entry (claim.html). The proving code is bundled, never loaded from a CDN.
+// Household claim app entry (claim). The proving code is bundled, never loaded from a CDN.
 import { mount } from "svelte"
 import App from "./App.svelte"
 import { start } from "./flow"

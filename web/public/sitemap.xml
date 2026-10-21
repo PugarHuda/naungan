@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 <url><loc>https://naungan.vercel.app/</loc></url>
-<url><loc>https://naungan.vercel.app/dashboard.html</loc></url>
-<url><loc>https://naungan.vercel.app/claim.html</loc></url>
-<url><loc>https://naungan.vercel.app/launch.html</loc></url>
-<url><loc>https://naungan.vercel.app/enroll.html</loc></url>
-<url><loc>https://naungan.vercel.app/dedup.html</loc></url>
+<url><loc>https://naungan.vercel.app/dashboard</loc></url>
+<url><loc>https://naungan.vercel.app/claim</loc></url>
+<url><loc>https://naungan.vercel.app/launch</loc></url>
+<url><loc>https://naungan.vercel.app/enroll</loc></url>
+<url><loc>https://naungan.vercel.app/dedup</loc></url>
 <url><loc>https://naungan.vercel.app/openapi.json</loc></url>
 </urlset>

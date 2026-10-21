@@ -27,7 +27,7 @@ export const savedLang = () => { try { return localStorage.getItem("naungan-lang
 export const ui = $state({
     // Language: the household's own choice, else the phone's language if we have it, else (once the program's
     // country is known) that country's main language, else English.
-    lang: pickLang(savedLang(), navigator.languages),
+    lang: pickLang(savedLang()),
     hazard: undefined as string | undefined,
     country: undefined as string | undefined,
     fx: null as Rates | null,

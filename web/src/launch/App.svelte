@@ -11,7 +11,7 @@
         <a class="brand" href="./">NAUNGAN</a>
         <div class="navlinks">
             <span class="net">{d.network} {#if d.explorer}<a href="{d.explorer}/address/{d.naungan}" target="_blank" rel="noopener">{short(d.naungan)}</a>{:else}{short(d.naungan)}{/if}</span>
-            <a class="btn ghost" href="dashboard.html">Live programs</a>
+            <a class="btn ghost" href="dashboard">Live programs</a>
         </div>
     </nav>
     <main class="launch">

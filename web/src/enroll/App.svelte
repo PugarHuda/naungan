@@ -1,8 +1,8 @@
 <script lang="ts">
-    // Agency enrollment in the browser: households register on their own phones (claim.html#join=<program>) and show
+    // Agency enrollment in the browser: households register on their own phones (claim#join=<program>) and show
     // a code; staff scan or paste the codes here and enroll them from the agency's wallet. The page sees only public
     // commitments: no names, and no secret that could ever claim for anyone. Name lists are checked against other
-    // agencies first on dedup.html (PSI); self-registered phones carry no names, so a phone can be enrolled only once per program.
+    // agencies first on dedup (PSI); self-registered phones carry no names, so a phone can be enrolled only once per program.
     import { onMount, tick } from "svelte"
     import { Contract } from "ethers"
     import { deployment as d, naungan, readPrograms, isOver, short, NAUNGAN_ABI, type Program, type ProgramMeta } from "../shared/chain"
@@ -166,7 +166,7 @@
         <a class="brand" href="./">NAUNGAN</a>
         <div class="navlinks">
             <span class="net">{d.network} {#if d.explorer}<a href="{d.explorer}/address/{d.naungan}" target="_blank" rel="noopener">{short(d.naungan)}</a>{:else}{short(d.naungan)}{/if}</span>
-            <a class="btn ghost" href="dashboard.html">Live programs</a>
+            <a class="btn ghost" href="dashboard">Live programs</a>
         </div>
     </nav>
     <main class="launch">
@@ -187,7 +187,7 @@
                     </select>
                 </label>
                 {#if chosen}
-                    <p class="fine">{enrolled.size} household{enrolled.size === 1 ? "" : "s"} enrolled so far. Registration link for phones: <code>{location.origin}/claim.html#join={chosen.id}</code> · <a href="poster.html?program={chosen.id}" target="_blank" rel="noopener">Print a registration poster</a> · Enrolling from a name list? <a href="dedup.html?program={chosen.id}">Check it against other agencies first</a></p>
+                    <p class="fine">{enrolled.size} household{enrolled.size === 1 ? "" : "s"} enrolled so far. Registration link for phones: <code>{location.origin}/claim#join={chosen.id}</code> · <a href="poster?program={chosen.id}" target="_blank" rel="noopener">Print a registration poster</a> · Enrolling from a name list? <a href="dedup?program={chosen.id}">Check it against other agencies first</a></p>
                 {/if}
             {/if}
         </article>

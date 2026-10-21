@@ -1,5 +1,4 @@
-// The embed widget in the claim app's five languages. It follows the partner site (?lang=) or its visitor's browser,
-// not the program's country: a donor's English page embedding a Bangladesh program should read in English.
+// The embed widget in the claim app's five languages: English unless the partner site asks for another (?lang=).
 type Strings = {
     open: (heat: boolean, until: string) => string
     watching: (until: string) => string
@@ -63,6 +62,8 @@ export const E: Record<string, Strings> = {
     }
 }
 
-/** ?lang= if we have it, else the first of the visitor's languages we have, else English. */
-export const embedLang = (asked: string | null, browser: readonly string[] = []) =>
-    [asked, ...browser].map((l) => l?.slice(0, 2).toLowerCase()).find((l): l is string => !!l && l in E) ?? "en"
+/** The partner site's ?lang= if we have it, else English. */
+export const embedLang = (asked: string | null) => {
+    const a = asked?.slice(0, 2).toLowerCase()
+    return a && a in E ? a : "en"
+}

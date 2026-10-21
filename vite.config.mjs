@@ -35,7 +35,7 @@ function precacheClaimShell() {
                 for (const n of [...c.imports, ...c.dynamicImports]) walk(n)
             }
             walk(entry.fileName)
-            files = ["claim.html", ...[...seen].sort(), "manifest.webmanifest", "icon.svg"]
+            files = ["claim", ...[...seen].sort(), "manifest.webmanifest", "icon.svg"] // "claim": the clean URL Vercel serves (cleanUrls)
         },
         closeBundle() {
             const version = createHash("sha256").update(files.join()).digest("hex").slice(0, 10)

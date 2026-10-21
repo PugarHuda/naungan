@@ -37,7 +37,7 @@
                 {#each programs.map((x, i) => ({ ...x, c: places![i] })).reverse() as { id, p, meta, c } (id)}
                     {@const [st, cls] = status(p)}
                     <li>
-                        <a class="panel" href="dashboard.html?program={id}">
+                        <a class="panel" href="dashboard?program={id}">
                             <span class="where">{flagOf(c?.code)} {c?.name ?? "Unknown place"} · #{id}</span>
                             <h3>{(meta.name ?? `Program ${id}`).split(" · ")[0]}</h3>
                             <p class="rule">{rule(p, meta)}</p>

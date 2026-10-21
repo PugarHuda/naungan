@@ -29,8 +29,8 @@
         </div>
         <div class="navlinks">
             <span class="net">{netName} {#if d.explorer}<a href="{d.explorer}/address/{d.naungan}" target="_blank" rel="noopener">{short(d.naungan)}</a>{:else}{short(d.naungan)}{/if}</span>
-            <a class="btn ghost" href="launch.html">Launch a program</a>
-            <a class="btn ghost" href="claim.html">Claim with a card</a>
+            <a class="btn ghost" href="launch">Launch a program</a>
+            <a class="btn ghost" href="claim">Claim with a card</a>
             <a class="btn dark" href="#fund">Fund this program</a>
         </div>
     </nav>

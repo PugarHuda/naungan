@@ -19,7 +19,7 @@ test("landing: every live program, the forecast chart, cards link to the dashboa
 
     const cards = page.locator("#programs ul.world a")
     await expect(cards).toHaveCount(programs)
-    for (const href of await cards.evaluateAll((as) => as.map((a) => a.getAttribute("href")))) expect(href).toMatch(/^dashboard\.html\?program=\d+$/)
+    for (const href of await cards.evaluateAll((as) => as.map((a) => a.getAttribute("href")))) expect(href).toMatch(/^dashboard\?program=\d+$/)
     await check(page)
 })
 
@@ -37,6 +37,6 @@ test("search engines find the open data: schema.org Dataset whose every download
     }
     expect(await (await request.get("/robots.txt")).text()).toMatch(/Disallow: \/relay[\s\S]*Sitemap: https:\/\/naungan\.vercel\.app\/sitemap\.xml/)
     const urls = [...(await (await request.get("/sitemap.xml")).text()).matchAll(/<loc>https:\/\/naungan\.vercel\.app(\/[^<]*)<\/loc>/g)].map((m) => m[1])
-    expect(urls).toContain("/dashboard.html")
+    expect(urls).toContain("/dashboard")
     for (const u of urls) expect((await request.get(u)).status(), u).toBe(200)
 })

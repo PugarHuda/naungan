@@ -6,14 +6,17 @@ test.beforeEach(async ({ context }) => {
     await context.route("**/api/programs", async (r) => r.fulfill({ response: await r.fetch({ url: "https://naungan.vercel.app/api/programs" }) }))
 })
 
-test("poster: a Bangladesh program prints in Bengali with English underneath, and its QR opens registration", async ({ page, check }) => {
+test("poster: English by default; asked for Bengali, it prints Bengali with English underneath, and its QR opens registration", async ({ page, check }) => {
     await page.goto("/poster.html?program=6")
+    await expect(page.locator("html")).toHaveAttribute("lang", "en")
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Register for early cash support")
+    await page.goto("/poster.html?program=6&lang=bn")
     await expect(page.locator("html")).toHaveAttribute("lang", "bn")
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("আগাম নগদ সহায়তার জন্য নিবন্ধন করুন")
     await expect(page.getByText("Register for early cash support")).toBeVisible()
     await expect(page.locator("ol li")).toHaveCount(3)
     await expect(page.locator("ol li").nth(2)).toContainText("তাপপ্রবাহের") // a heat program says heatwave, not flood
-    const join = "http://localhost:4173/claim.html#join=6"
+    const join = "http://localhost:4173/claim#join=6"
     await expect(page.getByText(join)).toBeVisible()
     // The printed QR is exactly the registration link: the same library draws the same SVG for it.
     const svg = await page.locator(".qr svg").evaluate((el) => el.outerHTML)

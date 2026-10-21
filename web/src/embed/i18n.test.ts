@@ -14,11 +14,10 @@ describe("embed widget languages", () => {
                 expect(text, `${lang}.${k} is still English`).not.toBe(english)
             }
         })
-    it("follows ?lang=, then the visitor's browser, then English", () => {
-        expect(embedLang("bn", ["en-US"])).toBe("bn")
-        expect(embedLang(null, ["fr-FR", "es-HN", "en"])).toBe("es")
-        expect(embedLang("xx", ["sw-KE"])).toBe("sw")
-        expect(embedLang(null, ["fr-FR"])).toBe("en")
-        expect(embedLang("ID", [])).toBe("id")
+    it("follows the partner's ?lang=, else English", () => {
+        expect(embedLang("bn")).toBe("bn")
+        expect(embedLang("ID")).toBe("id")
+        expect(embedLang("xx")).toBe("en")
+        expect(embedLang(null)).toBe("en")
     })
 })

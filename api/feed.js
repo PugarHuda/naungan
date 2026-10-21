@@ -25,7 +25,7 @@ function buildFeed({ events, base, explorer, program = null, decimals = 6, now =
     const entries = []
     const claims = new Map() // "pid:day" → { pid, day, n, last }
     for (const e of mine) {
-        const pid = Number(e.args.programId), at = e.timestamp, link = `${base}/dashboard.html?program=${pid}`
+        const pid = Number(e.args.programId), at = e.timestamp, link = `${base}/dashboard?program=${pid}`
         const tx = explorer ? `${explorer}/tx/${e.transactionHash}` : null
         const id = `${e.transactionHash}:${e.index}`
         if (e.name === "Claimed") {
@@ -46,7 +46,7 @@ function buildFeed({ events, base, explorer, program = null, decimals = 6, now =
         }
     }
     for (const c of claims.values()) {
-        entries.push({ id: `claims:${c.pid}:${c.day}`, at: c.last, link: `${base}/dashboard.html?program=${c.pid}`, tx: null, title: `${label(c.pid)}: ${c.n} household${c.n === 1 ? "" : "s"} paid on ${c.day}`, text: `${c.n} enrolled household${c.n === 1 ? "" : "s"} claimed with a zero-knowledge proof. Who they are, and which payout went to whom, is never on-chain.` })
+        entries.push({ id: `claims:${c.pid}:${c.day}`, at: c.last, link: `${base}/dashboard?program=${c.pid}`, tx: null, title: `${label(c.pid)}: ${c.n} household${c.n === 1 ? "" : "s"} paid on ${c.day}`, text: `${c.n} enrolled household${c.n === 1 ? "" : "s"} claimed with a zero-knowledge proof. Who they are, and which payout went to whom, is never on-chain.` })
     }
     entries.sort((a, b) => b.at - a.at || b.id.localeCompare(a.id))
     const shown = entries.slice(0, MAX)
@@ -62,7 +62,7 @@ function buildFeed({ events, base, explorer, program = null, decimals = 6, now =
   <updated>${iso(shown[0]?.at ?? now)}</updated>
   <author><name>Naungan</name><uri>${esc(base)}</uri></author>
   <link rel="self" type="application/atom+xml" href="${esc(self)}"/>
-  <link rel="alternate" type="text/html" href="${esc(program != null ? `${base}/dashboard.html?program=${program}` : `${base}/`)}"/>
+  <link rel="alternate" type="text/html" href="${esc(program != null ? `${base}/dashboard?program=${program}` : `${base}/`)}"/>
 ${shown
     .map(
         (x) => `  <entry>

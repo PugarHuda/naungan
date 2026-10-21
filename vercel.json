@@ -1,4 +1,5 @@
 {
+  "cleanUrls": true,
   "buildCommand": "npx hardhat compile && npm run build",
   "outputDirectory": "dist",
   "functions": {
@@ -136,7 +137,7 @@
       ]
     },
     {
-      "source": "/embed.html",
+      "source": "/embed(\\.html)?",
       "headers": [
         {
           "key": "Content-Security-Policy",

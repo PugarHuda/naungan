@@ -19,10 +19,6 @@ describe("claim app translations", () => {
 })
 
 describe("language priority", () => {
-    it("the household's own choice wins", () => expect(pickLang("es", ["bn-BD"], "sw")).toBe("es"))
-    it("an unknown saved choice is ignored", () => expect(pickLang("xx", undefined, "bn")).toBe("bn"))
-    it("then the phone's language, when we have it", () => expect(pickLang(null, ["fr-FR", "id-ID"], "sw")).toBe("id"))
-    it("an English phone lets the program's language win", () => expect(pickLang(null, ["en-US", "en"], "sw")).toBe("sw"))
-    it("a country language we lack falls back to English", () => expect(pickLang(null, ["en-GB"], "ur")).toBe("en"))
-    it("before the country is known: English", () => expect(pickLang(null, ["en-US"])).toBe("en"))
+    it("the household's own choice wins", () => expect(pickLang("bn")).toBe("bn"))
+    it("otherwise English, whatever the phone or the program's country", () => expect([pickLang(null), pickLang("xx")]).toEqual(["en", "en"]))
 })
