@@ -1,6 +1,7 @@
 // The program being drafted, shared by every step of the launch page. Metadata comes from lib/program.mjs
 // buildMeta, the same builder `scripts/coordinator.js create` uses, so both write identical JSON on-chain.
 import { PRESETS, buildMeta } from "../../../lib/program.mjs"
+import { PAIRS } from "../../../lib/hazard.mjs"
 import type { Place } from "../shared/place"
 import type { Society } from "../shared/ifrc"
 
@@ -11,6 +12,8 @@ export type Preset = (typeof PRESETS)[number]
 // ponytail: Naungan's hosted oracle key (the relayer's /health "relayer" address; the GitHub Actions oracle
 // posts with it). Hard-coded rather than fetched: a program must name its oracles before it exists.
 export const HOSTED_ORACLE = "0x812D262d51eA66C863ecf58B2D5c246f2963d5a1"
+// Naungan's second hosted key (GitHub Actions secret RAIN_ORACLE_KEY): it runs the independent pipeline of a 2-of-2 program.
+export const SECOND_ORACLE = "0x01029664a642F8e3FF9171e79C9168d6Dc3C1248"
 
 const inDays = (n: number) => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10)
 const round3 = (x: number) => Math.round(x * 1000) / 1000
@@ -35,8 +38,16 @@ export const draft = $state({
     claimDays: 7,
     seasonEnd: inDays(180),
     oracles: HOSTED_ORACLE,
-    quorum: 1
+    quorum: 1,
+    second: false // 2-of-2: Naungan's two keys, each on an independent forecast (PAIRS)
 })
+
+/** Turn the independent second forecast on or off: Naungan's two hosted keys and quorum 2, or the hosted key alone. */
+export function setSecond(on: boolean) {
+    draft.second = on
+    draft.oracles = on ? `${HOSTED_ORACLE} ${SECOND_ORACLE}` : HOSTED_ORACLE
+    draft.quorum = on ? 2 : 1
+}
 
 /** Where the oracle reads: the river cell for a flood (once snapped), the place itself for heat or wind. */
 export function point(): { lat: number; lon: number } | null {
@@ -80,7 +91,8 @@ export function metaOf(): { meta: Record<string, unknown> } | { error: string } 
             leadDays: draft.leadDays,
             tmax: draft.tmax,
             tmin: draft.tmin,
-            days: draft.days
+            days: draft.days,
+            ...(draft.second && { oracles: oracleList(), pipelines: PAIRS[draft.hazard] })
         })
         return { meta }
     } catch (e) {

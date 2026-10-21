@@ -1,7 +1,8 @@
 # Hosted oracles: about every 6 hours (GloFAS and GEFS update daily), each key reports on every live program it is
 # an oracle of, found on-chain (`oracle.js --all`), so a program launched from launch.html needs no setup
 # here. Each oracle runs the pipeline its program's metadata assigns it (GloFAS, GEFS rainfall, heatwave or cyclone wind).
-# Setup: repository secrets ORACLE_KEY and, for 2-of-2 programs, RAIN_ORACLE_KEY (each with a little gas).
+# Setup: repository secrets ORACLE_KEY and, for 2-of-2 programs, RAIN_ORACLE_KEY (each with a little gas): the second
+# key runs the independent half of each pair, GEFS rainfall for a flood, ECMWF ENS for a heatwave or a cyclone.
 # A key running low on gas shows up as a warning on the run. Each run ends by asking the relayer to push
 # "claims are open" to phones that opted in (POST /notify: idempotent, each phone is woken once).
 name: Oracle
@@ -34,7 +35,7 @@ jobs:
           PROGRAM: ${{ inputs.program }}
         run: |
           if [ -n "$PROGRAM" ]; then node scripts/oracle.js --program "$PROGRAM"; else node scripts/oracle.js --all --every 5.5; fi
-      - name: Second oracle (NOAA GEFS rainfall)
+      - name: Second oracle (NOAA GEFS rainfall / ECMWF ENS temperature and gusts)
         if: ${{ inputs.program == '' }}
         env:
           HAZARD_CACHE: .hazard-cache

@@ -77,3 +77,14 @@ test("dashboard: cyclone wind program (#9, Tacloban) draws the gust forecast, re
     await expect(record.locator("p.fine")).toContainText("not a storm category")
     await check(page)
 })
+
+test("dashboard: a 2-of-2 cyclone program (#10, Beira) shows both independent forecasts and recomputes the ECMWF one @desktop", async ({ page }) => {
+    await page.goto("/dashboard?program=10")
+    await expect(page.locator("h1")).toHaveText("Beira cyclone wind")
+    await expect(page.locator(".oracle", { hasText: "Peak wind gusts (NOAA GEFS)" })).toBeVisible()
+    const ecmwf = page.locator(".oracle", { hasText: "Peak wind gusts (ECMWF ENS)" })
+    await expect(ecmwf.locator(".evidence")).toHaveText(/^ECMWF IFS 0\.25 ENS wind gusts via Open-Meteo .*\/51 members exceed/, { useInnerText: false })
+    await ecmwf.getByRole("button", { name: "Recompute in my browser" }).click()
+    await expect(ecmwf.getByRole("status")).toHaveText(/✓ Matches|Not comparable with the posted/, { timeout: 90_000 })
+    await expect(page.getByText(/of 2 oracles at the trigger\. Claims open when 2 agree\./)).toBeVisible()
+})

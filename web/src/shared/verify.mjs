@@ -11,6 +11,8 @@ export function parseEvidence(evidence) {
     // Heat and wind first: their evidence also starts with "NOAA GEFS" / "REPLAY of ERA5".
     const pipeline = /^(REPLAY of ERA5 observed max temperature|NOAA GEFS 0\.25 max temperature)/.test(evidence) ? "heat"
         : /^(REPLAY of ERA5 observed wind gusts|NOAA GEFS 0\.25 wind gusts)/.test(evidence) ? "wind"
+        : /^ECMWF IFS 0\.25 ENS max temperature/.test(evidence) ? "heat-ecmwf"
+        : /^ECMWF IFS 0\.25 ENS wind gusts/.test(evidence) ? "wind-ecmwf"
         : /^(REPLAY of ERA5|NOAA GEFS)/.test(evidence) ? "rain"
         : /^(REPLAY of GloFAS|GloFAS)/.test(evidence) ? "glofas" : null
     if (!pipeline) return null

@@ -1,7 +1,7 @@
 <script lang="ts">
     // Step 3: check the trigger against live data before money depends on it. Every number is computed now, in
     // this browser, by the code the oracles run (lib/hazard.mjs), the dashboard's track record and IFRC GO.
-    import { assess, assessHeat, assessWind } from "../../../lib/hazard.mjs"
+    import { assess, assessHeat, assessWind, PAIRS, PIPELINES } from "../../../lib/hazard.mjs"
     import { trackRecord } from "../shared/verify.mjs"
     import { compare, eventsOf, societyOf, type GoEvent } from "../shared/ifrc"
     import { draft, metaOf } from "./draft.svelte"
@@ -45,7 +45,13 @@
                 const f = await assess({ lat: meta.lat, lon: meta.lon, returnPeriod: meta.returnPeriod, leadDays: meta.leadDays })
                 return `${f.probability}% of ${f.members} GloFAS members exceed it in the next ${meta.leadDays} days (median peak ${Math.round(f.medianPeak).toLocaleString("en")} m³/s)`
             }
-            const [live, record] = await Promise.all([today(), trackRecord(meta)])
+            // A 2-of-2 program: today's reading from the independent pipeline too, in that pipeline's own words.
+            const other = async () => {
+                if (!draft.second) return ""
+                const p = PAIRS[meta.hazard as "flood"][1] as keyof typeof PIPELINES, o = await (PIPELINES[p][0] as (m: object) => Promise<{ probability: number; members: number; evidence: string }>)(meta)
+                return `; ${o.evidence.split(" via ")[0]}: ${o.probability}% of ${o.members} members`
+            }
+            const [live, second, record] = await Promise.all([today(), other(), trackRecord(meta)])
             const years = (Date.parse(record.flood.to) - Date.parse(record.flood.from)) / 3.156e10
             const paid = record.paid as Episode[]
             let ifrc = null, ifrcNote = ""
@@ -68,7 +74,7 @@
                     : heat
                     ? `${meta.heat.days}+ days above ${meta.heat.tmax} °C${meta.heat.tmin != null ? ` with nights above ${meta.heat.tmin} °C` : ""}`
                     : `1-in-${meta.returnPeriod}-year flood: ${Math.round(record.flood.threshold).toLocaleString("en")} m³/s`,
-                live,
+                live: live + second,
                 years,
                 paid,
                 paidYears: new Set(paid.map((p) => p.start.slice(0, 4))).size,

@@ -16,6 +16,12 @@ describe("program metadata and river snapping", () => {
         expect(wind).to.deep.include({ hazard: "wind", returnPeriod: 10, leadDays: 5, wind: { cells: [[11.24, 125.0]] }, unit: "% of ensemble members above the return-period gust" })
         expect(() => buildMeta({ name: "x", hazard: "wind", lat: 1, lon: 1, returnPeriod: 10, leadDays: 20 })).to.throw(/^leadDays/) // GEFS stops at 16 days
         expect(() => buildMeta({ name: "x", hazard: "quake", lat: 1, lon: 1, returnPeriod: 10, leadDays: 5 })).to.throw(/^hazard is flood, heat or wind/)
+        // 2-of-2 with ECMWF ENS as the independent partner; a river forecast cannot "confirm" a cyclone, and ECMWF stops at 14 days.
+        const pair = buildMeta({ name: "Beira", hazard: "wind", lat: -19.83, lon: 34.84, returnPeriod: 10, leadDays: 5, oracles: ["0xA", "0xB"], pipelines: ["wind", "wind-ecmwf"] })
+        expect(pair.pipelines).to.deep.equal({ "0xA": "wind", "0xB": "wind-ecmwf" })
+        expect(pair.source).to.match(/\+ ECMWF IFS ENS$/)
+        expect(() => buildMeta({ name: "x", hazard: "wind", lat: 1, lon: 1, returnPeriod: 10, leadDays: 5, oracles: ["0xA", "0xB"], pipelines: ["wind", "glofas"] })).to.throw(/^pipelines needs one of wind\|wind-ecmwf per oracle for a wind program/)
+        expect(() => buildMeta({ name: "x", hazard: "heat", lat: 1, lon: 1, tmax: 38, days: 2, leadDays: 15, oracles: ["0xA", "0xB"], pipelines: ["heat", "heat-ecmwf"] })).to.throw(/^leadDays must be a number from 1 to 14 with an ECMWF oracle/)
         expect(() => buildMeta({ name: "x", lat: 1, lon: 200, returnPeriod: 5, leadDays: 5 })).to.throw(/^lon must be/)
         expect(() => buildMeta({ name: "x", hazard: "heat", lat: 1, lon: 1, tmax: 42, days: 2, leadDays: 20 })).to.throw(/^leadDays/) // GEFS stops at 16 days
         expect(() => buildMeta({ name: "", lat: 1, lon: 1, returnPeriod: 5, leadDays: 5 })).to.throw(/^name/)

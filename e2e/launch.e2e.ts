@@ -42,3 +42,16 @@ test("launch: a cyclone wind trigger asks for the gust's return period and expla
     await expect(page.getByText(/ERA5 gives Haiyan 124 km\/h at Tacloban/)).toBeVisible()
     await check(page)
 })
+
+test("launch: a second, independent forecast makes the program 2-of-2 with Naungan's two keys, and ECMWF's 14-day limit is enforced @desktop", async ({ page }) => {
+    await page.goto("/launch")
+    await page.getByLabel("Cyclone wind").check()
+    await page.getByLabel(/Require a second, independent forecast/).check()
+    await expect(page.getByText(/both agree: NOAA GEFS gusts and ECMWF ENS gusts/)).toBeVisible()
+    await expect(page.getByText(/quorum 2\./)).toContainText("0x812D262d51eA66C863ecf58B2D5c246f2963d5a1, 0x01029664a642F8e3FF9171e79C9168d6Dc3C1248")
+    test.skip(!(await pickPlace(page, "Beira")), "Open-Meteo's geocoder did not answer this runner (the page said so)")
+    await page.locator("summary", { hasText: "Metadata written on-chain" }).click()
+    await expect(page.locator("pre.evidence")).toContainText('"0x01029664a642F8e3FF9171e79C9168d6Dc3C1248": "wind-ecmwf"')
+    await page.getByLabel("Lead time (days)").fill("15")
+    await expect(page.locator("p.fine", { hasText: "leadDays must be a number from 1 to 14 with an ECMWF oracle" })).toBeVisible()
+})

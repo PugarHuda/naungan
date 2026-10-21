@@ -4,7 +4,9 @@
     import QRCode from "qrcode"
     import { deployment as d, ERC20_ABI } from "../shared/chain"
     import { browserWallet, cancelled, walletSigner, why } from "../shared/wallet"
-    import { draft, metaOf, oracleList, HOSTED_ORACLE } from "./draft.svelte"
+    import { draft, metaOf, oracleList, setSecond, HOSTED_ORACLE } from "./draft.svelte"
+    import { PAIRS } from "../../../lib/hazard.mjs"
+    const SOURCE: Record<string, string> = { glofas: "GloFAS river flow", rain: "NOAA GEFS catchment rainfall", heat: "NOAA GEFS temperature", "heat-ecmwf": "ECMWF ENS temperature", wind: "NOAA GEFS gusts", "wind-ecmwf": "ECMWF ENS gusts" }
 
     const ABI = [
         "function createProgram(address[] oracles_, uint256 quorum, uint256 amountPerHousehold, uint256 triggerThreshold, uint256 claimWindow, uint256 seasonEnd, string metadata_) returns (uint256 programId)",
@@ -73,8 +75,12 @@
         <label>Claim window (days)<input type="number" min="1" max="365" step="1" bind:value={draft.claimDays} /></label>
         <label>Season ends<input type="date" bind:value={draft.seasonEnd} /></label>
     </div>
+    <label class="check"><input type="checkbox" checked={draft.second} onchange={(e) => setSecond(e.currentTarget.checked)} /> Require a second, independent forecast to agree (2-of-2)</label>
+    {#if draft.second}
+        <p class="fine">Claims open only when both agree: {PAIRS[draft.hazard].map((p) => SOURCE[p]).join(" and ")}, each reported by its own Naungan key, so one model’s false alarm cannot release the money.{draft.hazard !== "flood" ? " ECMWF forecasts 14 days ahead at most." : ""}</p>
+    {/if}
     <p class="fine">
-        Oracle: Naungan’s hosted oracle <code>{HOSTED_ORACLE}</code>, quorum 1.
+        Oracle{draft.second ? "s" : ""}: {draft.second ? "Naungan’s two hosted keys" : "Naungan’s hosted oracle"} <code>{oracleList().join(", ")}</code>, quorum {draft.quorum}.
         <button class="link" type="button" onclick={() => (advanced = !advanced)} aria-expanded={advanced}>{advanced ? "Hide" : "Use other oracles"}</button>
     </p>
     {#if advanced}

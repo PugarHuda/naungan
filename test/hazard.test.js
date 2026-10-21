@@ -131,6 +131,14 @@ describe("hazard (GloFAS trigger math)", () => {
             // The oracle and the in-browser audit dispatch through one table; a wind program runs the wind pipeline by default.
             expect(PIPELINES.wind).to.deep.equal([assessWind, replayWind])
             expect([defaultPipeline(m), defaultPipeline({ hazard: "heat" }), defaultPipeline({})]).to.deep.equal(["wind", "heat", "glofas"])
+            // The 2-of-2 partner reads ECMWF ENS, not GEFS: another agency's model, named in its own evidence.
+            let asked = []
+            const stub = global.fetch
+            global.fetch = async (url) => (asked.push(url), stub(url))
+            const e = await PIPELINES["wind-ecmwf"][0](m)
+            expect(asked.some((u) => /models=ecmwf_ifs025/.test(u)) && !asked.some((u) => /models=gfs025/.test(u))).to.equal(true)
+            expect(e.evidence).to.match(/^ECMWF IFS 0\.25 ENS wind gusts via Open-Meteo .*1\/3 members exceed/)
+            expect(PIPELINES["wind-ecmwf"][1]).to.equal(replayWind) // a replay reads observed ERA5 whichever model runs live
         } finally {
             global.fetch = real
         }

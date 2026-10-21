@@ -30,7 +30,7 @@ export type ProgramMeta = {
     returnPeriod?: number
     leadDays?: number
     unit?: string
-    pipelines?: Record<string, "glofas" | "rain" | "heat" | "wind">
+    pipelines?: Record<string, "glofas" | "rain" | "heat" | "heat-ecmwf" | "wind" | "wind-ecmwf">
     rain?: { returnPeriod: number; cells: [number, number][] }
     heat?: { tmax: number; tmin?: number; days: number; cells: [number, number][] }
     wind?: { returnPeriod?: number; cells: [number, number][] }
