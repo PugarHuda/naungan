@@ -45,7 +45,7 @@ Paste-ready fields for https://dorahacks.io/hackathon/web3-social-good-2026 (dea
    - **Donors:** a donor statement shows any address where its gifts went (paid to households, waiting in the pool, or refundable), checked against the contract's own record.
    - **Families:** they rate the aid anonymously with a second Semaphore proof, one rating per family, which can't be linked to its payment.
 
-**Fits the systems aid already uses:** open data as JSON, GeoJSON, HXL CSV (OCHA HDX), IATI 2.03, CAP 1.2 alerts and an Atom feed (IATI and CAP validated against their official schemas in CI); GDACS disaster alerts and IFRC GO responses on the dashboard; an embeddable status widget for agency sites.
+**Fits the systems aid already uses:** open data as JSON, GeoJSON, HXL CSV (OCHA HDX), IATI 2.03, CAP 1.2 alerts in English and the program country's language, and an Atom feed (IATI and CAP validated against their official schemas in CI); GDACS disaster alerts and IFRC GO responses on the dashboard; an embeddable status widget for agency sites.
 
 **What makes it different:** other aid-transparency builds make donations visible. Naungan also keeps recipients invisible, deduplicates across agencies without sharing lists, pays before the disaster on an objective trigger anyone can audit, and lets the people served give feedback that is provably theirs and still anonymous.
 
@@ -65,6 +65,6 @@ Paste-ready fields for https://dorahacks.io/hackathon/web3-social-good-2026 (dea
 - **A trigger is not a forecast-skill score:** the 30-year replay shows what the rule would have done with perfect forecasts, not how often the forecasts are right.
 - **Not reviewed yet:** no legal review for any country, and the translations still need native speakers.
 
-**Built and tested:** 86 contract and service tests (real Groth16 proofs against the real Semaphore contract, payout audit, PSI, flood/rain/heat/wind trigger math, PIN lockout, gasless spend, relayer verdicts, Web Push), 68 frontend tests, 65 Playwright end-to-end tests on the production build with its real security headers and axe accessibility checks, strict type check, Slither in CI, live oracles on GitHub Actions with a Vercel cron backup, an hourly production monitor.
+**Built and tested:** 87 contract and service tests (real Groth16 proofs against the real Semaphore contract, payout audit, PSI, flood/rain/heat/wind trigger math, PIN lockout, gasless spend, relayer verdicts, Web Push), 68 frontend tests, 68 Playwright end-to-end tests on the production build with its real security headers and axe accessibility checks, strict type check, Slither in CI, live oracles on GitHub Actions with a Vercel cron backup, an hourly production monitor.
 
 **Team:** Pugar Huda Mantoro (solo).

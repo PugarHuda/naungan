@@ -9,6 +9,7 @@ const { parseArgs } = require("util")
 const PAGES = ["/", "/dashboard", "/claim", "/launch", "/enroll", "/dedup", "/embed?program=1"]
 // Oracles report every 6 hours; GitHub can delay a scheduled run by hours, so stale means two cycles missed.
 const STALE_H = 13
+const EXPLAIN = "/api/explain?program=2&lang=en"
 
 /**
  * Pure: what the endpoints answered → the problems a person should act on. `r` maps a path to { status, body,
@@ -42,6 +43,11 @@ function assess(r, now = Date.now() / 1000) {
     if (iati?.status !== 200 || !/<iati-activities version="2\.03"/.test(iati.body ?? "")) out.push(`IATI activities /iati.xml answered ${iati?.status ?? "nothing"}`)
     const feed = r["/feed.xml"]
     if (feed?.status !== 200 || !/<feed xmlns="http:\/\/www.w3.org\/2005\/Atom"/.test(feed.body ?? "")) out.push(`Atom feed /feed.xml answered ${feed?.status ?? "nothing"}`)
+    // The households' plain-language explanation (Claude): served from the CDN or the shared store, so this costs no model call.
+    // A missing or expired ANTHROPIC_API_KEY, or credit run out, shows here before a household notices the box is gone.
+    const x = r[EXPLAIN]
+    if (x?.status !== 200 || (!x.body?.text && /not configured|unavailable|daily limit/.test(x.body?.refused ?? "")))
+        out.push(`AI explanation ${EXPLAIN} answered ${x?.status ?? "nothing"}${x?.body?.refused ? `: ${x.body.refused}` : ""}`)
     const k = r["/push-key"]
     if (k?.status !== 200 || !/^[A-Za-z0-9_-]{87}$/.test(k.body?.key ?? "")) out.push(`/push-key answered ${k?.status ?? "nothing"}: phones cannot subscribe to alerts`)
     return out
@@ -62,7 +68,7 @@ async function get(base, path) {
 
 async function main() {
     const { values } = parseArgs({ options: { base: { type: "string", default: "https://naungan.vercel.app" } } })
-    const paths = [...PAGES, "/health", "/api/programs", "/cap.xml", "/feed.xml", "/iati.xml", "/push-key"]
+    const paths = [...PAGES, "/health", "/api/programs", "/cap.xml", "/feed.xml", "/iati.xml", "/push-key", EXPLAIN]
     const r = Object.fromEntries(await Promise.all(paths.map(async (p) => [p, await get(values.base, p)])))
     for (const p of paths) console.log(`${String(r[p].status).padEnd(4)} ${String(r[p].ms).padStart(6)} ms  ${p}`)
     const problems = assess(r)
@@ -72,4 +78,4 @@ async function main() {
 }
 
 if (require.main === module) main()
-module.exports = { assess, PAGES, STALE_H }
+module.exports = { assess, PAGES, STALE_H, EXPLAIN }

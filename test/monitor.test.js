@@ -1,5 +1,5 @@
 const { expect } = require("chai")
-const { assess, PAGES } = require("../scripts/monitor")
+const { assess, PAGES, EXPLAIN } = require("../scripts/monitor")
 
 const now = 1792500000
 const iso = (h) => new Date((now - h * 3600) * 1000).toISOString()
@@ -10,10 +10,22 @@ const healthy = () => ({
     "/cap.xml": { status: 200, body: '<?xml version="1.0"?>\n<feed xmlns="http://www.w3.org/2005/Atom">' },
     "/feed.xml": { status: 200, body: '<?xml version="1.0" encoding="utf-8"?>\n<feed xmlns="http://www.w3.org/2005/Atom">' },
     "/iati.xml": { status: 200, body: '<?xml version="1.0" encoding="UTF-8"?>\n<iati-activities version="2.03" generated-datetime="2026-10-20T00:00:00Z">' },
-    "/push-key": { status: 200, body: { key: "B" + "a".repeat(86) } }
+    "/push-key": { status: 200, body: { key: "B" + "a".repeat(86) } },
+    [EXPLAIN]: { status: 200, body: { text: "The program watches the Krueng Aceh river…", model: "claude-haiku-5-5" } }
 })
 
 describe("production monitor", () => {
+    it("flags the households' AI explanation when the key is missing, the model fails or the daily cap is hit, but not a guard refusal", () => {
+        for (const refused of ["AI explanations are not configured on this deployment", "the AI model is unavailable right now (401)", "the daily limit of AI explanations is reached"]) {
+            const r = healthy()
+            r[EXPLAIN] = { status: 200, body: { text: null, refused } }
+            expect(assess(r, now)).to.deep.equal([`AI explanation ${EXPLAIN} answered 200: ${refused}`])
+        }
+        const r = healthy()
+        r[EXPLAIN] = { status: 200, body: { text: null, refused: "a figure not in the facts: 85" } } // the guard working, not an outage
+        expect(assess(r, now)).to.deep.equal([])
+    })
+
     it("a healthy site has no problems (an open program's old report is fine: its oracle has stopped by design)", () => {
         expect(assess(healthy(), now)).to.deep.equal([])
     })

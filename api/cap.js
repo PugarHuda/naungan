@@ -8,6 +8,8 @@
 const { load, baseOf, CACHE, rule } = require("./programs")
 
 const TESTNETS = new Set([84532, 31337, 11155111])
+/** The claim app's language for a program's country, as CAP's RFC 3066 tag: the second <info> block a local alert authority reads. */
+const LOCAL = { ID: ["id", "id-ID"], BD: ["bn", "bn-BD"], HN: ["es", "es-HN"], UG: ["sw", "sw-UG"], KE: ["sw", "sw-KE"], TZ: ["sw", "sw-TZ"], MZ: ["pt", "pt-MZ"], PH: ["fil", "fil-PH"] }
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" })[c]).replace(/[^\x09\x0A\x0D\x20-퟿-�]/gu, "")
 /** CAP dateTime: "2026-10-19T10:00:00+00:00" (no fraction, no "Z"). */
 const capTime = (unix) => new Date(Number(unix) * 1000).toISOString().replace(/\.\d{3}Z$/, "+00:00")
@@ -15,9 +17,12 @@ const el = (tag, v) => (v == null || v === "" ? "" : `<${tag}>${esc(v)}</${tag}>
 
 /**
  * Pure: one program whose trigger fired → a CAP 1.2 alert. `report` is the IndexReported event that opened
- * claims (args.triggered), with its block `timestamp`; `country` an ISO 3166 alpha-2 code or null.
+ * claims (args.triggered), with its block `timestamp`; `country` an ISO 3166 alpha-2 code or null. `local`, when
+ * given, is { language, text }: the checked plain-language explanation (api/explain.js) in the country's language,
+ * published as a second <info> block, as CAP does for multilingual alerts. Its coded fields repeat the English block;
+ * the event name stays in English (aggregators match on eventCode).
  */
-function capAlert({ id, p, meta, report, country, d, base, decimals = 6 }) {
+function capAlert({ id, p, meta, report, country, d, base, decimals = 6, local = null }) {
     const usdc = Number(p.amountPerHousehold) / 10 ** decimals
     const heat = meta.hazard === "heat", wind = meta.hazard === "wind"
     const replay = /^REPLAY/.test(report.args.evidence)
@@ -34,6 +39,22 @@ function capAlert({ id, p, meta, report, country, d, base, decimals = 6 }) {
         ["naungan:tx", report.transactionHash]
     ]
     const note = [TESTNETS.has(Number(d.chainId)) && "testnet deployment", replay && "triggered by a replay of a past event, not a live forecast"].filter(Boolean).join("; ")
+    const area = `<area>
+${el("areaDesc", place.slice(1).join(", ") || place[0])}
+${Number.isFinite(meta.lat) ? el("circle", `${meta.lat},${meta.lon} 25`) : ""}
+${country ? `<geocode><valueName>ISO3166-1</valueName><value>${esc(country)}</value></geocode>` : ""}
+</area>`
+    const coded = (language) => `<language>${esc(language)}</language>
+<category>Met</category>
+${el("event", heat ? "Heatwave forecast" : wind ? "Tropical cyclone wind forecast" : "River flood forecast")}
+<responseType>Prepare</responseType>
+<urgency>Future</urgency>
+${el("severity", heat || (meta.returnPeriod ?? 5) >= 10 ? "Severe" : "Moderate")}
+${el("certainty", value > 50 ? "Likely" : "Possible")}
+<eventCode><valueName>naungan:hazard</valueName><value>${heat ? "heat" : wind ? "wind" : "flood"}</value></eventCode>
+${el("effective", capTime(report.timestamp))}
+${el("expires", capTime(p.claimDeadline))}
+<senderName>Naungan anticipatory cash</senderName>`
     return `<?xml version="1.0" encoding="UTF-8"?>
 <alert xmlns="urn:oasis:names:tc:emergency:cap:1.2">
 ${el("identifier", `naungan-${d.chainId}-${id}-${report.transactionHash}`)}
@@ -45,28 +66,21 @@ ${el("source", "Naungan oracle quorum (Copernicus GloFAS / NOAA GEFS via Open-Me
 <scope>Public</scope>
 ${el("note", note)}
 <info>
-<language>en-US</language>
-<category>Met</category>
-${el("event", heat ? "Heatwave forecast" : wind ? "Tropical cyclone wind forecast" : "River flood forecast")}
-<responseType>Prepare</responseType>
-<urgency>Future</urgency>
-${el("severity", heat || (meta.returnPeriod ?? 5) >= 10 ? "Severe" : "Moderate")}
-${el("certainty", value > 50 ? "Likely" : "Possible")}
-<eventCode><valueName>naungan:hazard</valueName><value>${heat ? "heat" : wind ? "wind" : "flood"}</value></eventCode>
-${el("effective", capTime(report.timestamp))}
-${el("expires", capTime(p.claimDeadline))}
-<senderName>Naungan anticipatory cash</senderName>
+${coded("en-US")}
 ${el("headline", `Anticipatory cash released: ${place[0]} (${value}% forecast probability)`)}
 ${el("description", `${rule(meta, p.triggerThreshold.toString())}. The oracle quorum reported ${value}% (trigger ${p.triggerThreshold}%), so enrolled households can claim ${usdc} USDC each until the claim window closes. Evidence: ${report.args.evidence}`)}
 ${el("instruction", "Households enrolled in this program: open your Naungan card and tap Claim before the window closes. Agencies: tell enrolled households that claims are open.")}
 ${el("web", `${base}/dashboard?program=${id}`)}
 ${params.map(([k, v]) => `<parameter><valueName>${esc(k)}</valueName><value>${esc(v)}</value></parameter>`).join("\n")}
-<area>
-${el("areaDesc", place.slice(1).join(", ") || place[0])}
-${Number.isFinite(meta.lat) ? el("circle", `${meta.lat},${meta.lon} 25`) : ""}
-${country ? `<geocode><valueName>ISO3166-1</valueName><value>${esc(country)}</value></geocode>` : ""}
-</area>
+${area}
 </info>
+${local ? `<info>
+${coded(local.language)}
+${el("description", local.text)}
+${el("web", `${base}/dashboard?program=${id}`)}
+<parameter><valueName>naungan:descriptionSource</valueName><value>Claude, from the program's on-chain facts; every figure checked against them</value></parameter>
+${area}
+</info>` : ""}
 </alert>
 `.replace(/\n{2,}/g, "\n")
 }
@@ -124,8 +138,12 @@ module.exports = async (req, res) => {
             res.writeHead(404, { "content-type": "text/plain; charset=utf-8", "access-control-allow-origin": "*", "cache-control": CACHE })
             return res.end(`program ${program} has no alert: its trigger has not fired`)
         }
+        // The local-language block reuses the explanation households read (CDN-cached, kept per oracle report): no
+        // extra model call, and when it is unavailable the alert is published in English alone.
+        const [lang, language] = LOCAL[a.country] ?? []
+        const local = lang && (await fetch(`${base}/api/explain?program=${a.id}&lang=${lang}`, { signal: AbortSignal.timeout(30e3) }).then((r) => (r.ok ? r.json() : null)).catch(() => null))
         res.writeHead(200, { "content-type": "application/cap+xml; charset=utf-8", "access-control-allow-origin": "*", "cache-control": CACHE })
-        res.end(capAlert({ ...a, d: data.d, base, decimals: data.decimals }))
+        res.end(capAlert({ ...a, d: data.d, base, decimals: data.decimals, local: local?.text ? { language, text: local.text } : null }))
     } catch (e) {
         console.error("cap failed", e)
         res.writeHead(503, { "content-type": "text/plain; charset=utf-8", "access-control-allow-origin": "*", "cache-control": "no-store" })
@@ -135,3 +153,4 @@ module.exports = async (req, res) => {
 module.exports.capAlert = capAlert
 module.exports.capIndex = capIndex
 module.exports.triggered = triggered
+module.exports.LOCAL = LOCAL

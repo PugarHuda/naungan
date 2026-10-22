@@ -127,3 +127,18 @@ test("dashboard: running costs measured from real transactions and priced on Bas
     await expect(panel).toContainText(/Chainlink's ETH \/ USD feed on Base \(updated 20\d\d-/)
     await check(page)
 })
+
+test("dashboard: 'In plain words' shows what a household reads, in its language, from the live Claude explanation (#6 Dhaka, Bengali)", async ({ page, check }) => {
+    await page.goto("/dashboard?program=6")
+    const panel = page.locator("#plain")
+    await expect(panel.locator(".plain")).toHaveAttribute("lang", "en", { timeout: 90_000 })
+    await expect(panel.locator(".plain")).toContainText(/Dhaka/)
+    await panel.getByLabel("Language of the explanation").selectOption("bn")
+    const bn = panel.locator('.plain[lang="bn"]')
+    await expect(bn).toHaveText(/^[ঀ-৿]/, { timeout: 90_000 }) // starts in Bengali script, no title
+    const t = (await bn.textContent())!
+    expect((t.match(/[ঀ-৿]/g) ?? []).length / t.length).toBeGreaterThan(1 / 3) // mostly Bengali, as the guard requires
+    expect(t).toContain("USDC")
+    await expect(panel.getByText("The facts it was given")).toBeVisible()
+    await check(page)
+})

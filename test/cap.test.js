@@ -32,6 +32,13 @@ describe("CAP 1.2 alerts and HXL open data", () => {
             .to.include("<event>Heatwave forecast</event>").and.include("<severity>Severe</severity>").and.not.include("<geocode>")
         if (!py) return this.skip() // the schema check needs Python with lxml (CI installs it)
         for (const xml of [live, replay]) expect(capValid(xml)).to.equal("ok")
+        // A second <info> in the country's language, from the checked explanation households read: still valid CAP 1.2.
+        const bilingual = capAlert({ id: 2, p, meta, report: report("REPLAY of GloFAS v4"), country: "ID", d, base: "https://naungan.vercel.app", local: { language: "id-ID", text: "Program ini memantau sungai Krueng Aceh. Setiap keluarga menerima 1 USDC sampai 18 November 2026 & <bukan> ramalan langsung." } })
+        expect(bilingual.match(/<info>/g)).to.have.length(2)
+        expect(bilingual).to.include("<language>id-ID</language>")
+        expect(bilingual).to.include("&amp; &lt;bukan&gt;") // the model's text is escaped like any other value
+        expect(bilingual.match(/<areaDesc>/g)).to.have.length(2) // each info block carries its own area, as CAP requires for it to stand alone
+        expect(capValid(bilingual)).to.equal("ok")
     })
 
     it("only programs whose trigger fired get an alert, with the report that opened claims", () => {

@@ -25,7 +25,7 @@ async function ask(client, [system, ...messages]) {
 
 module.exports = async (req, res) => {
     const send = (code, body, cache) => (res.writeHead(code, { ...HEADERS, "cache-control": cache }), res.end(JSON.stringify(body)))
-    const { LANGS, factsOf, messages, check } = await import("../lib/explain.mjs")
+    const { LANGS, PROMPT_VERSION, factsOf, messages, check } = await import("../lib/explain.mjs")
     // Only the one canonical spelling (no repeats, no padding, no extra keys), so each program and language has a single CDN entry.
     const u = new URL(req.url, "http://x"), m = /^\?program=([1-9]\d{0,5})&lang=([a-z]{2,3})$/.exec(u.search)
     if (!m || !LANGS[m[2]]) return send(400, { error: "use ?program=<id>&lang=<" + Object.keys(LANGS).join("|") + "> exactly" }, "public, s-maxage=86400")
@@ -45,7 +45,7 @@ module.exports = async (req, res) => {
     const facts = factsOf(p)
     const base = { program: id, lang, state: p.state, facts, report: p.latestReport?.tx ?? null }
     if (p.state === "over") return send(200, { ...base, text: null, refused: "the program is over" }, "public, s-maxage=3600")
-    const key = `naungan:explain:${id}:${lang}:${base.report ?? "none"}`
+    const key = `naungan:explain:v${PROMPT_VERSION}:${id}:${lang}:${base.report ?? "none"}`
     const kept = await store.get(key).catch(() => null)
     if (kept) return send(200, { ...base, ...JSON.parse(kept) }, "public, s-maxage=21600, stale-while-revalidate=3600")
     // Fail closed: if the store errors, no lock and no count, so no model call.

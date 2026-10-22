@@ -14,6 +14,7 @@
     import GdacsPanel from "./GdacsPanel.svelte"
     import FeedbackPanel from "./FeedbackPanel.svelte"
     import CostPanel from "./CostPanel.svelte"
+    import PlainWords from "./PlainWords.svelte"
     import Ledger from "./Ledger.svelte"
 
     start()
@@ -51,6 +52,7 @@
         </section>
 
         <section class="proofs" aria-label="Checks you can run">
+            <PlainWords />
             <AuditPanel />
             <TrackRecord />
             <IfrcPanel />
