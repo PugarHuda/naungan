@@ -52,7 +52,8 @@ module.exports = async (req, res) => {
     const key = `naungan:explain:${id}:${lang}:${base.report ?? "none"}`
     const kept = await store.get(key).catch(() => null)
     if (kept) return send(200, { ...base, ...JSON.parse(kept) }, "public, s-maxage=21600, stale-while-revalidate=3600")
-    if (!(await store.claim(`${key}:lock`, "1", 60).catch(() => false))) // fail closed: no store, no model call return send(200, { ...base, text: null, refused: "being written, try again in a minute" }, "public, s-maxage=30")
+    // Fail closed: if the store errors, no lock and no count, so no model call.
+    if (!(await store.claim(`${key}:lock`, "1", 60).catch(() => false))) return send(200, { ...base, text: null, refused: "being written, try again in a minute" }, "public, s-maxage=30")
     if ((await store.incr(`naungan:explain:calls:${new Date().toISOString().slice(0, 10)}`, 2 * 86400).catch(() => Infinity)) > DAILY_CALLS)
         return send(200, { ...base, text: null, refused: "the daily limit of AI explanations is reached" }, "public, s-maxage=600")
     try {
