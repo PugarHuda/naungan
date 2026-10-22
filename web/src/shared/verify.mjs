@@ -21,6 +21,20 @@ export function parseEvidence(evidence) {
     return { pipeline, replay, run }
 }
 
+/**
+ * How a recomputed evidence string compares with the posted one. Every pipeline ends its evidence with an informational
+ * median ("| median peak 1116 m3/s", "| median strongest gust 23 km/h"); everything before it (run, threshold, members
+ * over it) is what the trigger decides on. Open-Meteo can revise a run's data after an oracle reported it, moving the
+ * median by a unit with the decision unchanged: that is "decision", not a mismatch, and the moved figure is named.
+ * Returns { verdict: "identical" | "decision" | "different", posted, now } (posted/now: the two medians when they differ).
+ */
+export function compareEvidence(posted, now) {
+    if (posted === now) return { verdict: "identical" }
+    const split = (s) => { const i = s.lastIndexOf(" | median "); return i < 0 ? [s, ""] : [s.slice(0, i), s.slice(i + 3)] }
+    const [a, ma] = split(posted), [b, mb] = split(now)
+    return a === b && ma && mb ? { verdict: "decision", posted: ma, now: mb } : { verdict: "different" }
+}
+
 /** Recompute one report. Returns { value, evidence, comparable, why } where comparable means same inputs. */
 /** Same climatology code the oracles run, for the landing page's live forecast chart. */
 export const { floodThreshold, heatParams, heatForecast, windParams, windThreshold, windForecast } = hazard

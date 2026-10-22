@@ -5,7 +5,7 @@ const DONOR = "0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E"
 
 test("donor statement: a real donor's gifts, what reached households, and the contract's own record agreeing", async ({ page, check }) => {
     await page.goto(`/donor?address=${DONOR.toLowerCase()}`)
-    await expect(page.getByRole("heading", { name: `Summary for ${DONOR}` })).toBeVisible({ timeout: 30_000 }) // checksummed
+    await expect(page.getByRole("heading", { name: `Summary for ${DONOR}` })).toBeVisible({ timeout: 60_000 }) // checksummed; ten programs read one at a time from the public RPC
     await expect(page.getByText(/^Checked: for every program, the contract's own record/)).toBeVisible()
     const row2 = page.getByRole("row").filter({ hasText: "#2 Krueng Aceh flood · Aceh Besar" })
     await expect(row2.getByRole("cell").nth(1)).toHaveText("3") // gave 3 USDC

@@ -81,7 +81,7 @@ test("dashboard: cyclone wind program (#9, Tacloban) draws the gust forecast, re
     // The oracle's report recomputed from Open-Meteo in this browser: same code, same GEFS run if it is today's.
     const oracle = page.locator(".oracle", { hasText: "Peak wind gusts (NOAA GEFS)" })
     await oracle.getByRole("button", { name: "Recompute in my browser" }).click()
-    await expect(oracle.getByRole("status")).toHaveText(/✓ Matches|Not comparable with the posted/, { timeout: 90_000 })
+    await expect(oracle.getByRole("status")).toHaveText(/✓ Matches|Not comparable with the posted/, { timeout: 90_000 }) // "Matches on the trigger" when only the median moved
     await page.getByRole("button", { name: "Replay 40 years" }).click()
     const record = page.locator("article", { has: page.getByRole("heading", { name: "Would it have paid before?" }) })
     await expect(record.getByText(/8 Nov 2013, gusts 12\d km\/h/)).toBeVisible({ timeout: 90_000 }) // Haiyan

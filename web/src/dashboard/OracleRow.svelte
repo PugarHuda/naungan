@@ -23,13 +23,16 @@
         try {
             const v = await import("../shared/verify.mjs")
             const r = await v.recheck(meta, rep)
-            // Same value is not enough: the full evidence (threshold, members over, median) must match too.
-            const same = r.value === Number(rep.value) && r.evidence === rep.evidence
+            // Same value is not enough: the evidence the trigger decides on (run, threshold, members over it) must match too;
+            // only the informational median may have moved, and then the page says by how much and why.
+            const c = v.compareEvidence(rep.evidence, r.evidence)
+            const same = r.value === Number(rep.value) && c.verdict !== "different"
             dash.checks[k] = {
                 cls: `verdict ${!r.comparable ? "" : same ? "ok" : "bad"}`,
                 text: !r.comparable
                     ? `Recomputed now: ${r.value}%. Not comparable with the posted ${rep.value}%: ${r.why}.`
-                    : same ? `✓ Matches: recomputed ${r.value}% = on-chain ${rep.value}%, evidence identical (${r.why}).`
+                    : same && c.verdict === "identical" ? `✓ Matches: recomputed ${r.value}% = on-chain ${rep.value}%, evidence identical (${r.why}).`
+                    : same ? `✓ Matches on the trigger: recomputed ${r.value}% = on-chain ${rep.value}%, with the same run, threshold and members over it (${r.why}). Only the informational ${c.posted} is now ${c.now.replace(/^median [a-z ]+ /, "")}: Open-Meteo revised this run's data after the report.`
                     : `✗ Mismatch: recomputed ${r.value}% vs on-chain ${rep.value}% (${r.why}). Recomputed evidence: ${r.evidence}`
             }
         } catch (e) {
