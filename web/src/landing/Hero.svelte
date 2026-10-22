@@ -6,14 +6,20 @@
     let { live }: { live: Live } = $props()
 
     let canvas: HTMLCanvasElement
-    // No WebGL (old phone, blocked GPU): the hero keeps its plain canvas colour and the page works the same.
+    // No WebGL (old phone, blocked GPU): the hero keeps its plain canvas colour and the page works the same. Phones, Data
+    // Saver and reduced motion skip the scene too (on a mid-range phone it cost about 4 s of main-thread time, Lighthouse),
+    // and elsewhere it loads once the page is idle, so it never competes with the text and the live numbers.
     onMount(() => {
-        if (!document.createElement("canvas").getContext("webgl2")) return
+        const saveData = (navigator as { connection?: { saveData?: boolean } }).connection?.saveData
+        if (saveData || matchMedia("(max-width: 760px), (prefers-reduced-motion: reduce)").matches || !document.createElement("canvas").getContext("webgl2")) return
         let stop: (() => void) | undefined, gone = false
-        import("./hero3d.js")
-            .then((m) => { if (!gone) stop = m.start(canvas) })
-            .catch((e) => console.warn("3D scene unavailable:", e.message))
-        return () => ((gone = true), stop?.())
+        const go = () =>
+            import("./hero3d.js")
+                .then((m) => { if (!gone) stop = m.start(canvas) })
+                .catch((e) => console.warn("3D scene unavailable:", e.message))
+        const rich = "requestIdleCallback" in window
+        const idle = rich ? requestIdleCallback(go, { timeout: 3000 }) : window.setTimeout(go, 1500)
+        return () => ((gone = true), rich ? cancelIdleCallback(idle) : clearTimeout(idle), stop?.())
     })
 
     let f = $state<Forecast | null>(null)

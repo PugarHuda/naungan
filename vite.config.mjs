@@ -35,6 +35,9 @@ function precacheClaimShell() {
                 for (const n of [...c.imports, ...c.dynamicImports]) walk(n)
             }
             walk(entry.fileName)
+            // The self-hosted fonts' Latin files (fonts.ts): CSS imports them, not a chunk, so they are not in the graph above.
+            // The other subsets (Vietnamese, Greek, Cyrillic) are fetched only if a page ever shows those letters.
+            for (const name of Object.keys(bundle)) if (/(plus-jakarta-sans|jetbrains-mono)-latin-\d00-normal-[\w-]+\.woff2$/.test(name)) seen.add(name)
             files = ["claim", ...[...seen].sort(), "manifest.webmanifest", "icon.svg"] // "claim": the clean URL Vercel serves (cleanUrls)
         },
         closeBundle() {
@@ -80,6 +83,8 @@ export default defineConfig({
     preview: { port: 5173 },
     worker: { format: "es" }, // the dedup worker imports lib/psi.mjs and its curve library as modules
     build: {
+        // Never inline a font as a data: URI: the CSP allows fonts from this origin only (font-src 'self').
+        assetsInlineLimit: (file) => (/\.woff2?$/.test(file) ? false : undefined),
         outDir: out,
         emptyOutDir: true,
         target: "es2022",

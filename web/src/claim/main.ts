@@ -1,3 +1,4 @@
+import "../shared/fonts"
 // Household claim app entry (claim). The proving code is bundled, never loaded from a CDN.
 import { mount } from "svelte"
 import App from "./App.svelte"
