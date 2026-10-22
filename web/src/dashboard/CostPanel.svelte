@@ -1,7 +1,8 @@
 <script lang="ts">
     // Running costs: the gas of this deployment's real claims, oracle reports, enrolments and donations, priced on Base
     // mainnet today (shared/costs.ts), and what a season of this program costs against the aid it pays.
-    import { provider } from "../shared/chain"
+    import { JsonRpcProvider } from "ethers"
+    import { deployment as d, provider } from "../shared/chain"
     import { netName } from "./format"
     import { measure, prices, season, usdOf, REPORTS_PER_KEY_PER_YEAR, type Kind, type Measured, type Prices, type Sample } from "../shared/costs"
     import { allEvents, dash } from "./state.svelte"
@@ -21,8 +22,13 @@
         if (started || !dash.current) return // wait until the history (every program's events) has been read once
         started = true
         const samples: Sample[] = allEvents().flatMap((e) => (KIND[e.fragment?.name] ? [{ kind: KIND[e.fragment.name], hash: e.transactionHash, households: e.fragment.name === "Enrolled" ? Number(e.args.households) : undefined }] : []))
-        Promise.all([measure(samples, provider()), prices()]).then(([a, b]) => ((m = a), (p = b))).catch((e: Error) => (err = e.message))
+        // About 20 reads from two public RPCs: one dropped request should not cost the panel, so try three times.
+        const run = (left: number): Promise<void> =>
+            Promise.all([measure(samples, receipts), prices()]).then(([a, b]) => void ((m = a), (p = b))).catch((e: Error) => (left > 0 ? new Promise((r) => setTimeout(r, 3000)).then(() => run(left - 1)) : void (err = e.message)))
+        void run(2)
     })
+    // Receipts from a wide-range history RPC when there is one, so these reads never compete with the dashboard's own on the public RPC.
+    const receipts = d.logRpcs?.length ? new JsonRpcProvider(d.logRpcs[0], d.chainId, { staticNetwork: true }) : provider()
     const money = (v: number) => (v === 0 ? "$0" : v < 0.01 ? `$${v.toPrecision(2)}` : `$${v.toLocaleString("en", { maximumFractionDigits: 2 })}`)
     const scale = $derived(m && p && dash.p ? season(m, p, dash.os.length, 1000, Number(dash.p.amountPerHousehold) / 1e6) : { total: 0, perHousehold: 0 })
     const s = $derived(m && p && dash.p ? season(m, p, dash.os.length, Number(dash.p.enrolled), Number(dash.p.amountPerHousehold) / 1e6) : null)

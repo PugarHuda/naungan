@@ -31,24 +31,19 @@ export function season(m: Measured, p: Prices, oracles: number, households: numb
 /** Average gas per action from its receipts, and the L1 fee Base mainnet would charge for one of them. */
 export async function measure(samples: Sample[], testnet: Provider, mainnet: Provider = new JsonRpcProvider(BASE_MAINNET, 8453, { staticNetwork: true })): Promise<Measured> {
     const gpo = new Contract(GAS_PRICE_ORACLE, ["function getL1Fee(bytes) view returns (uint256)"], mainnet)
-    const out: Measured = { claim: undefined, report: undefined, enroll: undefined, fund: undefined }
-    for (const kind of ["claim", "report", "enroll", "fund"] as Kind[]) {
-        const mine = samples.filter((s) => s.kind === kind).slice(-3) // the latest three: costs change with the contract, not with history
-        if (!mine.length) continue
-        let gas = 0n, units = 0
-        for (const s of mine) {
-            const r = await testnet.getTransactionReceipt(s.hash)
-            if (!r) throw new Error(`no receipt for ${s.hash}`)
-            gas += r.gasUsed
-            units += kind === "enroll" ? Math.max(1, s.households ?? 1) : 1
-        }
-        const tx = await testnet.getTransaction(mine.at(-1)!.hash)
-        if (!tx) throw new Error(`no transaction ${mine.at(-1)!.hash}`)
+    const one = async (kind: Kind) => {
+        const mine = samples.filter((s) => s.kind === kind).slice(-2) // the latest two: costs change with the contract, not with history
+        if (!mine.length) return undefined
+        const [receipts, tx] = await Promise.all([Promise.all(mine.map((s) => testnet.getTransactionReceipt(s.hash))), testnet.getTransaction(mine.at(-1)!.hash)])
+        if (receipts.some((r) => !r) || !tx) throw new Error(`a ${kind} transaction is missing`)
+        const gas = receipts.reduce((g, r) => g + r!.gasUsed, 0n)
+        const units = mine.reduce((u, s) => u + (kind === "enroll" ? Math.max(1, s.households ?? 1) : 1), 0)
         const l1: bigint = await gpo.getL1Fee(Transaction.from(tx).serialized)
         const per = kind === "enroll" ? Math.max(1, mine.at(-1)!.households ?? 1) : 1
-        out[kind] = { gas: gas / BigInt(units), l1: l1 / BigInt(per), n: mine.length }
+        return { gas: gas / BigInt(units), l1: l1 / BigInt(per), n: mine.length }
     }
-    return out
+    const [claim, report, enroll, fund] = await Promise.all((["claim", "report", "enroll", "fund"] as Kind[]).map(one))
+    return { claim, report, enroll, fund }
 }
 
 export async function prices(mainnet: Provider = new JsonRpcProvider(BASE_MAINNET, 8453, { staticNetwork: true })): Promise<Prices> {
