@@ -51,6 +51,28 @@
   </div>
 </section>
 
+<section class="band" id="new">
+  <div class="wrap">
+    <div class="eyebrow">What is new</div>
+    <h2 class="big">Blockchains already move aid. None of them does all four.</h2>
+    <p class="intro">WFP's Building Blocks has coordinated cash in Ukraine since 2022, and it works: in its first four months, 18 organisations used it to stop $35 million of overlapping payments. Parametric insurance pays on weather data from smart contracts. Naungan keeps what works and changes who has to be trusted.</p>
+    <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+    <div class="cmp" role="region" aria-label="Comparison with existing systems" tabindex="0">
+      <table>
+        <thead><tr><th scope="col">What it takes</th><th scope="col">WFP Building Blocks</th><th scope="col">On-chain parametric insurance (Etherisc with ACRE Africa)</th><th scope="col">Naungan</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">No household paid twice across agencies</th><td>Yes: members compare payment lists with shared assistance records on a members-only ledger</td><td>Not its job</td><td><b>Yes, and no list leaves an agency</b>: private set intersection</td></tr>
+          <tr><th scope="row">Money before the disaster</th><td>No: response after a crisis</td><td>After the season, on observed weather</td><td><b>Yes</b>: a Red Cross / Red Crescent forecast trigger, two independent forecasts</td></tr>
+          <tr><th scope="row">Who can check every payout</th><td>The network's members</td><td>Anyone, on a public chain</td><td><b>Anyone</b>, by re-verifying each zero-knowledge proof in a browser</td></tr>
+          <tr><th scope="row">Who can tell which household was paid</th><td>The members that serve it</td><td>The insurer (one policyholder each)</td><td><b>Nobody</b>: anonymous enrollment, a fresh wallet per payout</td></tr>
+          <tr><th scope="row">Can the rules change after donors give?</th><td>Governed by its members</td><td>Set by the insurer</td><td><b>No</b>: a contract with no owner, no upgrade, no pause; donors pull back unused money themselves</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="src">Sources: <a href="https://www.wfp.org/building-blocks" target="_blank" rel="noopener">WFP, Building Blocks</a>, <a href="https://docs.wfp.org/api/documents/WFP-0000146541/download" target="_blank" rel="noopener">WFP, Building Blocks in Ukraine (2022)</a>, <a href="https://blog.chain.link/chainlink-awards-grant-to-support-the-joint-venture-between-acre-africa-and-etherisc/" target="_blank" rel="noopener">Chainlink, ACRE Africa and Etherisc</a>.</p>
+  </div>
+</section>
+
 <section class="band" id="singapore">
   <div class="wrap aceh">
     <div>
@@ -66,3 +88,13 @@
     </div>
   </div>
 </section>
+
+<style>
+  .cmp { overflow-x: auto; margin: 0 0 18px; }
+  .cmp table { border-collapse: collapse; width: 100%; min-width: 720px; background: var(--surface); border-radius: 20px; overflow: hidden; font-size: 15px; }
+  .cmp th, .cmp td { text-align: left; vertical-align: top; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+  .cmp thead th { font-size: 13px; color: var(--muted); font-weight: 600; }
+  .cmp tbody th { font-weight: 600; width: 22%; }
+  .cmp td { color: var(--muted); }
+  .cmp td:last-child { color: var(--ink); background: rgba(61, 210, 123, .08); }
+</style>

@@ -54,7 +54,10 @@ Paste-ready fields for https://dorahacks.io/hackathon/web3-social-good-2026 (dea
 
 **Fits the systems aid already uses:** open data as JSON, GeoJSON, HXL CSV (OCHA HDX), IATI 2.03, CAP 1.2 alerts in English and the program country's language, and an Atom feed (IATI and CAP validated against their official schemas in CI); GDACS disaster alerts and IFRC GO responses on the dashboard; an embeddable status widget for agency sites.
 
-**What makes it different:** other aid-transparency builds make donations visible. Naungan also keeps recipients invisible, deduplicates across agencies without sharing lists, pays before the disaster on an objective trigger anyone can audit, and lets the people served give feedback that is provably theirs and still anonymous.
+**What makes it different (against what already exists):**
+- **WFP Building Blocks** has coordinated cash in Ukraine since 2022 and works (18 organisations stopped $35 million of overlapping payments in its first four months). Its members compare payment lists with shared assistance records on a members-only ledger, and it pays after a crisis. Naungan deduplicates without any list leaving an agency (private set intersection), pays before the disaster, and lets anyone, not only members, verify every payout without learning who was paid.
+- **On-chain parametric insurance** (Etherisc with ACRE Africa in Kenya) pays individual policyholders after the season on observed weather. Naungan pays a whole enrolled community ahead of the hazard on a published Red Cross / Red Crescent forecast trigger, with two independent forecasts that must agree.
+- **Other on-chain aid builds** make donations visible. Naungan also keeps recipients invisible, has no owner who could change the rules after donors give, and lets the people served give feedback that is provably theirs and still anonymous.
 
 **Feasibility and sustainability**
 
