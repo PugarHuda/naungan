@@ -31,7 +31,7 @@ test("embed: only the widget may be framed; every other page refuses @desktop", 
     const embed = (await request.get("/embed")).headers()["content-security-policy"]
     expect(embed).toContain("frame-ancestors *")
     expect(embed).toMatch(/connect-src 'self'(;|$)/) // the widget talks to nothing but our own API
-    for (const p of ["/", "/dashboard", "/claim", "/launch"]) expect((await request.get(p)).headers()["content-security-policy"], p).toContain("frame-ancestors 'none'")
+    for (const p of ["/", "/dashboard", "/claim", "/launch", "/donor"]) expect((await request.get(p)).headers()["content-security-policy"], p).toContain("frame-ancestors 'none'")
 })
 
 test("dashboard: the embed code points at this program @desktop", async ({ page }) => {

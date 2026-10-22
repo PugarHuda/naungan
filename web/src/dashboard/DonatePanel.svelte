@@ -37,7 +37,7 @@
             const usdc = new Contract(await c.token(), ERC20_ABI, signer)
             const bal: bigint = await usdc.balanceOf(me)
             if (bal < amt) return void (msg = [`${short(me)} has ${usd(bal)} USDC. Get free testnet USDC at `, { href: "https://faucet.circle.com", label: "faucet.circle.com" }, " (Base Sepolia), then try again."])
-            const done = (h: string) => say(`Thank you: ${usd(amt)} USDC is in program #${pid}'s pool. It appears in the ledger as soon as the block is indexed.`, txUrl(h))
+            const done = (h: string) => (msg = [`Thank you: ${usd(amt)} USDC is in program #${pid}'s pool. It appears in the ledger as soon as the block is indexed.`, " ", { href: txUrl(h) ?? "", label: "View transaction" }, " · ", { href: `/donor?address=${me}`, label: "Your donor statement" }])
             if ((await usdc.allowance(me, d.naungan)) < amt) {
                 // Smart wallets (EIP-5792) take approve + fund as one atomic batch: one confirmation, and no allowance left behind.
                 say("Confirm in your wallet…")
@@ -87,4 +87,5 @@
     </label>
     <button class="btn go" type="submit" disabled={busy}>{over ? "Connect wallet and refund" : "Connect wallet and fund"}</button>
     <div id="donateMsg" role="status"><Message parts={msg} /></div>
+    <p class="lead-in" style="margin:0"><a href="/donor">Donor statement</a>: where an address's gifts went, and what it can take back.</p>
 </form>

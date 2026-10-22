@@ -10,7 +10,7 @@ export const MONEY = /\/(relay|transfer|pin|feedback)(\?|$)/
 // test deliberately takes the network away, or Open-Meteo not answering at all (the page then says so).
 const ignorable = (text: string, url: string) =>
     /blockscout|gateway\.tenderly\.co|publicnode\.com/.test(url + text) || /\b429\b|request limit reached|ERR_INTERNET_DISCONNECTED/.test(text) || MONEY.test(url) ||
-    (/open-meteo\.com/.test(url + text) && /ERR_TIMED_OUT|ERR_CONNECTION|ERR_FAILED|blocked by CORS policy/.test(text)) // refused without CORS headers
+    (/open-meteo\.com|api\.worldpop\.org/.test(url + text) && /ERR_TIMED_OUT|ERR_CONNECTION|ERR_FAILED|blocked by CORS policy/.test(text)) // refused without CORS headers (WorldPop: when its PHP prints warnings before them)
 
 export const test = base.extend<{ check: (page: Page) => Promise<void>; errors: string[] }>({
     errors: [

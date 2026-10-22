@@ -84,6 +84,6 @@ export default defineConfig({
         emptyOutDir: true,
         target: "es2022",
         chunkSizeWarningLimit: 4000, // the claim app carries Semaphore + snarkjs; it is proved on the phone
-        rollupOptions: { input: { index: resolve(web, "index.html"), dashboard: resolve(web, "dashboard.html"), claim: resolve(web, "claim.html"), launch: resolve(web, "launch.html"), embed: resolve(web, "embed.html"), enroll: resolve(web, "enroll.html"), dedup: resolve(web, "dedup.html"), poster: resolve(web, "poster.html") } }
+        rollupOptions: { input: { index: resolve(web, "index.html"), dashboard: resolve(web, "dashboard.html"), claim: resolve(web, "claim.html"), launch: resolve(web, "launch.html"), embed: resolve(web, "embed.html"), enroll: resolve(web, "enroll.html"), dedup: resolve(web, "dedup.html"), poster: resolve(web, "poster.html"), donor: resolve(web, "donor.html") } }
     }
 })

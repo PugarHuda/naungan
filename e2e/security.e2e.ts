@@ -38,7 +38,7 @@ test("security.txt (RFC 9116) and link previews on every page @desktop", async (
     expect(txt).toMatch(/^Contact: https:\/\//m)
     const expires = new Date(txt.match(/^Expires: (.+)$/m)![1])
     expect(expires.getTime() - Date.now()).toBeGreaterThan(30 * 864e5) // renew it before it lapses
-    for (const p of ["/", "/dashboard", "/claim", "/launch"]) {
+    for (const p of ["/", "/dashboard", "/claim", "/launch", "/donor"]) {
         const html = await (await request.get(p)).text()
         for (const m of ['name="description"', 'property="og:title"', 'property="og:description"', 'property="og:image" content="https://'])
             expect(html, `${p} ${m}`).toContain(m)
