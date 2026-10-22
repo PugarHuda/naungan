@@ -12,6 +12,7 @@ npm run e2e      # 69 Playwright end-to-end tests on the production build with t
 npm run check    # strict TypeScript over every Svelte component (svelte-check)
 MAINNET_FORK=1 npx hardhat test test/mainnet-fork.test.js   # mainnet rehearsal: a fork of Base mainnet, Circle's real USDC funded by a real holder, a ZK claim paid, the rest refunded
 npm run demo    # Aceh scenario in-process: live GloFAS reading, then a replay of the real Nov 2025 flood
+node scripts/demo-video.cjs   # re-records the captioned 90 s tour (web/public/demo.mp4) from the live site with Playwright and ffmpeg; never presses Claim on the judges' card
 ```
 
 ## Components

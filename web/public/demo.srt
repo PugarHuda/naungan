@@ -1,0 +1,55 @@
+1
+00:00:00,000 --> 00:00:05,008
+Naungan: cash that reaches families before the flood, heatwave or cyclone.
+
+2
+00:00:05,008 --> 00:00:10,023
+Live on Base: 10 programs in 6 countries, each on a Red Cross / Red Crescent trigger.
+
+3
+00:00:10,023 --> 00:00:17,035
+Why early: families WFP paid before the 2020 Jamuna flood were 36% less likely to go a day without eating.
+
+4
+00:00:17,035 --> 00:00:22,049
+The public dashboard is rebuilt from chain events. No household is named.
+
+5
+00:00:22,049 --> 00:00:27,054
+Two independent forecasts, posted every 6 hours, with evidence anyone can recompute.
+
+6
+00:00:27,054 --> 00:00:36,063
+Verify every payout: this browser re-checks each claim's zero-knowledge proof.
+
+7
+00:00:36,063 --> 00:00:43,068
+In plain words: what a family reads, written by Claude and checked number by number.
+
+8
+00:00:43,068 --> 00:00:50,072
+Running costs, from real transactions: about half a cent per family's claim on Base.
+
+9
+00:00:50,072 --> 00:00:56,075
+The family's claim app, in its own language: seven languages, works offline.
+
+10
+00:00:56,075 --> 00:01:04,083
+Why this money? The trigger explained from on-chain facts only. Nothing about the family is sent.
+
+11
+00:01:04,083 --> 00:01:11,095
+Tapping Claim proves membership in zero knowledge; 1 USDC lands in about 12 seconds. Try this card yourself.
+
+12
+00:01:11,095 --> 00:01:18,106
+Donors see where their money went, checked against the contract's own record.
+
+13
+00:01:18,106 --> 00:01:25,116
+Any agency can launch a program from a browser wallet, starting from a published Early Action Protocol.
+
+14
+00:01:25,116 --> 00:01:31,128
+Open data in the formats aid already reads: IATI, HXL, CAP alerts in two languages. naungan.vercel.app

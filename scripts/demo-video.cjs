@@ -71,12 +71,17 @@ const srtTime = (s) => new Date(Math.max(0, s) * 1000).toISOString().slice(11, 2
     await ctx.close()
     await browser.close()
     const webm = await video.path()
+    // Keep only the narrated stretches: waits for a slow public RPC between them are cut, and each caption moves to where
+    // its stretch lands in the cut video.
+    let at = 0
+    const kept = cues.map((c) => ({ ...c, from: at, to: (at += c.end - c.start) }))
+    const select = cues.map((c) => `between(t,${c.start.toFixed(2)},${c.end.toFixed(2)})`).join("+")
     const srt = path.join(dir, "captions.srt")
-    fs.writeFileSync(srt, cues.map((c, i) => `${i + 1}\n${srtTime(c.start)} --> ${srtTime(c.end)}\n${c.text}\n`).join("\n"))
+    fs.writeFileSync(srt, kept.map((c, i) => `${i + 1}\n${srtTime(c.from)} --> ${srtTime(c.to)}\n${c.text}\n`).join("\n"))
     fs.copyFileSync(srt, path.join(OUT, "demo.srt"))
     // ffmpeg's subtitles filter wants a relative path on Windows (a drive colon breaks its option parser).
     const style = "FontName=Arial,FontSize=13,PrimaryColour=&H00FFFFFF,BackColour=&H99000000,BorderStyle=4,Outline=0,Shadow=0,MarginV=14"
-    execFileSync("ffmpeg", ["-y", "-i", webm, "-vf", `subtitles=captions.srt:force_style='${style}'`, "-c:v", "libx264", "-preset", "slow", "-crf", "28", "-pix_fmt", "yuv420p", "-movflags", "+faststart", "-an", path.join(OUT, "demo.mp4")], { cwd: dir, stdio: "inherit" })
-    execFileSync("ffmpeg", ["-y", "-ss", "20", "-i", path.join(OUT, "demo.mp4"), "-frames:v", "1", "-q:v", "4", path.join(OUT, "demo-poster.jpg")], { stdio: "inherit" })
-    console.log(`demo.mp4: ${cues.length} captions, ${now().toFixed(0)} s`)
+    execFileSync("ffmpeg", ["-y", "-i", webm, "-vf", `select='${select}',setpts=N/FRAME_RATE/TB,subtitles=captions.srt:force_style='${style}'`, "-c:v", "libx264", "-preset", "slow", "-crf", "28", "-pix_fmt", "yuv420p", "-movflags", "+faststart", "-an", path.join(OUT, "demo.mp4")], { cwd: dir, stdio: "inherit" })
+    execFileSync("ffmpeg", ["-y", "-ss", "16", "-i", path.join(OUT, "demo.mp4"), "-frames:v", "1", "-q:v", "4", path.join(OUT, "demo-poster.jpg")], { stdio: "inherit" })
+    console.log(`demo.mp4: ${cues.length} captions, ${at.toFixed(0)} s (recorded ${now().toFixed(0)} s)`)
 })()
