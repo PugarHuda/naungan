@@ -66,7 +66,8 @@ test("landing: the river chart comes from the site's edge-cached forecast, so a 
     expect((await request.get("https://naungan.vercel.app/api/forecast?program=6")).status()).toBe(404) // a heatwave program has no river
     const res = await request.get("https://naungan.vercel.app/api/forecast?program=4", { timeout: 60e3 })
     expect(res.status()).toBe(200)
-    expect(res.headers()["cache-control"]).toContain("s-maxage=3600")
+    // Served from the CDN after the first visitor: Vercel keeps s-maxage for itself and reports the cache in x-vercel-cache.
+    expect((await request.get("https://naungan.vercel.app/api/forecast?program=4")).headers()["x-vercel-cache"]).toMatch(/HIT|STALE/)
     const f = await res.json()
     expect(f.time).toHaveLength(30)
     expect(f.threshold).toBeGreaterThan(100) // Krueng Aceh's 1-in-5-year flood, in m3/s, from the oracles' own code
