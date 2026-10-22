@@ -59,3 +59,16 @@ test("hero: the phone never covers the headline, text or buttons, and the menu s
         expect(r, `${w} px`).toEqual({ hits: [], wrapped: [], navOverflow: 0 })
     }
 })
+
+test("landing: the river chart comes from the site's edge-cached forecast, so a room on one network shares one Open-Meteo request @desktop", async ({ request }) => {
+    // Production: vite preview serves no functions. Coordinates come from the chain, never the request.
+    expect((await request.get("https://naungan.vercel.app/api/forecast?program=4&lat=0")).status()).toBe(400)
+    expect((await request.get("https://naungan.vercel.app/api/forecast?program=6")).status()).toBe(404) // a heatwave program has no river
+    const res = await request.get("https://naungan.vercel.app/api/forecast?program=4", { timeout: 60e3 })
+    expect(res.status()).toBe(200)
+    expect(res.headers()["cache-control"]).toContain("s-maxage=3600")
+    const f = await res.json()
+    expect(f.time).toHaveLength(30)
+    expect(f.threshold).toBeGreaterThan(100) // Krueng Aceh's 1-in-5-year flood, in m3/s, from the oracles' own code
+    expect(f.source).toMatch(/^https:\/\/flood-api\.open-meteo\.com\/v1\/flood\?latitude=5\.\d+&longitude=95\.\d+/)
+})

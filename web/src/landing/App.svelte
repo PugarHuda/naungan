@@ -33,7 +33,7 @@
             if (at < 0) at = all.length - 1
             const { p, meta, id } = all[at]
             const sum = (f: (p: Program) => bigint) => all.reduce((s, x) => s + f(x.p), 0n)
-            const fm = flood(meta) ? ({ ...meta, name: meta.name ?? `Program ${id}` } as FloodMeta & { name: string }) : undefined
+            const fm = flood(meta) ? ({ ...meta, id, name: meta.name ?? `Program ${id}` } as FloodMeta & { name: string }) : undefined
             featured = fm
             live = {
                 ...live,

@@ -3,7 +3,7 @@
     // the claim app's languages, so a donor or agency sees exactly what families are told and can check it against
     // the facts beside it. The same CDN-cached answer the claim app gets: choosing a language here costs no extra call.
     import { deployment as d } from "../shared/chain"
-    import { NATIVE } from "../claim/i18n"
+    import { NATIVE } from "../shared/languages"
     import { dash } from "./state.svelte"
 
     type Answer = { text: string | null; refused?: string; model?: string; facts?: Record<string, string | number> }

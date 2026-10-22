@@ -322,4 +322,4 @@ export const T: Record<string, Record<string, Entry>> = {
 }
 /** The language to show: the household's own saved choice (the language menu), else English. */
 export const pickLang = (saved: string | null): string => (saved && T[saved] ? saved : "en")
-export const NATIVE: Record<string, string> = { en: "English", id: "Bahasa Indonesia", bn: "বাংলা", es: "Español", sw: "Kiswahili", pt: "Português", fil: "Filipino" }
+export { NATIVE } from "../shared/languages"

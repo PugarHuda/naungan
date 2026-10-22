@@ -1,11 +1,12 @@
 // Landing-page helpers: the shape of a track record (web/src/shared/verify.mjs trackRecord), date formatting,
 // and the GloFAS forecast the hero and the river check both draw.
 import { floodThreshold } from "../shared/verify.mjs"
+import { deployment } from "../shared/chain"
 
 export type Episode = { start: string; end: string; peak: number; peakDate: string }
 export type History = { threshold: number; unit?: string; years?: number; from: string; to: string; episodes: Episode[] }
 export type TrackRecord = { flood: History; rain: History | null; paid: Episode[]; rainOnly: Episode[] }
-export type FloodMeta = { name?: string; lat: number; lon: number; returnPeriod: number; leadDays: number; rain?: { returnPeriod: number } }
+export type FloodMeta = { id?: number; name?: string; lat: number; lon: number; returnPeriod: number; leadDays: number; rain?: { returnPeriod: number } }
 
 export const fmt = (d: string) => new Date(d + "T00:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" })
 export const years = (r: TrackRecord) => Math.round((Date.parse(r.flood.to) - Date.parse(r.flood.from)) / 3.156e10)
@@ -14,6 +15,15 @@ export type Forecast = { time: string[]; median: (number | null)[]; max: (number
 
 /** GloFAS median and wettest member for the next 30 days, against the program's flood level. */
 export async function forecast(meta: FloodMeta): Promise<Forecast> {
+    // This site's edge-cached copy first (api/forecast.js: the same data, fetched once an hour per region, so a room of
+    // visitors on one network never runs into Open-Meteo's per-IP limit); Open-Meteo itself when it is unavailable.
+    if (meta.id) {
+        const c = await fetch(`${deployment.relayer ?? location.origin}/api/forecast?program=${meta.id}`, { signal: AbortSignal.timeout(20e3) }).catch(() => null)
+        if (c?.ok) {
+            const j = await c.json()
+            return { time: j.time, median: j.median, max: j.max, threshold: j.threshold, peak: j.peak }
+        }
+    }
     const r = await fetch(`https://flood-api.open-meteo.com/v1/flood?latitude=${meta.lat}&longitude=${meta.lon}&daily=river_discharge_median,river_discharge_max&forecast_days=30`, { signal: AbortSignal.timeout(20e3) })
     if (!r.ok) throw new Error(`GloFAS forecast ${r.status}`)
     const j = await r.json()
