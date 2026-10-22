@@ -20,7 +20,7 @@
         chart = null
         note = kind === "river" ? "Fetching the GloFAS river forecast…" : `Fetching the NOAA GEFS ${kind} forecast…`
         let live = true
-        if (!cache.has(key)) cache.set(key, kind === "temperature" ? heatChart(m) : kind === "wind" ? windChart(m) : floodChart(m))
+        if (!cache.has(key)) cache.set(key, kind === "temperature" ? heatChart(m) : kind === "wind" ? windChart(m) : floodChart(m, id))
         cache.get(key)!.then(
             (c) => live && ((chart = c), (note = c.note)),
             (e) => live && (note = `The ${kind} forecast is unavailable right now (${e.message}). The trigger panel still shows what the oracles posted.`)

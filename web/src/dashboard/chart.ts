@@ -3,7 +3,7 @@
 // 16-day NOAA GEFS maximum-temperature ensemble (the oracle's own request, heatForecast) against the heatwave
 // temperature. Cyclone wind programs: the 16-day GEFS peak-gust ensemble (windForecast) against the place's
 // 1-in-T-year gust (windThreshold). All shade the trigger's lead window.
-import type { ProgramMeta } from "../shared/chain"
+import { deployment, type ProgramMeta } from "../shared/chain"
 import { day } from "./format"
 
 export type Chart = {
@@ -32,13 +32,26 @@ function frame(n: number, lo: number, hi: number, leadDays: number) {
 const ticks = (x: (i: number) => number, at: number[], time: string[], last: number) =>
     at.map((i) => ({ x: x(i), label: i === 0 ? "Today" : shortDay(time[i]), anchor: (i === 0 ? "start" : i === last ? "end" : "middle") as "start" | "middle" | "end" }))
 
-export async function floodChart(meta: ProgramMeta): Promise<Chart> {
+/**
+ * The program's forecast and flood level: this site's edge-cached copy first (api/forecast.js, the same GloFAS data and
+ * the oracles' own threshold code, fetched once an hour per CDN region, so a room of visitors on one network never runs
+ * into Open-Meteo's per-IP limit), Open-Meteo itself when it is unavailable. The oracle re-check never uses the copy.
+ */
+async function glofas(meta: ProgramMeta, id?: bigint): Promise<{ time: string[]; median: (number | null)[]; max: (number | null)[]; threshold: number }> {
+    if (id !== undefined) {
+        const c = await fetch(`${deployment.relayer ?? location.origin}/api/forecast?program=${id}`, { signal: AbortSignal.timeout(20e3) }).catch(() => null)
+        if (c?.ok) return c.json()
+    }
     const r = await fetch(`https://flood-api.open-meteo.com/v1/flood?latitude=${meta.lat}&longitude=${meta.lon}&daily=river_discharge_median,river_discharge_max&forecast_days=30`, { signal: AbortSignal.timeout(20e3) })
     if (!r.ok) throw new Error(`GloFAS ${r.status}`)
     const j = await r.json()
     const { threshold } = await (await import("../shared/verify.mjs")).floodThreshold(meta as { lat: number; lon: number; returnPeriod: number }) // flood programs always carry all three
-    const time: string[] = j.daily.time, n = time.length, lead = meta.leadDays ?? 0
-    const med: (number | null)[] = j.daily.river_discharge_median, max: (number | null)[] = j.daily.river_discharge_max
+    return { time: j.daily.time, median: j.daily.river_discharge_median, max: j.daily.river_discharge_max, threshold }
+}
+
+export async function floodChart(meta: ProgramMeta, id?: bigint): Promise<Chart> {
+    const { time, median: med, max, threshold } = await glofas(meta, id)
+    const n = time.length, lead = meta.leadDays ?? 0
     const top = Math.max(threshold * 1.18, ...max.filter((v): v is number => v != null))
     const f = frame(n, 0, top, lead)
     const peak = Math.max(...med.slice(0, lead + 1).filter((v): v is number => v != null))
