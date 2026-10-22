@@ -1,6 +1,6 @@
 # DoraHacks BUIDL submission: Naungan
 
-Paste-ready fields for https://dorahacks.io/hackathon/web3-social-good-2026 (deadline 25 Oct 2026, 07:00 SGT).
+Paste-ready fields for https://dorahacks.io/hackathon/web3-social-good-2026 (deadline 25 Oct 2026, 07:00 UTC+7, as DoraHacks shows it).
 
 **Name:** Naungan
 
