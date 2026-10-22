@@ -280,7 +280,7 @@ async function createRelayer({ store = sharedStore() } = {}) {
     }
     const handle = async (method, url, ip, raw) => {
         if (method === "OPTIONS") return [204, {}]
-        if (method === "GET" && url === "/health") {
+        if ((method === "GET" || method === "HEAD") && url === "/health") { // HEAD: uptime and link checkers
             const bal = await provider.getBalance(wallet.address)
             // lowGas: under ~50 sponsored claims left; uptime monitors can alert on it.
             return [200, { relayer: wallet.address, balance: ethers.formatEther(bal), lowGas: bal < ethers.parseEther("0.01"), chainId: d.chainId, naungan: d.naungan, pinStore: store.store, pinTries: MAX_TRIES }]
