@@ -112,3 +112,18 @@ test("dashboard: what households say, read from Semaphore's on-chain proofs for 
     expect(asked.some((b) => b.includes('"eth_getLogs"') && /"address":"0x6e5Dd641faea7772baA3F83B30a643EC17d4180d"/i.test(b))).toBe(true)
     await check(page)
 })
+
+test("dashboard: running costs measured from real transactions and priced on Base mainnet (gas price, L1 fee, Chainlink ETH/USD)", async ({ page, check }) => {
+    await page.goto("/dashboard?program=2")
+    const panel = page.locator("#costs")
+    await expect(panel.getByRole("row").filter({ hasText: "A household's claim" })).toBeVisible({ timeout: 90_000 })
+    // A claim verifies a Groth16 proof on-chain: hundreds of thousands of gas, and still well under a cent on Base.
+    const claim = panel.getByRole("row").filter({ hasText: "A household's claim" }).getByRole("cell")
+    expect(Number((await claim.nth(1).textContent())!.replace(/,/g, ""))).toBeGreaterThan(200_000)
+    await expect(claim.nth(2)).toHaveText(/^\$0\.00\d/)
+    await expect(panel.getByRole("row").filter({ hasText: "An oracle report" })).toBeVisible()
+    await expect(panel.locator(".big")).toContainText(/^\$[\d.]+ a season for this program$/)
+    await expect(panel.locator(".season")).toHaveText(/^1 oracle reporting for a year .+ and enrolling and paying its 3 households .+% of the aid it pays\. At 1,000 households, \$[\d.,]+ in all, \$0\.0\d+ a household\.$/)
+    await expect(panel).toContainText(/Chainlink's ETH \/ USD feed on Base \(updated 20\d\d-/)
+    await check(page)
+})

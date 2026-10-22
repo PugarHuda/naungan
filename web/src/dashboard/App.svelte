@@ -13,6 +13,7 @@
     import IfrcPanel from "./IfrcPanel.svelte"
     import GdacsPanel from "./GdacsPanel.svelte"
     import FeedbackPanel from "./FeedbackPanel.svelte"
+    import CostPanel from "./CostPanel.svelte"
     import Ledger from "./Ledger.svelte"
 
     start()
@@ -55,6 +56,7 @@
             <IfrcPanel />
             <GdacsPanel />
             <FeedbackPanel />
+            <CostPanel />
         </section>
 
         <section class="bottom">

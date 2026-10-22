@@ -134,6 +134,8 @@ const sources = (head: number): [string, () => Promise<{ events: Ev[]; upTo: num
 
 // Every program's events, read once and then followed block by block.
 const events: Ev[] = [], have = new Set<string>()
+/** Every program's events read so far (the running-costs panel samples real transactions from them). */
+export const allEvents = (): readonly Ev[] => events
 let next: number | undefined
 const from = d.fromBlock ?? 0
 
