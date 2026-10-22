@@ -1,4 +1,4 @@
-// Records the captioned product tour (web/public/demo.mp4) from the live site: a real browser driven by Playwright,
+// Records the narrated, captioned product tour (web/public/demo.mp4) from the live site: a real browser driven by Playwright,
 // every screen live data, captions timed to what is on screen and burned in with ffmpeg. Never presses Claim on the
 // judges' demo card. Run: node scripts/demo-video.cjs  (needs ffmpeg with libass on PATH; SITE= to record another site)
 const { chromium } = require("@playwright/test")
@@ -12,14 +12,26 @@ const CARD = "/claim#p=2&id=sG0DdcsCNBfd7i%2FIGGuxLmkPFbIN2ydmlblYsEm3rK8%3D"
 const OUT = path.join(__dirname, "..", "web", "public")
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "naungan-video-"))
 
+// Narration: each caption is also spoken by a Microsoft neural voice (edge-tts, `pip install edge-tts`), and the caption
+// stays up for at least as long as its sentence takes. VOICE= to change it; NARRATION=0 for a silent video.
+const VOICE = process.env.VOICE || "en-US-AndrewNeural"
+const NARRATE = process.env.NARRATION !== "0"
+
 const cues = []
 let t0 = 0
 const now = () => (Date.now() - t0) / 1000
-/** One caption, shown for at least `secs` while the page does what it says. */
-async function say(text, secs, during = async () => {}) {
+/** Speak `text` to an mp3 before the caption starts (so the wait is cut out), and return its length in seconds. */
+function speak(text, i) {
+    const file = path.join(dir, `voice-${i}.mp3`)
+    execFileSync("python", ["-m", "edge_tts", "--voice", VOICE, "--rate", "+4%", "--text", text, "--write-media", file], { stdio: "ignore" })
+    return { file, secs: Number(execFileSync("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", file]).toString()) }
+}
+/** One caption, shown for at least `secs` (and as long as its narration) while the page does what it says. `spoken` is what the voice says, when it differs from the caption. */
+async function say(text, secs, during = async () => {}, spoken = text) {
+    const voice = NARRATE ? speak(spoken, cues.length) : null
     const start = now()
-    await Promise.all([during(), new Promise((r) => setTimeout(r, secs * 1000))])
-    cues.push({ start, end: now(), text })
+    await Promise.all([during(), new Promise((r) => setTimeout(r, Math.max(secs, (voice?.secs ?? 0) + 0.6) * 1000))])
+    cues.push({ start, end: now(), text, voice: voice?.file })
 }
 const srtTime = (s) => new Date(Math.max(0, s) * 1000).toISOString().slice(11, 23).replace(".", ",")
 
@@ -65,7 +77,7 @@ const srtTime = (s) => new Date(Math.max(0, s) * 1000).toISOString().slice(11, 2
 
     await page.goto(SITE + "/launch")
     await say("Any agency can launch a program from a browser wallet, starting from a published Early Action Protocol.", 7)
-    await say("Open data in the formats aid already reads: IATI, HXL, CAP alerts in two languages. naungan.vercel.app", 6)
+    await say("Open data in the formats aid already reads: IATI, HXL, CAP alerts in two languages. naungan.vercel.app", 6, async () => {}, "Open data in the formats aid already reads: IATI, HXL, and CAP alerts in two languages. Try it at naungan dot vercel dot app.")
 
     const video = page.video()
     await ctx.close()
@@ -81,7 +93,13 @@ const srtTime = (s) => new Date(Math.max(0, s) * 1000).toISOString().slice(11, 2
     fs.copyFileSync(srt, path.join(OUT, "demo.srt"))
     // ffmpeg's subtitles filter wants a relative path on Windows (a drive colon breaks its option parser).
     const style = "FontName=Arial,FontSize=13,PrimaryColour=&H00FFFFFF,BackColour=&H99000000,BorderStyle=4,Outline=0,Shadow=0,MarginV=14"
-    execFileSync("ffmpeg", ["-y", "-i", webm, "-vf", `select='${select}',setpts=N/FRAME_RATE/TB,subtitles=captions.srt:force_style='${style}'`, "-c:v", "libx264", "-preset", "slow", "-crf", "28", "-pix_fmt", "yuv420p", "-movflags", "+faststart", "-an", path.join(OUT, "demo.mp4")], { cwd: dir, stdio: "inherit" })
+    // Playwright records variable frame rate (a frame only when the page changes): constant 25 fps first, so cutting by
+    // time keeps the video exactly as long as the captions and narration. Each narration clip starts where its caption lands.
+    const voiced = kept.filter((c) => c.voice)
+    const audio = voiced.length
+        ? ["-filter_complex", voiced.map((c, i) => `[${i + 1}:a]adelay=${Math.round(c.from * 1000)}:all=1[a${i}]`).join(";") + ";" + voiced.map((_, i) => `[a${i}]`).join("") + `amix=inputs=${voiced.length}:normalize=0[aout]`, "-map", "0:v", "-map", "[aout]", "-c:a", "aac", "-b:a", "96k"]
+        : ["-an"]
+    execFileSync("ffmpeg", ["-y", "-i", webm, ...voiced.flatMap((c) => ["-i", c.voice]), "-vf", `fps=25,select='${select}',setpts=N/25/TB,subtitles=captions.srt:force_style='${style}'`, ...audio, "-c:v", "libx264", "-preset", "slow", "-crf", "28", "-pix_fmt", "yuv420p", "-movflags", "+faststart", path.join(OUT, "demo.mp4")], { cwd: dir, stdio: "inherit" })
     execFileSync("ffmpeg", ["-y", "-ss", "16", "-i", path.join(OUT, "demo.mp4"), "-frames:v", "1", "-q:v", "4", path.join(OUT, "demo-poster.jpg")], { stdio: "inherit" })
     console.log(`demo.mp4: ${cues.length} captions, ${at.toFixed(0)} s (recorded ${now().toFixed(0)} s)`)
 })()

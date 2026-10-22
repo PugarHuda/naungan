@@ -17,7 +17,7 @@ Paste-ready fields for https://dorahacks.io/hackathon/web3-social-good-2026 (dea
 
 **Links**
 - Live app: https://naungan.vercel.app
-- Demo video (90 s, captioned, recorded from the live site by `scripts/demo-video.cjs`): https://naungan.vercel.app/demo.mp4
+- Demo video (100 s, narrated and captioned, recorded from the live site by `scripts/demo-video.cjs`): https://naungan.vercel.app/demo.mp4
 - Try a claim yourself (one household card left unclaimed for judges, open until 18 Nov 2026): https://naungan.vercel.app/claim#p=2&id=sG0DdcsCNBfd7i%2FIGGuxLmkPFbIN2ydmlblYsEm3rK8%3D
 - Public dashboard, with running costs: https://naungan.vercel.app/dashboard?program=2
 - Donor statement: https://naungan.vercel.app/donor?address=0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
