@@ -44,6 +44,7 @@ export const T: Record<string, Record<string, Entry>> = {
         notCard: "That is not a Naungan card code. Paste the whole code printed under the QR.", pinFormat: "Enter the 6 digits of your PIN.",
         joinClosed: "Registration closed when the flood alert opened claims, so this phone cannot join this program now. Ask your agency about the next one.",
         another: "Use another card", pickWallet: "Wallet",
+        whyTitle: "Why this money?", whyAi: "Written by AI from this program's public on-chain data, and every number checked against it. Nothing about you or your card was sent.", whyFacts: "The facts it used", whyListen: "Listen",
         readAloud: "Read aloud", about: "about", readNext: (b) => `To receive the money, press “${b}”.`, readPaid: (a) => `Paid. ${a} USDC is now in your wallet.`
     },
     id: {
@@ -88,6 +89,7 @@ export const T: Record<string, Record<string, Entry>> = {
         notCard: "Itu bukan kode kartu Naungan. Tempel seluruh kode yang tercetak di bawah QR.", pinFormat: "Masukkan 6 angka PIN Anda.",
         joinClosed: "Pendaftaran ditutup saat peringatan banjir membuka klaim, jadi ponsel ini tidak bisa ikut program ini sekarang. Tanyakan program berikutnya ke lembaga Anda.",
         another: "Pakai kartu lain", pickWallet: "Dompet",
+        whyTitle: "Kenapa uang ini?", whyAi: "Ditulis oleh AI dari data publik program ini di blockchain, dan setiap angkanya sudah dicek. Tidak ada data tentang Anda atau kartu Anda yang dikirim.", whyFacts: "Fakta yang dipakai", whyListen: "Dengarkan",
         readAloud: "Bacakan", about: "sekitar", readNext: (b) => `Untuk menerima uangnya, tekan “${b}”.`, readPaid: (a) => `Terbayar. ${a} USDC sekarang ada di dompet Anda.`
     },
     bn: {
@@ -132,6 +134,7 @@ export const T: Record<string, Record<string, Entry>> = {
         notCard: "এটি নাউঙ্গান কার্ডের কোড নয়। QR-এর নিচে ছাপা পুরো কোডটি পেস্ট করুন।", pinFormat: "আপনার পিনের ৬টি সংখ্যা দিন।",
         joinClosed: "বন্যা সতর্কতায় দাবি খোলার সময় নিবন্ধন বন্ধ হয়ে গেছে, তাই এই ফোন এখন এই প্রোগ্রামে যোগ দিতে পারবে না। পরের প্রোগ্রাম সম্পর্কে আপনার সংস্থাকে জিজ্ঞেস করুন।",
         another: "অন্য কার্ড ব্যবহার করুন", pickWallet: "ওয়ালেট",
+        whyTitle: "এই টাকা কেন?", whyAi: "এই প্রোগ্রামের প্রকাশ্য অন-চেইন তথ্য থেকে AI লিখেছে, এবং প্রতিটি সংখ্যা মিলিয়ে দেখা হয়েছে। আপনার বা আপনার কার্ডের কোনো তথ্য পাঠানো হয়নি।", whyFacts: "যে তথ্য ব্যবহার হয়েছে", whyListen: "শুনুন",
         readAloud: "জোরে পড়ে শোনান", about: "প্রায়", readNext: (b) => `টাকা পেতে “${b}” চাপুন।`, readPaid: (a) => `পরিশোধিত। ${a} USDC এখন আপনার ওয়ালেটে আছে।`
     },
     es: {
@@ -176,6 +179,7 @@ export const T: Record<string, Record<string, Entry>> = {
         notCard: "Ese no es un código de tarjeta Naungan. Pegue el código completo impreso debajo del QR.", pinFormat: "Ingrese los 6 dígitos de su PIN.",
         joinClosed: "La inscripción se cerró cuando la alerta de inundación abrió los reclamos, así que este teléfono no puede unirse a este programa ahora. Pregunte a su organización por el próximo.",
         another: "Usar otra tarjeta", pickWallet: "Billetera",
+        whyTitle: "¿Por qué este dinero?", whyAi: "Escrito por IA a partir de los datos públicos del programa en la cadena de bloques, con cada cifra comprobada. No se envió nada sobre usted ni su tarjeta.", whyFacts: "Los datos usados", whyListen: "Escuchar",
         readAloud: "Leer en voz alta", about: "unos", readNext: (b) => `Para recibir el dinero, toque “${b}”.`, readPaid: (a) => `Pagado. Ya tiene ${a} USDC en su billetera.`
     },
     sw: {
@@ -220,6 +224,7 @@ export const T: Record<string, Record<string, Entry>> = {
         notCard: "Huo si msimbo wa kadi ya Naungan. Bandika msimbo wote uliochapishwa chini ya QR.", pinFormat: "Weka tarakimu 6 za PIN yako.",
         joinClosed: "Usajili ulifungwa tahadhari ya mafuriko ilipofungua madai, kwa hiyo simu hii haiwezi kujiunga na mpango huu sasa. Uliza shirika lako kuhusu mpango ujao.",
         another: "Tumia kadi nyingine", pickWallet: "Pochi",
+        whyTitle: "Kwa nini pesa hizi?", whyAi: "Imeandikwa na AI kutoka kwa data ya umma ya mpango huu kwenye blockchain, na kila namba imehakikiwa. Hakuna taarifa zako wala za kadi yako zilizotumwa.", whyFacts: "Taarifa zilizotumika", whyListen: "Sikiliza",
         readAloud: "Nisomee kwa sauti", about: "takriban", readNext: (b) => `Ili kupokea pesa, bonyeza “${b}”.`, readPaid: (a) => `Imelipwa. USDC ${a} sasa iko kwenye pochi yako.`
     },
     // European Portuguese, the written norm in Mozambique (telemóvel, not celular).
@@ -265,6 +270,7 @@ export const T: Record<string, Record<string, Entry>> = {
         notCard: "Isso não é um código de cartão Naungan. Cole o código completo impresso por baixo do QR.", pinFormat: "Introduza os 6 dígitos do seu PIN.",
         joinClosed: "As inscrições fecharam quando o alerta de cheia abriu os pedidos, por isso este telemóvel já não pode entrar neste programa. Pergunte à sua organização pelo próximo.",
         another: "Usar outro cartão", pickWallet: "Carteira",
+        whyTitle: "Porquê este dinheiro?", whyAi: "Escrito por IA a partir dos dados públicos do programa na blockchain, com cada número verificado. Nada sobre si ou o seu cartão foi enviado.", whyFacts: "Os dados usados", whyListen: "Ouvir",
         readAloud: "Ler em voz alta", about: "cerca de", readNext: (b) => `Para receber o dinheiro, carregue em “${b}”.`, readPaid: (a) => `Pago. ${a} USDC já estão na sua carteira.`
     },
     // Filipino as it is spoken: "ayuda" for cash aid, "bagyo" for a typhoon, and "i-claim", which everyone uses.
@@ -310,6 +316,7 @@ export const T: Record<string, Record<string, Entry>> = {
         notCard: "Hindi iyan code ng Naungan card. I-paste ang buong code na nakalimbag sa ilalim ng QR.", pinFormat: "Ilagay ang 6 na digit ng iyong PIN.",
         joinClosed: "Nagsara ang pagpaparehistro nang buksan ng babala sa baha ang pag-claim, kaya hindi na makakasali ang teleponong ito ngayon. Magtanong sa inyong ahensiya tungkol sa susunod na programa.",
         another: "Gumamit ng ibang card", pickWallet: "Wallet",
+        whyTitle: "Bakit may perang ito?", whyAi: "Isinulat ng AI mula sa pampublikong datos ng programang ito sa blockchain, at sinuri ang bawat numero. Walang ipinadalang impormasyon tungkol sa iyo o sa iyong card.", whyFacts: "Ang mga datos na ginamit", whyListen: "Pakinggan",
         readAloud: "Basahin nang malakas", about: "mga", readNext: (b) => `Para matanggap ang pera, pindutin ang “${b}”.`, readPaid: (a) => `Nabayaran na. Nasa iyong wallet na ang ${a} USDC.`
     }
 }

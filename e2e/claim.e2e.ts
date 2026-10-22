@@ -172,3 +172,21 @@ test("claim: an enrolled household rates the aid anonymously: a Semaphore proof 
     await page.locator("#feedback").getByRole("button", { name: "Send anonymously" }).click()
     await expect(page.locator("#feedback").getByRole("status")).toHaveText("This card has already answered. Thank you.", { timeout: 120e3 })
 })
+
+test("claim: 'Why this money?' explains the trigger in the household's language from on-chain facts, every figure checked @desktop", async ({ page, request }) => {
+    // The live endpoint (Vercel AI Gateway behind it). Only program and lang are accepted, so its CDN cache cannot be bypassed.
+    expect((await request.get("https://naungan.vercel.app/api/explain?program=2&lang=en&x=1")).status()).toBe(400)
+    const live = await request.get("https://naungan.vercel.app/api/explain?program=2&lang=id")
+    expect(live.status()).toBe(200)
+    const a = await live.json()
+    test.skip(/not configured|unavailable/.test(a.refused ?? ""), `no model on production yet: ${a.refused}`)
+    expect(a.text, `refused: ${a.refused}`).toBeTruthy()
+    expect(a.facts.amountUSDC).toBe(1)
+    expect(a.text).toMatch(/\b1\b/) // the amount is always in it (the guard refuses an answer without it)
+    await page.goto(DEMO_CARD)
+    await page.locator("select#lang").selectOption("id")
+    const why = page.getByRole("region", { name: "Kenapa uang ini?" })
+    await expect(why).toBeVisible({ timeout: 60_000 })
+    await expect(why.locator(".whytext")).toHaveText(a.text) // the same checked answer the CDN serves
+    await expect(why).toContainText("Tidak ada data tentang Anda atau kartu Anda yang dikirim")
+})

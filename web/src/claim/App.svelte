@@ -11,6 +11,7 @@
     import Wallet from "./Wallet.svelte"
     import ReadAloud from "./ReadAloud.svelte"
     import Feedback from "./Feedback.svelte"
+    import Explain from "./Explain.svelte"
 
     $effect(() => {
         document.documentElement.lang = ui.lang
@@ -33,7 +34,7 @@
 
     {#if ui.nocard}<CardEntry />{/if}
     {#if ui.pin}<PinBox />{/if}
-    {#if ui.program}<ProgramCard />{/if}
+    {#if ui.program}<ProgramCard /><Explain />{/if}
     {#if ui.join}<JoinPanel code={ui.join.code} card={ui.join.card} />{/if}
     {#if ui.pay}<PayChoice wallet={ui.pay.wallet} />{/if}
     {#if ui.queued}<section class="card note" id="queued" aria-live="polite">{t("queued")}</section>{/if}
