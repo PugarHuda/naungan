@@ -3,6 +3,7 @@
     import { day, until, words } from "./format"
     import { level } from "./trigger"
     import HazardChart from "./HazardChart.svelte"
+    import { CHART } from "./chart"
 
     const m = $derived(dash.meta)
     const w = $derived(words(m))
@@ -42,5 +43,12 @@
     <p class="say">{line}<small>{small}</small></p>
     {#if m.lat != null && dash.pid !== undefined}
         <HazardChart id={dash.pid} meta={m} />
+    {:else if dash.pid === undefined || m.lat === undefined}
+        <!-- Same box as the chart while the program's metadata loads, so the panels below never jump when it arrives (CLS). -->
+        <figure class="hydro" aria-hidden="true">
+            <div class="legend"><span>Median forecast</span></div>
+            <svg viewBox="0 0 {CHART.W} {CHART.H}"></svg>
+            <figcaption>Loading the forecast…</figcaption>
+        </figure>
     {/if}
 </div>
