@@ -56,11 +56,11 @@ module.exports = async (req, res) => {
         const client = new Anthropic({ timeout: 30e3, maxRetries: 1 })
         const msgs = messages(facts, lang)
         let a = await ask(client, msgs)
-        let why = check(a.text, facts)
+        let why = check(a.text, facts, lang)
         if (why) {
             // One retry, told what was wrong; a second refusal shows the facts instead of an unchecked text.
             a = await ask(client, [...msgs, { role: "assistant", content: a.text }, { role: "user", content: `That answer cannot be shown: it contains ${why}. Rewrite it using only the facts.` }])
-            why = check(a.text, facts)
+            why = check(a.text, facts, lang)
         }
         // A refusal is kept too (shorter): asking again for the same facts would mostly be refused again.
         if (why) return await store.set(key, JSON.stringify({ text: null, refused: why, model: a.model }), 3600).catch(() => {}), send(200, { ...base, text: null, refused: why, model: a.model }, "public, s-maxage=600")

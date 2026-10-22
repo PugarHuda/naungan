@@ -1,5 +1,5 @@
 const { expect } = require("chai")
-const { factsOf, messages, check, allowed, LANGS } = require("../lib/explain.mjs")
+const { factsOf, messages, check, allowed, languageOf, LANGS } = require("../lib/explain.mjs")
 
 // Program #2 as the open data serves it (claims open after the replayed Nov 2025 Krueng Aceh flood).
 const p2 = {
@@ -24,8 +24,18 @@ describe("AI explanation guard (lib/explain.mjs)", () => {
 
     it("passes a faithful answer in English, Bahasa Indonesia with a decimal comma, and Bengali digits", () => {
         expect(check("The river forecast for Krueng Aceh showed 100% of its runs above the 1-in-5-year flood, more than the 60% the rule needs, so claims are open. Each household receives 1 USDC and can claim until 18 November 2026.", f)).to.equal(null)
-        expect(check("Prakiraan sungai menunjukkan debit puncak 1.116 m3/detik pada 23 November 2025, di atas banjir 1-dalam-5-tahun (963 m3/detik). Setiap keluarga menerima 1 USDC sampai 18 November 2026.", f)).to.equal(null)
-        expect(check("নদীর পূর্বাভাসে ১০০% সম্ভাবনা দেখা গেছে, যা ৬০% সীমার বেশি। প্রতিটি পরিবার ১ USDC পাবে, ১৮ নভেম্বর ২০২৬ পর্যন্ত।", f)).to.equal(null)
+        expect(check("Prakiraan sungai menunjukkan debit puncak 1.116 m3/detik pada 23 November 2025, di atas banjir yang terjadi sekali dalam 5 tahun (963 m3/detik). Setiap keluarga menerima 1 USDC sampai 18 November 2026, dan klaim dibuka untuk program ini.", f, "id")).to.equal(null)
+        expect(check("নদীর পূর্বাভাসে ১০০% সম্ভাবনা দেখা গেছে, যা ৬০% সীমার বেশি। প্রতিটি পরিবার ১ USDC পাবে, ১৮ নভেম্বর ২০২৬ পর্যন্ত।", f, "bn")).to.equal(null)
+    })
+
+    // What Claude Haiku 5.5 answered for program #2 on 22 Oct 2026: right in Spanish, but in Indonesian when asked for Kiswahili.
+    it("refuses an answer in the wrong language: Indonesian asked for Kiswahili, English asked for Bengali", () => {
+        const es = "Este programa vigila el río Krueng Aceh, en Aceh Besar, y mira si el pronóstico del río del servicio europeo Copernicus indica una inundación grande dentro de diez días. Los reclamos están abiertos ahora, porque el pronóstico llegó al 100 por ciento de los modelos, y el límite era 60 por ciento. Cada familia puede recibir 1 dólar USDC. Puede reclamar hasta el 18 de noviembre de 2026. Siga siempre las indicaciones de las autoridades locales."
+        expect(check(es, f, "es")).to.equal(null)
+        const idForSw = "Program ini mengawasi sungai Krueng Aceh di Aceh Besar. Sekarang klaim terbuka, karena hasil ramalan terbaru menunjukkan 100%, lebih dari batas 60%. Setiap keluarga bisa menerima 1 USDC. Klaim bisa diajukan sampai 18 November 2026. Ikuti selalu arahan pemerintah setempat."
+        expect(check(idForSw, f, "sw")).to.match(/written in Bahasa Indonesia, not Kiswahili/)
+        expect(languageOf("Mpango huu unafuatilia mto Krueng Aceh. Madai yamefunguliwa kwa sababu utabiri ni 100%, juu ya kiwango cha 60%. Kila familia itapokea 1 USDC hadi 18 Novemba 2026.", "sw")).to.equal(null)
+        expect(languageOf("Each household receives 1 USDC and can claim until 18 November 2026 if the forecast is above the trigger.", "bn")).to.equal("not Bengali script")
     })
 
     it("refuses an invented figure, in any script, a link or address, and an answer without the amount", () => {

@@ -65,6 +65,6 @@ Paste-ready fields for https://dorahacks.io/hackathon/web3-social-good-2026 (dea
 - **A trigger is not a forecast-skill score:** the 30-year replay shows what the rule would have done with perfect forecasts, not how often the forecasts are right.
 - **Not reviewed yet:** no legal review for any country, and the translations still need native speakers.
 
-**Built and tested:** 85 contract and service tests (real Groth16 proofs against the real Semaphore contract, payout audit, PSI, flood/rain/heat/wind trigger math, PIN lockout, gasless spend, relayer verdicts, Web Push), 68 frontend tests, 65 Playwright end-to-end tests on the production build with its real security headers and axe accessibility checks, strict type check, Slither in CI, live oracles on GitHub Actions with a Vercel cron backup, an hourly production monitor.
+**Built and tested:** 86 contract and service tests (real Groth16 proofs against the real Semaphore contract, payout audit, PSI, flood/rain/heat/wind trigger math, PIN lockout, gasless spend, relayer verdicts, Web Push), 68 frontend tests, 65 Playwright end-to-end tests on the production build with its real security headers and axe accessibility checks, strict type check, Slither in CI, live oracles on GitHub Actions with a Vercel cron backup, an hourly production monitor.
 
 **Team:** Pugar Huda Mantoro (solo).
