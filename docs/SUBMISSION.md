@@ -10,6 +10,11 @@ Paste-ready fields for https://dorahacks.io/hackathon/web3-social-good-2026 (dea
 
 **Tags:** Social Impact, Public Good Funding, Decentralized Identity, Privacy, Base, Ethereum, Solidity, Zero-knowledge, Stablecoin
 
+**For judges: three minutes**
+1. Open the demo claim card below on your phone and read "Why this money?": the AI explanation of the trigger, every number checked against the chain. Tap Claim: 1 USDC lands in a wallet made on your phone in about 12 seconds (one card, first come, first served).
+2. On the dashboard, press "Verify every payout": your browser re-checks every claim's zero-knowledge proof from the raw transactions. Scroll to "In plain words" and "Running costs".
+3. Open the donor statement: where one donor's money went, checked against the contract.
+
 **Links**
 - Live app: https://naungan.vercel.app
 - Demo video (2 min, captioned): https://naungan.vercel.app/demo.mp4
@@ -26,6 +31,8 @@ Paste-ready fields for https://dorahacks.io/hackathon/web3-social-good-2026 (dea
 **The problem.** When a flood is coming, aid agencies know days ahead, but the cash usually arrives after the water. When it does arrive, agencies that cannot see each other's lists pay some families twice and miss others. The usual fix is to pool everyone's beneficiary lists in one database, which then leaks the names of the people most at risk.
 
 **What Naungan does, in three sentences.** Agencies register families without sharing their lists, and only an anonymous code goes on the blockchain. When two independent weather forecasts agree a disaster is coming, the contract opens payments automatically, days before the peak. Each family claims from its phone (or a printed card) with a zero-knowledge proof, so it is paid once, nobody can tell who was paid, and anyone can check every payout.
+
+**Why paying early matters.** In July 2020 the World Food Programme paid families along the Jamuna river in Bangladesh days before the flood peaked, on a GloFAS forecast at Bahadurabad. They were 36% less likely to go a day without eating during the flood, and ate more three months later (Pople, Hill, Dercon and Brunckhorst; World Bank Economic Review). Naungan's program #5 watches the same gauge with the same forecast model, and its trigger, replayed, pays in July 2020. What Naungan adds is what that pilot did by hand: one list across agencies without sharing it, a trigger anyone can check, and payouts anyone can audit.
 
 **An example.** In late November 2025, the Krueng Aceh river flooded around Banda Aceh. Replaying the river data, Naungan's trigger would have opened claims by 20 November, three days before the river peaked on the 23rd. Over 30 years of data, the same rule would have paid 7 times, and held back 8 alarms where rainfall crossed its threshold but the river did not reach flood level.
 
@@ -52,6 +59,8 @@ Paste-ready fields for https://dorahacks.io/hackathon/web3-social-good-2026 (dea
 **Feasibility and sustainability**
 
 - **It keeps running without us.** The contract has no owner, no upgrade and no pause switch, so a program pays out even if this project disappears. Anyone can send a claim straight to the contract, so our relayer is a convenience, not a gatekeeper. Oracles and the relayer are plain Node scripts any agency can run with its own keys, and the contract works on any EVM chain with any ERC-20 token.
+- **Ready for mainnet, rehearsed without spending.** `scripts/deploy.js --network base` deploys on Base mainnet with Circle's USDC. A test forks Base mainnet and runs a whole program there with Circle's real USDC: a real holder funds the pool, a zero-knowledge claim is paid in real USDC (360,558 gas, as on testnet), and the donor's unpaid share is refunded.
+- **A pilot plan an agency can follow.** `docs/PILOT.md`: who does what, a week-by-week season, measured costs, what to settle with a regulator before the first payout, and how to tell whether it worked.
 - **It costs almost nothing to run.** The dashboard's Running costs panel prices the system's own transactions on Base mainnet on every visit: mainnet gas price, Base's L1 data fee, and ETH/USD from Chainlink. On 22 Oct 2026, a claim cost about $0.005 and enrolling a family about $0.003. A program with two oracles costs about $2.45 a year in reports, and enrolling and paying 1,000 families about $8.40 more: about 1% of the aid at 1 USD a family, and 0.02% at 50 USD a family. Hosting runs on free tiers (Vercel, GitHub Actions, Upstash).
 - **Who pays:** the coordinating agency funds the relayer's and oracles' gas from the program budget, as it already pays for delivering cash today. Donors fund the pool directly, and the contract returns their unused share after the season; the coordinator never holds the money.
 - **Compliance stays where it belongs.** Identity checks (KYC, sanctions screening) are done by the enrolling agency, off-chain, under its existing duties; the chain only learns that a family is enrolled, not who it is. This follows the data-minimisation principle of the ICRC Handbook on Data Protection in Humanitarian Action.
@@ -65,6 +74,6 @@ Paste-ready fields for https://dorahacks.io/hackathon/web3-social-good-2026 (dea
 - **A trigger is not a forecast-skill score:** the 30-year replay shows what the rule would have done with perfect forecasts, not how often the forecasts are right.
 - **Not reviewed yet:** no legal review for any country, and the translations still need native speakers.
 
-**Built and tested:** 87 contract and service tests (real Groth16 proofs against the real Semaphore contract, payout audit, PSI, flood/rain/heat/wind trigger math, PIN lockout, gasless spend, relayer verdicts, Web Push), 71 frontend tests, 69 Playwright end-to-end tests on the production build with its real security headers and axe accessibility checks, strict type check, Slither in CI, live oracles on GitHub Actions with a Vercel cron backup, an hourly production monitor.
+**Built and tested:** 87 contract and service tests, plus a mainnet rehearsal on a fork of Base with Circle's real USDC (real Groth16 proofs against the real Semaphore contract, payout audit, PSI, flood/rain/heat/wind trigger math, PIN lockout, gasless spend, relayer verdicts, Web Push), 71 frontend tests, 69 Playwright end-to-end tests on the production build with its real security headers and axe accessibility checks, strict type check, Slither in CI, live oracles on GitHub Actions with a Vercel cron backup, an hourly production monitor.
 
 **Team:** Pugar Huda Mantoro (solo).

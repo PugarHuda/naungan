@@ -1,20 +1,22 @@
 // Deploys Semaphore + Naungan and writes web/deployment.json for the web apps and services.
 // Local:   npx hardhat node   then   npx hardhat run scripts/deploy.js --network localhost
 // Testnet: PRIVATE_KEY in .env, then npx hardhat run scripts/deploy.js --network baseSepolia
+// Mainnet: the same with --network base (real ETH for gas, Circle's USDC on Base); rehearsed on a fork by test/mainnet-fork.test.js
 const fs = require("fs")
 const path = require("path")
 const { ethers, run, network } = require("hardhat")
 
 // Circle's official testnet USDC (developers.circle.com/stablecoins/usdc-contract-addresses).
 // Only a local dev chain, where Circle has no contract, gets the MockUSDC test token.
-const CIRCLE_USDC = { baseSepolia: "0x036CbD53842c5426634e7929541eC2318f3dCF7e", sepolia: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238" }
-const EXPLORER = { baseSepolia: "https://sepolia.basescan.org", sepolia: "https://sepolia.etherscan.io" }
+const CIRCLE_USDC = { base: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", baseSepolia: "0x036CbD53842c5426634e7929541eC2318f3dCF7e", sepolia: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238" }
+const EXPLORER = { base: "https://basescan.org", baseSepolia: "https://sepolia.basescan.org", sepolia: "https://sepolia.etherscan.io" }
 // Blockscout etherscan-compatible API: event history without the RPC 200-block cap (free, no key, CORS open).
 // Ethereum Attestation Service: predeployed at the same addresses on every OP-stack chain; easscan indexes it (keyless).
 const EAS = {
+    base: { address: "0x4200000000000000000000000000000000000021", registry: "0x4200000000000000000000000000000000000020", graphql: "https://base.easscan.org/graphql", explorer: "https://base.easscan.org" },
     baseSepolia: { address: "0x4200000000000000000000000000000000000021", registry: "0x4200000000000000000000000000000000000020", graphql: "https://base-sepolia.easscan.org/graphql", explorer: "https://base-sepolia.easscan.org" }
 }
-const INDEXER = { baseSepolia: "https://base-sepolia.blockscout.com/api", sepolia: "https://eth-sepolia.blockscout.com/api" }
+const INDEXER = { base: "https://base.blockscout.com/api", baseSepolia: "https://base-sepolia.blockscout.com/api", sepolia: "https://eth-sepolia.blockscout.com/api" }
 
 async function main() {
     const [deployer] = await ethers.getSigners()

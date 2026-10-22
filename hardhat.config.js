@@ -15,8 +15,15 @@ module.exports = {
         ]
     },
     networks: {
+        // Base mainnet's hardforks, for test/mainnet-fork.test.js (a fork of Base mainnet; Hardhat knows only Ethereum's history)
+        hardhat: { chains: { 8453: { hardforkHistory: { cancun: 0 } } } },
         // LOCAL_RPC: a dev node on another port (npx hardhat node --port 8555) when 8545 is taken
         localhost: { url: process.env.LOCAL_RPC || "http://127.0.0.1:8545" },
+        base: {
+            url: process.env.RPC_URL || "https://mainnet.base.org",
+            chainId: 8453,
+            accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : []
+        },
         baseSepolia: {
             url: process.env.RPC_URL || "https://sepolia.base.org",
             accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : []

@@ -35,6 +35,22 @@
   </div>
 </section>
 
+<section class="band" id="evidence">
+  <div class="wrap aceh">
+    <div>
+      <div class="eyebrow">The evidence</div>
+      <h2 class="big">Cash before the flood works.</h2>
+      <p class="intro" style="margin-bottom:0">In July 2020 the World Food Programme sent 4,500 taka by mobile money to families along the Jamuna river in Bangladesh, after a GloFAS forecast at Bahadurabad and days before the peak. Families who received it were 36% less likely to go a day without eating during the flood, ate more three months later and lost fewer assets than similar families who did not. Naungan's program #5 watches the same river at the same gauge with the same forecast model, and its trigger, replayed, pays in July 2020. What Naungan adds is what that pilot had to do by hand: one list across agencies without sharing it, a trigger anyone can check, and a payout record anyone can audit.</p>
+      <p class="src">Sources: <a href="https://www.anticipation-hub.org/download/file-3482" target="_blank" rel="noopener">Pople, Hill, Dercon and Brunckhorst, Anticipatory Cash Transfers in Climate Disaster Response (2021)</a>, published in the World Bank Economic Review as <a href="https://ora.ox.ac.uk/objects/uuid:ca0b464e-9c4d-4aab-9553-1124b4f79747/files/rmg74qp83d" target="_blank" rel="noopener">The Importance of Being Early?</a>; <a href="https://www.anticipation-hub.org/Documents/Reports/Anticipatory_Action_Pilot_2020__Trigger_Analysis_Bangladesh.pdf" target="_blank" rel="noopener">Anticipatory Action Pilot 2020, trigger analysis</a>; <a href="https://www.wfp.org/publications/forecast-based-financing-nepal-return-investment-study" target="_blank" rel="noopener">WFP, Forecast-based financing in Nepal: a return on investment study</a>.</p>
+    </div>
+    <div>
+      <div class="fact"><b>36%</b><span>less likely to go a day without eating, for families paid before the 2020 Jamuna flood</span></div>
+      <div class="fact"><b>#5</b><span>Naungan's Jamuna program: the same gauge and forecast, and its replay pays in July 2020</span></div>
+      <div class="fact"><b>$34</b><span>of response costs avoided per dollar of early action, as WFP estimated for floods in Nepal (a modelled return, not a measured one)</span></div>
+    </div>
+  </div>
+</section>
+
 <section class="band" id="singapore">
   <div class="wrap aceh">
     <div>
