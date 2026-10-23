@@ -9,7 +9,7 @@ What one agency needs to run Naungan for real in one district for one season: wh
 | Coordinator | The lead agency (for example a Red Cross or Red Crescent national society, or a charity designated under Singapore's OHAS) | A wallet that creates the program | Picks the trigger from its Early Action Protocol, names the oracles and agencies, publishes the program |
 | Enrolling agencies | The coordinator and its partners | Their own beneficiary lists, off-chain, and an agency wallet | Identify households (KYC, sanctions screening) under their existing duties, dedup with each other without sharing lists (`/dedup` or `scripts/agency.js`), enroll anonymous commitments |
 | Oracles | At least two keys run by different organisations, for example the coordinator and a university or meteorological partner | One key each | Each runs `node scripts/oracle.js --all` on its own machine or CI; a 2-of-2 quorum means neither can open claims alone |
-| Donors | Anyone, including the coordinator's own funders | USDC | Fund the pool on the dashboard; take back their unpaid share after the season; get a donor statement (`/donor`) |
+| Donors | Anyone, including the coordinator's own funders | USDC | Fund the pool on the dashboard; take back their unpaid share after the season; get a donor statement (`/donor`) and their fraction of each program's hypercert (impact certificate) |
 | Relayer | The coordinator (or anyone: `claim()` accepts a proof from any sender) | A key with a little ETH for gas | Runs `scripts/relayer.js` or the Vercel function so households never need ETH |
 | Cash-out agents | Shops or licensed exchange agents near the households | A wallet | Accept USDC by QR (gasless, EIP-3009) and pay out local money |
 
@@ -27,7 +27,7 @@ What one agency needs to run Naungan for real in one district for one season: wh
 | 4–6 | Recruit cash-out agents near the households and test one small spend | One test spend settled |
 | Season | Watch: the hourly production monitor opens a GitHub issue when anything fails (oracle silent for 13 h, relayer low on gas, AI explanation down) | No open monitor issue |
 | Trigger | Claims open automatically; households get a push alert and claim from the claim app; agencies tell households without phones | Payouts land within minutes of the trigger |
-| After | Donors take back unpaid money; agencies read the anonymous ratings; the open data (IATI, HXL CSV) goes into the agency's own reporting | Report written |
+| After | Donors take back unpaid money; the coordinator mints the season's payouts as a hypercert (`node scripts/hypercert.js --program N --prepare`, deploy, then `--mint`) and donors mint their fractions; auditors and funders evaluate it from the dashboard; agencies read the anonymous ratings; the open data (IATI, HXL CSV) goes into the agency's own reporting | Report written |
 
 ## What it costs
 
@@ -39,6 +39,7 @@ Gas, priced live on the dashboard's **Running costs** panel from this deployment
 | Enrolling one household | about $0.003 |
 | One oracle report | about $0.0008; two oracles, four reports a day for a year: about $2.45 |
 | 1,000 households enrolled and paid | about $8.40 |
+| Impact certificate (hypercert) for a season's payouts | about $0.003 to mint (208,152 gas); an evaluation on EAS about one cent (835,666 gas, mostly its comment) |
 | AI explanation for households (Claude Haiku 5.5) | about $0.0002 an answer, at most about $0.05 a day (300-call cap) |
 | Hosting (Vercel, GitHub Actions, Upstash) | free tiers |
 

@@ -1,55 +1,139 @@
 1
-00:00:00,000 --> 00:00:05,646
-Naungan: cash that reaches families before the flood, heatwave or cyclone.
+00:00:04,000 --> 00:00:11,133
+Naungan means shelter. It is cash that reaches families before a flood, a heatwave or a cyclone.
 
 2
-00:00:05,646 --> 00:00:12,834
-Live on Base: 10 programs in 6 countries, each on a Red Cross / Red Crescent trigger.
+00:00:11,133 --> 00:00:20,400
+Today, aid agencies cannot see each other's lists. Some families are paid twice, others are missed, and the money arrives after the water.
 
 3
-00:00:12,834 --> 00:00:21,444
-Why early: families WFP paid before the 2020 Jamuna flood were 36% less likely to go a day without eating.
+00:00:20,400 --> 00:00:29,733
+When the World Food Programme paid families days before the 2020 Jamuna flood peaked, they were 36 percent less likely to go a day without eating.
 
 4
-00:00:21,444 --> 00:00:26,780
-The public dashboard is rebuilt from chain events. No household is named.
+00:00:29,733 --> 00:00:38,866
+Naungan coordinates without sharing. Agencies compare lists by private set intersection, and only anonymous commitments go on-chain.
 
 5
-00:00:26,780 --> 00:00:33,406
-Two independent forecasts, posted every 6 hours, with evidence anyone can recompute.
+00:00:38,866 --> 00:00:49,766
+Two independent forecasts must agree before claims open, and each family claims from its phone with a zero-knowledge proof: paid once, and nobody can tell who was paid.
 
 6
-00:00:33,406 --> 00:00:42,412
-Verify every payout: this browser re-checks each claim's zero-knowledge proof.
+00:00:49,766 --> 00:01:00,733
+Blockchains already move aid. What is new: no list leaves an agency, money moves before the disaster, and anyone can verify every payout.
 
 7
-00:00:42,412 --> 00:00:49,418
-In plain words: what a family reads, written by Claude and checked number by number.
+00:01:00,733 --> 00:01:08,166
+10 live programs in 6 countries, each on the trigger the local Red Cross or Red Crescent society published.
 
 8
-00:00:49,418 --> 00:00:56,433
-Running costs, from real transactions: about half a cent per family's claim on Base.
+00:01:08,166 --> 00:01:19,333
+Replayed over thirty years, the Aceh trigger would have paid 7 times, most recently on 23 Nov 2025, and held back 8 rain-only alarms.
 
 9
-00:00:56,433 --> 00:01:02,446
-The family's claim app, in its own language: seven languages, works offline.
+00:01:19,333 --> 00:01:26,433
+And anyone can check any river on Earth. Here is Sylhet, in Bangladesh.
 
 10
-00:01:02,446 --> 00:01:10,451
-Why this money? The trigger explained from on-chain facts only. Nothing about the family is sent.
+00:01:26,433 --> 00:01:32,166
+The page finds the main river, its flood level, and how often a program there would have paid.
 
 11
-00:01:10,451 --> 00:01:18,591
-Tapping Claim proves membership in zero knowledge; 1 USDC lands in about 12 seconds. Try this card yourself.
+00:01:32,166 --> 00:01:38,966
+The public dashboard is rebuilt from chain events, in your browser. No household is ever named.
 
 12
-00:01:18,591 --> 00:01:25,597
-Donors see where their money went, checked against the contract's own record.
+00:01:38,966 --> 00:01:45,366
+The oracles post their forecasts with evidence, and anyone can recompute a report in their own browser.
 
 13
-00:01:25,597 --> 00:01:32,599
-Any agency can launch a program from a browser wallet, starting from a published Early Action Protocol.
+00:01:45,366 --> 00:01:50,633
+Official GDACS alerts and the Red Cross plan for the area sit beside the trigger.
 
 14
-00:01:32,599 --> 00:01:42,971
-Open data in the formats aid already reads: IATI, HXL, CAP alerts in two languages. naungan.vercel.app
+00:01:50,633 --> 00:01:59,133
+In plain words: Claude explains the trigger in the family's language, shown only if every number matches the on-chain facts.
+
+15
+00:01:59,133 --> 00:02:05,800
+Running costs are measured from real transactions: about half a cent for a family's claim on Base.
+
+16
+00:02:05,800 --> 00:02:13,033
+Families rate the aid with a second zero-knowledge proof: one rating per family, never linked to its payment.
+
+17
+00:02:13,033 --> 00:02:20,700
+Verify every payout: this browser fetches each claim transaction and checks its zero-knowledge proof again.
+
+18
+00:02:20,700 --> 00:02:28,300
+Auditors sign the result on the Ethereum Attestation Service, so donors count independent checks instead of trusting us.
+
+19
+00:02:28,300 --> 00:02:35,900
+Each program's payouts are also a hypercert, on Hypercerts' own contract, split among the donors who paid for them.
+
+20
+00:02:35,900 --> 00:02:42,433
+Anyone can re-check the certificate on Hypercerts' four counts, then sign the evaluation on-chain.
+
+21
+00:02:42,433 --> 00:02:49,566
+This is the family's claim app. It works offline, reads aloud, and speaks seven languages.
+
+22
+00:02:49,566 --> 00:02:56,333
+Why this money? The trigger, explained from public facts only. Nothing about the family is sent.
+
+23
+00:02:56,333 --> 00:03:07,033
+Tapping Claim proves the family is enrolled without saying who it is. One US dollar lands in about twelve seconds, and judges can try this very card.
+
+24
+00:03:07,033 --> 00:03:16,866
+Families with a phone register themselves. The phone keeps its secret and shows only an anonymous registration code, with the amount in local money.
+
+25
+00:03:16,866 --> 00:03:24,466
+The agency pastes the codes it collected and enrolls them in one transaction, from its own wallet.
+
+26
+00:03:24,466 --> 00:03:32,866
+Two agencies check their lists against each other without either seeing the other's names. The list never leaves this computer.
+
+27
+00:03:32,866 --> 00:03:43,133
+Any agency can launch a program from a published Early Action Protocol: the trigger, the place, the people within reach and the budget.
+
+28
+00:03:43,133 --> 00:03:50,200
+A printable poster, in English or the local language, invites households to register with a QR code.
+
+29
+00:03:50,200 --> 00:03:55,066
+And partners embed a live card of any program on their own site.
+
+30
+00:03:55,066 --> 00:04:00,400
+Donors see where every gift went, checked against the contract's own record.
+
+31
+00:04:00,400 --> 00:04:07,900
+And they claim their fraction of each impact certificate, to keep, give, or offer to a retroactive funder.
+
+32
+00:04:07,900 --> 00:04:19,000
+Everything is open data in the formats aid already reads: IATI, HXL, GeoJSON, and bilingual CAP alerts that national warning systems can relay.
+
+33
+00:04:19,000 --> 00:04:24,466
+The contract has no owner, so nobody can change the rules after donors give.
+
+34
+00:04:24,466 --> 00:04:32,566
+It is rehearsed on a fork of Base mainnet with Circle's real USDC, and checked by more than two hundred and forty automated tests.
+
+35
+00:04:32,566 --> 00:04:35,633
+Try it at naungan dot vercel dot app.

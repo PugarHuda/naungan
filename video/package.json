@@ -1,0 +1,22 @@
+{
+  "name": "naungan-demo-video",
+  "private": true,
+  "description": "The narrated live demo (web/public/demo.mp4): Playwright records every feature on the live site, Remotion composes it with captions and an AI voice",
+  "scripts": {
+    "capture": "node capture.cjs",
+    "studio": "remotion studio src/index.ts",
+    "render": "remotion render src/index.ts Demo out/demo.mp4 --codec h264 --crf 23",
+    "web": "ffmpeg -v error -y -i out/demo.mp4 -c:v libx264 -preset slow -crf 30 -pix_fmt yuv420p -c:a aac -b:a 96k -movflags +faststart ../web/public/demo.mp4 && ffmpeg -v error -y -ss 9 -i ../web/public/demo.mp4 -frames:v 1 -q:v 4 ../web/public/demo-poster.jpg && node srt.mts",
+    "all": "npm run capture && npm run render && npm run web"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.538",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "remotion": "4.0.538"
+  },
+  "devDependencies": {
+    "@types/react": "19.3.0",
+    "typescript": "5.9.3"
+  }
+}

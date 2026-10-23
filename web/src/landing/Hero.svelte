@@ -44,7 +44,7 @@
             <div class="ctas">
                 <a class="btn go" href="dashboard">See it live on Base</a>
                 <a class="btn plain" href="claim">Claim with a card →</a>
-                <a class="btn plain" href="#demo">Watch the 100-second demo</a>
+                <a class="btn plain" href="#demo">Watch the live demo (4½ min)</a>
             </div>
         </div>
     </div>

@@ -1,0 +1,344 @@
+{
+  "site": "https://naungan.vercel.app",
+  "voice": "en-US-AvaMultilingualNeural",
+  "recorded": "2026-10-23T04:34:31.932Z",
+  "scenes": [
+    {
+      "id": "problem",
+      "chapter": "The problem",
+      "clip": "clips/problem.webm",
+      "segments": [
+        {
+          "from": 3.284,
+          "to": 10.417,
+          "text": "Naungan means shelter. It is cash that reaches families before a flood, a heatwave or a cyclone.",
+          "voice": "voice/00.mp3",
+          "voiceSecs": 6.624
+        },
+        {
+          "from": 23.18,
+          "to": 32.446,
+          "text": "Today, aid agencies cannot see each other's lists. Some families are paid twice, others are missed, and the money arrives after the water.",
+          "voice": "voice/01.mp3",
+          "voiceSecs": 8.76
+        },
+        {
+          "from": 33.923,
+          "to": 43.262,
+          "text": "When the World Food Programme paid families days before the 2020 Jamuna flood peaked, they were 36 percent less likely to go a day without eating.",
+          "voice": "voice/02.mp3",
+          "voiceSecs": 8.832
+        }
+      ]
+    },
+    {
+      "id": "how",
+      "chapter": "How it works",
+      "clip": "clips/how.webm",
+      "segments": [
+        {
+          "from": 2.134,
+          "to": 11.264,
+          "text": "Naungan coordinates without sharing. Agencies compare lists by private set intersection, and only anonymous commitments go on-chain.",
+          "voice": "voice/03.mp3",
+          "voiceSecs": 8.616
+        },
+        {
+          "from": 13.153,
+          "to": 24.057,
+          "text": "Two independent forecasts must agree before claims open, and each family claims from its phone with a zero-knowledge proof: paid once, and nobody can tell who was paid.",
+          "voice": "voice/04.mp3",
+          "voiceSecs": 10.392
+        },
+        {
+          "from": 26.714,
+          "to": 37.692,
+          "text": "Blockchains already move aid. What is new: no list leaves an agency, money moves before the disaster, and anyone can verify every payout.",
+          "voice": "voice/05.mp3",
+          "voiceSecs": 10.464
+        }
+      ]
+    },
+    {
+      "id": "world",
+      "chapter": "Live programs",
+      "clip": "clips/world.webm",
+      "segments": [
+        {
+          "from": 7.793,
+          "to": 15.228,
+          "text": "10 live programs in 6 countries, each on the trigger the local Red Cross or Red Crescent society published.",
+          "voice": "voice/06.mp3",
+          "voiceSecs": 6.912
+        },
+        {
+          "from": 23.635,
+          "to": 34.793,
+          "text": "Replayed over thirty years, the Aceh trigger would have paid 7 times, most recently on 23 Nov 2025, and held back 8 rain-only alarms.",
+          "voice": "voice/07.mp3",
+          "voiceSecs": 10.656
+        },
+        {
+          "from": 39.579,
+          "to": 53.246,
+          "text": "And anyone can check any river on Earth. Here is Sylhet, in Bangladesh.",
+          "voice": "voice/08.mp3",
+          "voiceSecs": 5.16
+        },
+        {
+          "from": 61.095,
+          "to": 66.812,
+          "text": "The page finds the main river, its flood level, and how often a program there would have paid.",
+          "voice": "voice/09.mp3",
+          "voiceSecs": 5.184
+        }
+      ]
+    },
+    {
+      "id": "dashboard",
+      "chapter": "Public dashboard",
+      "clip": "clips/dashboard.webm",
+      "segments": [
+        {
+          "from": 13.622,
+          "to": 20.413,
+          "text": "The public dashboard is rebuilt from chain events, in your browser. No household is ever named.",
+          "voice": "voice/dashboard-0.mp3",
+          "voiceSecs": 6.288
+        },
+        {
+          "from": 22.02,
+          "to": 28.431,
+          "text": "The oracles post their forecasts with evidence, and anyone can recompute a report in their own browser.",
+          "voice": "voice/dashboard-1.mp3",
+          "voiceSecs": 5.904
+        },
+        {
+          "from": 30.142,
+          "to": 35.425,
+          "text": "Official GDACS alerts and the Red Cross plan for the area sit beside the trigger.",
+          "voice": "voice/dashboard-2.mp3",
+          "voiceSecs": 4.776
+        },
+        {
+          "from": 37.06,
+          "to": 45.555,
+          "text": "In plain words: Claude explains the trigger in the family's language, shown only if every number matches the on-chain facts.",
+          "voice": "voice/dashboard-3.mp3",
+          "voiceSecs": 7.992
+        },
+        {
+          "from": 47.071,
+          "to": 53.75,
+          "text": "Running costs are measured from real transactions: about half a cent for a family's claim on Base.",
+          "voice": "voice/dashboard-4.mp3",
+          "voiceSecs": 6.168
+        },
+        {
+          "from": 55.278,
+          "to": 62.513,
+          "text": "Families rate the aid with a second zero-knowledge proof: one rating per family, never linked to its payment.",
+          "voice": "voice/dashboard-5.mp3",
+          "voiceSecs": 6.72
+        }
+      ]
+    },
+    {
+      "id": "audit",
+      "chapter": "Verify every payout",
+      "clip": "clips/audit.webm",
+      "segments": [
+        {
+          "from": 11.465,
+          "to": 19.131,
+          "text": "Verify every payout: this browser fetches each claim transaction and checks its zero-knowledge proof again.",
+          "voice": "voice/16.mp3",
+          "voiceSecs": 7.152
+        },
+        {
+          "from": 21.664,
+          "to": 29.256,
+          "text": "Auditors sign the result on the Ethereum Attestation Service, so donors count independent checks instead of trusting us.",
+          "voice": "voice/17.mp3",
+          "voiceSecs": 7.08
+        },
+        {
+          "from": 30.756,
+          "to": 38.341,
+          "text": "Each program's payouts are also a hypercert, on Hypercerts' own contract, split among the donors who paid for them.",
+          "voice": "voice/18.mp3",
+          "voiceSecs": 7.08
+        },
+        {
+          "from": 39.832,
+          "to": 46.37,
+          "text": "Anyone can re-check the certificate on Hypercerts' four counts, then sign the evaluation on-chain.",
+          "voice": "voice/19.mp3",
+          "voiceSecs": 6.024
+        }
+      ]
+    },
+    {
+      "id": "claim",
+      "chapter": "The family's phone",
+      "clip": "clips/claim.webm",
+      "segments": [
+        {
+          "from": 8.665,
+          "to": 15.793,
+          "text": "This is the family's claim app. It works offline, reads aloud, and speaks seven languages.",
+          "voice": "voice/20.mp3",
+          "voiceSecs": 6.624
+        },
+        {
+          "from": 22.118,
+          "to": 28.885,
+          "text": "Why this money? The trigger, explained from public facts only. Nothing about the family is sent.",
+          "voice": "voice/21.mp3",
+          "voiceSecs": 6.264
+        },
+        {
+          "from": 46.369,
+          "to": 57.057,
+          "text": "Tapping Claim proves the family is enrolled without saying who it is. One US dollar lands in about twelve seconds, and judges can try this very card.",
+          "voice": "voice/22.mp3",
+          "voiceSecs": 10.176
+        }
+      ]
+    },
+    {
+      "id": "join",
+      "chapter": "Self-registration",
+      "clip": "clips/join.webm",
+      "segments": [
+        {
+          "from": 14.211,
+          "to": 24.056,
+          "text": "Families with a phone register themselves. The phone keeps its secret and shows only an anonymous registration code, with the amount in local money.",
+          "voice": "voice/23.mp3",
+          "voiceSecs": 9.336
+        }
+      ]
+    },
+    {
+      "id": "enroll",
+      "chapter": "Agency enrollment",
+      "clip": "clips/enroll.webm",
+      "segments": [
+        {
+          "from": 7.12,
+          "to": 17.229,
+          "text": "The agency pastes the codes it collected and enrolls them in one transaction, from its own wallet.",
+          "voice": "voice/24.mp3",
+          "voiceSecs": 5.664
+        }
+      ]
+    },
+    {
+      "id": "dedup",
+      "chapter": "Dedup without sharing",
+      "clip": "clips/dedup.webm",
+      "segments": [
+        {
+          "from": 10.449,
+          "to": 18.848,
+          "text": "Two agencies check their lists against each other without either seeing the other's names. The list never leaves this computer.",
+          "voice": "voice/25.mp3",
+          "voiceSecs": 7.896
+        }
+      ]
+    },
+    {
+      "id": "launch",
+      "chapter": "Launch a program",
+      "clip": "clips/launch.webm",
+      "segments": [
+        {
+          "from": 12.015,
+          "to": 25.08,
+          "text": "Any agency can launch a program from a published Early Action Protocol: the trigger, the place, the people within reach and the budget.",
+          "voice": "voice/26.mp3",
+          "voiceSecs": 8.328
+        }
+      ]
+    },
+    {
+      "id": "poster",
+      "chapter": "Posters and widgets",
+      "clip": "clips/poster.webm",
+      "segments": [
+        {
+          "from": 10.079,
+          "to": 17.136,
+          "text": "A printable poster, in English or the local language, invites households to register with a QR code.",
+          "voice": "voice/poster-0.mp3",
+          "voiceSecs": 6.552
+        },
+        {
+          "from": 18.682,
+          "to": 23.534,
+          "text": "And partners embed a live card of any program on their own site.",
+          "voice": "voice/poster-1.mp3",
+          "voiceSecs": 4.344
+        }
+      ]
+    },
+    {
+      "id": "donor",
+      "chapter": "Donor statement",
+      "clip": "clips/donor.webm",
+      "segments": [
+        {
+          "from": 14.755,
+          "to": 20.088,
+          "text": "Donors see where every gift went, checked against the contract's own record.",
+          "voice": "voice/29.mp3",
+          "voiceSecs": 4.824
+        },
+        {
+          "from": 27.106,
+          "to": 34.597,
+          "text": "And they claim their fraction of each impact certificate, to keep, give, or offer to a retroactive funder.",
+          "voice": "voice/30.mp3",
+          "voiceSecs": 6.984
+        }
+      ]
+    },
+    {
+      "id": "open",
+      "chapter": "Open data",
+      "clip": "clips/open.webm",
+      "segments": [
+        {
+          "from": 2.43,
+          "to": 13.546,
+          "text": "Everything is open data in the formats aid already reads: IATI, HXL, GeoJSON, and bilingual CAP alerts that national warning systems can relay.",
+          "voice": "voice/open-0.mp3",
+          "voiceSecs": 10.608
+        }
+      ]
+    },
+    {
+      "id": "close",
+      "chapter": "Try it",
+      "clip": null,
+      "segments": [
+        {
+          "text": "The contract has no owner, so nobody can change the rules after donors give.",
+          "voice": "voice/close-0.mp3",
+          "voiceSecs": 5.016
+        },
+        {
+          "text": "It is rehearsed on a fork of Base mainnet with Circle's real USDC, and checked by more than two hundred and forty automated tests.",
+          "voice": "voice/close-1.mp3",
+          "voiceSecs": 7.656
+        },
+        {
+          "text": "Try it at naungan dot vercel dot app.",
+          "voice": "voice/close-2.mp3",
+          "voiceSecs": 2.616
+        }
+      ]
+    }
+  ]
+}
