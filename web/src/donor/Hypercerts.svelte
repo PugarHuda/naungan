@@ -90,6 +90,7 @@
 
 <style>
     .hc { display: flex; flex-wrap: wrap; gap: 10px 16px; justify-content: space-between; align-items: center; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin: 8px 0 }
+    a { color: var(--accent) }
     .hc img { border-radius: 8px; flex: none }
     .hc div { display: flex; flex-direction: column; gap: 2px; flex: 1 1 280px; min-width: 0 }
     .fine { color: var(--muted); font-size: 14px }
