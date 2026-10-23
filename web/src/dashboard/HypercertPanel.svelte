@@ -169,5 +169,6 @@
     .hcard { display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap }
     .hcard img { border-radius: 10px; flex: none }
     .hcard p { flex: 1 1 220px; margin-top: 0 }
+    .hcv li::before { content: none } /* the mark is in the text: a failed count must not show the list's ✓ */
     .hcv li.bad { color: var(--warn) }
 </style>
