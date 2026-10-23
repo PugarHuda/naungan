@@ -32,3 +32,22 @@ test("donor statement: with the wide-range RPCs refusing, the gifts come from th
     await page.goto(`/donor?address=${DONOR}`)
     await expect(page.getByText(/Gifts found through open data\.$/)).toBeVisible({ timeout: 40_000 })
 })
+
+test("donor statement: the donor's impact certificates, checked against Hypercerts' HypercertMinter, with their fraction", async ({ page, check }) => {
+    await page.goto(`/donor?address=${DONOR}`)
+    const hc = page.getByRole("region", { name: "Impact certificates" }).or(page.locator("section", { has: page.getByRole("heading", { name: "Impact certificates" }) }))
+    const card = hc.locator(".hc").filter({ hasText: "#1 Krueng Aceh flood · Banda Aceh" })
+    await expect(card).toContainText("3 households paid · your fraction 100% (6 USDC of the payouts)", { timeout: 90_000 })
+    await expect(card).toContainText("HypercertMinter holds this URI and accepts this address's proof")
+    await expect(card.getByRole("img", { name: /Impact certificate card/ })).toHaveAttribute("src", /^data:image\/svg\+xml;base64,/)
+    await expect(card.getByRole("link", { name: "Minted on Base Sepolia" })).toHaveAttribute("href", /sepolia\.basescan\.org\/tx\/0x[0-9a-f]{64}$/)
+    await expect(card.getByRole("button", { name: "Add to my wallet" }).or(card.getByText("In your wallet"))).toBeVisible()
+    await check(page)
+})
+
+test("donor statement: an allowlist that is not the one minted is refused, not offered @desktop", async ({ page, context }) => {
+    await context.route(/\/hypercerts\/.*-allowlist\.json$/, (r) => r.fulfill({ contentType: "application/json", body: '{"format":"standard-v1","tree":[],"values":[],"leafEncoding":["address","uint256"]}' }))
+    await page.goto(`/donor?address=${DONOR}`)
+    await expect(page.getByText(/Could not check the impact certificates: the files of program #1's hypercert differ from the ones minted/)).toBeVisible({ timeout: 90_000 })
+    await expect(page.getByRole("button", { name: "Add to my wallet" })).toHaveCount(0)
+})

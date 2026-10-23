@@ -6,7 +6,7 @@
   <div class="wrap">
     <div class="eyebrow">Built, not just pitched</div>
     <h2 class="big">A working prototype you can verify yourself.</h2>
-    <p class="intro">Real Groth16 proofs generated on the phone and verified on-chain, a hosted gas relayer, an authenticated agency dedup service, two independent flood oracles (GloFAS river discharge and NOAA GEFS rainfall, 2-of-2 quorum) running every 6 hours, and 227 automated tests (87 contract and service, 71 frontend, 69 in real browsers on the production build). From the dashboard anyone can re-run an oracle's computation, or re-verify every payout's zero-knowledge proof from its raw transaction, in their own browser.</p>
+    <p class="intro">Real Groth16 proofs generated on the phone and verified on-chain, a hosted gas relayer, an authenticated agency dedup service, two independent flood oracles (GloFAS river discharge and NOAA GEFS rainfall, 2-of-2 quorum) running every 6 hours, and 235 automated tests (92 contract and service, 71 frontend, 72 in real browsers on the production build). From the dashboard anyone can re-run an oracle's computation, or re-verify every payout's zero-knowledge proof from its raw transaction, in their own browser.</p>
     <video id="demo" class="demo" controls preload="none" poster="/demo-poster.jpg" aria-label="100-second narrated, captioned walkthrough of the live app"><source src="/demo.mp4" type="video/mp4" /></video>
     <div class="built">
       <a class="panel card" href="dashboard"><h3>Live dashboard →</h3><p>Totals rebuilt from chain events only, refreshed every two seconds, with a one-click audit of every payout’s proof.</p></a>

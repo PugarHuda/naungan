@@ -12,8 +12,8 @@
     "sha256": "6fa2aec701fad024f4d32f4a5dd308886406035888c4ce0a8d219a28ef8a3817",
     "allowListSha256": "79f30d5eba33ee74bde204d5e2bd5c1c0b91dd396c49c3cb7df7d2731cf7f0ba",
     "root": "0xc4b817cecc766bfa6cba3209c3f808f2aa0a876581f2f5c03de6c4b87c2bcd81",
-    "claimID": null,
-    "tx": null
+    "claimID": "46278401901247631031018946610720476758016",
+    "tx": "0x756f12cf375779cf2786af49414fc1d3e2a8966ff8163e0769e205e78e79b0e4"
   },
   {
     "chainId": 84532,
@@ -28,7 +28,7 @@
     "sha256": "f88b6651d1964e2c2124646e6a6548c88b4a0754c74debd3215e81bd0bf86664",
     "allowListSha256": "79f30d5eba33ee74bde204d5e2bd5c1c0b91dd396c49c3cb7df7d2731cf7f0ba",
     "root": "0xc4b817cecc766bfa6cba3209c3f808f2aa0a876581f2f5c03de6c4b87c2bcd81",
-    "claimID": null,
-    "tx": null
+    "claimID": "46618684268168569494482321218152244969472",
+    "tx": "0xa14edaf24c13d7b40b13cf8d7938e2d7f92766228669ada31443632774e2f5d2"
   }
 ]

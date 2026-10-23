@@ -73,10 +73,14 @@ async function mint({ d, signer, wallet }, x) {
         const res = await fetch(url, { cache: "no-store" })
         if (!res.ok || sha(await res.text()) !== want) throw new Error(`${url} is not live yet or differs from the prepared file (${res.status}): deploy first`)
     }
-    // Hypercerts' own validator: the metadata schema, and that the allowlist it points to is a tree of 100M units.
+    // Hypercerts' own validator for the metadata schema. It cannot fetch the allowlist (its server reaches no URL, not
+    // even GitHub, when this was written), so the tree is checked here: 100M units, and the root being minted.
     const meta = await (await fetch(x.uri, { cache: "no-store" })).json()
-    const v = await (await fetch(`${hc.API[d.chainId]}/v2/metadata/validate`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ metadata: meta }) })).json()
+    const { allowList, ...schema } = meta
+    const v = await (await fetch(`${hc.API[d.chainId]}/v2/metadata/validate`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ metadata: schema }) })).json()
     if (!v.valid) throw new Error(`Hypercerts' validator refused it: ${JSON.stringify(v).slice(0, 400)}`)
+    const t = hc.loadTree(await (await fetch(allowList, { cache: "no-store" })).text())
+    if (t.root !== x.root || [...t.entries()].reduce((s, [, [, u]]) => s + BigInt(u), 0n) !== BigInt(x.units)) throw new Error("the live allowlist is not the prepared tree of 100M units")
     const minter = new ethers.Contract(x.minter, hc.ABI, signer)
     const tx = await minter.createAllowlist(wallet.address, BigInt(x.units), x.root, x.uri, hc.ALLOW_ALL)
     const rc = await tx.wait()

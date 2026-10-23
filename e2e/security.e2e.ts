@@ -44,3 +44,12 @@ test("security.txt (RFC 9116) and link previews on every page @desktop", async (
             expect(html, `${p} ${m}`).toContain(m)
     }
 })
+
+// Vercel serves dist/404.html for any unknown path; its default page ran inline scripts our CSP blocks.
+test("404 page: renders under the CSP with no script, and sends a mistyped card link back to the claim app", async ({ page, check }) => {
+    await page.goto("/404.html")
+    await expect(page.getByRole("heading", { name: "This page does not exist" })).toBeVisible()
+    await expect(page.getByRole("link", { name: /Claim app/ })).toHaveAttribute("href", "/claim")
+    expect(await page.locator("script").count()).toBe(0)
+    await check(page)
+})
