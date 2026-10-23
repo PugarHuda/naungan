@@ -12,7 +12,7 @@
 
     type Entry = (typeof minted)[number]
     type Verdict = { basic: number; work: number; contributors: number; properties: number; why: string[] }
-    type Evaluation = { uid: string; attester: string; verified: boolean; basic: number; work: number; contributors: number }
+    type Evaluation = { uid: string; attester: string; time: number; verified: boolean; disputed: boolean }
     const FIELDS: [keyof Omit<Verdict, "why">, string][] = [["basic", "States the households and USDC paid"], ["work", "Every payout's proof verifies"], ["contributors", "Fractions are the donors' shares"], ["properties", "Files are the ones minted"]]
 
     const entry = $derived(minted.find((x) => x.claimID && x.chainId === d.chainId && x.contract.toLowerCase() === d.naungan.toLowerCase() && BigInt(x.programId) === dash.pid))
@@ -52,7 +52,7 @@
         let live = true
         import("../../../lib/hypercert.mjs")
             .then(async (hc) => {
-                const list = (await hc.listEvaluations({ graphql, entry: x })) as Evaluation[]
+                const list = hc.latestPerAttester(await hc.listEvaluations({ graphql, entry: x })) as Evaluation[]
                 if (live) evals = list
             })
             .catch((e) => live && (evalNote = `Evaluations on EAS are unavailable right now (${e.message}).`))
@@ -111,10 +111,11 @@
         }
     }
 
-    // The minting key checking its own certificate is shown, but never counted as independent.
+    // One evaluation per address (its newest). Evaluators are self-declared, as on Hypercerts' app: the count says how
+    // many addresses signed, not who they are. The minting key checking its own certificate is shown, never counted.
     const own = (e: Evaluation) => !!entry?.creator && e.attester.toLowerCase() === entry.creator.toLowerCase()
     const verified = $derived(evals?.filter((e) => e.verified && !own(e)).length ?? 0)
-    const disputed = $derived(evals?.filter((e) => e.basic === 2 && e.work === 2 && e.contributors === 2).length ?? 0)
+    const disputed = $derived(evals?.filter((e) => e.disputed && !own(e)).length ?? 0)
 </script>
 
 {#if entry}
@@ -149,7 +150,7 @@
                 {#if evals}
                     <div class="head verdict {disputed ? 'bad' : verified ? 'ok' : ''}">
                         <b>{evals.length}</b>
-                        <span>{evals.length ? `Hypercerts ${evals.length === 1 ? "evaluation" : "evaluations"} signed on EAS: ${verified} independent ${verified === 1 ? "evaluator" : "evaluators"} verified it${disputed ? `, ${disputed} disputed it` : ""}${evals.some(own) ? " (Naungan's own check not counted)" : ""}` : "Hypercerts evaluations signed yet. Check the certificate above and be the first."}</span>
+                        <span>{evals.length ? `${evals.length === 1 ? "address has" : "addresses have"} signed a Hypercerts evaluation on EAS: ${verified} other than Naungan found it valid${disputed ? `, ${disputed} disputed it` : ""}${evals.some(own) ? " (Naungan's own check not counted)" : ""}. Evaluators are self-declared: open each to see who signed.` : "addresses have signed a Hypercerts evaluation yet. Check the certificate above and be the first."}</span>
                     </div>
                     <ol>
                         {#each evals as e (e.uid)}

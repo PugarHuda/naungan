@@ -103,4 +103,10 @@ describe("Hypercerts evaluation of a minted certificate (lib/hypercert.mjs evalu
         expect([w.properties, w.basic]).to.deep.equal([2, 2])
         expect(hc.evaluationComment(entry, w, "")).to.match(/found problems/)
     })
+
+    it("counts one evaluation per address, its newest, however often a key signs", () => {
+        const e = (attester, time, verified) => ({ attester, time, verified })
+        const out = hc.latestPerAttester([e(A, 1, true), e(A, 3, false), e(A.toUpperCase().replace("0X", "0x"), 2, true), e(B, 2, true)])
+        expect(out.map((x) => [x.attester.toLowerCase(), x.time, x.verified])).to.deep.equal([[A, 3, false], [B, 2, true]])
+    })
 })

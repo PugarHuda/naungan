@@ -148,7 +148,7 @@ test("dashboard: program 1's impact certificate re-checked in the browser on Hyp
     const panel = page.locator("article", { has: page.getByRole("heading", { name: "Impact certificate" }) })
     await expect(panel.getByRole("img", { name: /Impact certificate card: 3 households paid by program #1/ })).toBeVisible({ timeout: 30_000 }) // shown only when the file hashes as minted
     // Signed by the minting key itself: listed, never counted as independent.
-    await expect(panel.getByText(/Hypercerts evaluations? signed on EAS: \d+ independent evaluators? verified it.*\(Naungan's own check not counted\)/)).toBeVisible({ timeout: 30_000 })
+    await expect(panel.getByText(/signed a Hypercerts evaluation on EAS: \d+ other than Naungan found it valid.*\(Naungan's own check not counted\)\. Evaluators are self-declared/)).toBeVisible({ timeout: 30_000 })
     await expect(panel.getByText("Naungan's own key", { exact: false }).first()).toBeVisible()
     await expect(page.locator('[role="log"] .row').first()).toBeVisible()
     await panel.getByRole("button", { name: "Check this certificate" }).click()
