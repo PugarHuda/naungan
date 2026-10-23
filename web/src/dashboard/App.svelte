@@ -9,6 +9,7 @@
     import HouseholdsPanel from "./HouseholdsPanel.svelte"
     import DonatePanel from "./DonatePanel.svelte"
     import AuditPanel from "./AuditPanel.svelte"
+    import HypercertPanel from "./HypercertPanel.svelte"
     import TrackRecord from "./TrackRecord.svelte"
     import IfrcPanel from "./IfrcPanel.svelte"
     import GdacsPanel from "./GdacsPanel.svelte"
@@ -54,6 +55,7 @@
         <section class="proofs" aria-label="Checks you can run">
             <PlainWords />
             <AuditPanel />
+            <HypercertPanel />
             <TrackRecord />
             <IfrcPanel />
             <GdacsPanel />

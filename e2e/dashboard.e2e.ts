@@ -142,3 +142,24 @@ test("dashboard: 'In plain words' shows what a household reads, in its language,
     await expect(panel.getByText("The facts it was given")).toBeVisible()
     await check(page)
 })
+
+test("dashboard: program 1's impact certificate re-checked in the browser on Hypercerts' four counts, with the evaluations on EAS", async ({ page, check }) => {
+    await page.goto("/dashboard.html?program=1")
+    const panel = page.locator("article", { has: page.getByRole("heading", { name: "Impact certificate" }) })
+    await expect(panel.getByRole("img", { name: /Impact certificate card: 3 households paid by program #1/ })).toBeVisible({ timeout: 30_000 }) // shown only when the file hashes as minted
+    // Signed by the minting key itself: listed, never counted as independent.
+    await expect(panel.getByText(/Hypercerts evaluations? signed on EAS: \d+ independent evaluators? verified it.*\(Naungan's own check not counted\)/)).toBeVisible({ timeout: 30_000 })
+    await expect(panel.getByText("Naungan's own key", { exact: false }).first()).toBeVisible()
+    await expect(page.locator('[role="log"] .row').first()).toBeVisible()
+    await panel.getByRole("button", { name: "Check this certificate" }).click()
+    for (const label of ["States the households and USDC paid", "Every payout's proof verifies", "Fractions are the donors' shares", "Files are the ones minted"])
+        await expect(panel.getByText(`✓ ${label}`)).toBeVisible({ timeout: 90_000 })
+    await expect(panel.getByRole("button", { name: "Sign this as a Hypercerts evaluation (EAS)" })).toBeVisible()
+    await check(page)
+})
+
+test("dashboard: a program without a certificate shows no certificate panel @desktop", async ({ page }) => {
+    await page.goto("/dashboard.html?program=8")
+    await expect(page.locator("h1")).toHaveText(/Aguán/)
+    await expect(page.getByRole("heading", { name: "Impact certificate" })).toHaveCount(0)
+})

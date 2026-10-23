@@ -63,3 +63,44 @@ describe("Hypercert of a program's payouts (lib/hypercert.mjs)", () => {
         }
     })
 })
+
+describe("Hypercerts evaluation of a minted certificate (lib/hypercert.mjs evaluate)", () => {
+    // Program #1 as minted: the real files and entry, the real gifts and payout blocks.
+    const list = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "web", "hypercerts.json"), "utf8"))
+    const entry = list.find((x) => x.programId === 1)
+    const file = (u) => fs.readFileSync(path.join(__dirname, "..", "web", "public", new URL(u).pathname), "utf8")
+    const metaText = file(entry.uri)
+    const listText = file(entry.uri.replace(/\.json$/, "-allowlist.json"))
+    const DONOR = "0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E"
+    const gifts = [{ donor: DONOR, amount: 6_000_000n, block: 48328300 }]
+    const payouts = [48329942, 48329947, 48329953].map((block) => ({ block, ok: true }))
+
+    it("is valid on all four counts for the certificate as minted, and encodes under Hypercerts' registered schema", async () => {
+        const v = await hc.evaluate({ entry, metaText, listText, gifts, payouts })
+        expect(v).to.deep.include({ basic: 1, work: 1, contributors: 1, properties: 1 })
+        expect(v.why).to.deep.equal([])
+        expect(hc.EVAL_UID).to.equal("0x2f4f575d5df78ac52e8b124c4c900ec4c540f1d44f5b8825fac0af5308c91449") // as on Base Sepolia's SchemaRegistry
+        const call = require("../lib/eas.mjs").EAS_ABI.decodeFunctionData("attest", hc.evaluationCall(entry, v, hc.evaluationComment(entry, v, "")))
+        const [chain, minter, token, basic, , , , comment, tags] = ethers.AbiCoder.defaultAbiCoder().decode(["uint256", "address", "uint256", "uint8", "uint8", "uint8", "uint8", "string", "string[]"], call[0].data.data)
+        expect([Number(chain), minter, token.toString(), Number(basic)]).to.deep.equal([84532, hc.MINTER[84532], entry.claimID, 1])
+        expect(comment).to.match(/^Re-checked against the chain: 3 payouts/)
+        expect(tags).to.deep.equal(["naungan", "zk-payout-audit"])
+    })
+
+    it("marks each count invalid for what is actually wrong", async () => {
+        // A payout failing the ZK audit, or one missing: the work.
+        expect((await hc.evaluate({ entry, metaText, listText, gifts, payouts: [...payouts.slice(0, 2), { block: 48329953, ok: false }] })).work).to.equal(2)
+        expect((await hc.evaluate({ entry, metaText, listText, gifts, payouts: payouts.slice(0, 2) })).work).to.equal(2)
+        // Payouts after the snapshot do not count against it.
+        expect((await hc.evaluate({ entry, metaText, listText, gifts, payouts: [...payouts, { block: entry.block + 10, ok: false }] })).work).to.equal(1)
+        // A second donor before the snapshot whom the allowlist leaves out: the contributors.
+        const v = await hc.evaluate({ entry, metaText, listText, gifts: [...gifts, { donor: "0x00000000000000000000000000000000000000aa", amount: 1_000_000n, block: 48330000 }], payouts })
+        expect(v.contributors).to.equal(2)
+        expect(v.why[0]).to.match(/^contributors: the allowlist is not the donors' pro-rata shares/)
+        // A metadata file changed after mint: the properties; and its figures: the basics.
+        const edited = metaText.replace("3 households paid", "30 households paid")
+        const w = await hc.evaluate({ entry, metaText: edited, listText, gifts, payouts })
+        expect([w.properties, w.basic]).to.deep.equal([2, 2])
+        expect(hc.evaluationComment(entry, w, "")).to.match(/found problems/)
+    })
+})

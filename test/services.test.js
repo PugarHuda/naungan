@@ -205,6 +205,56 @@ describe("steady RPC reads", () => {
         expect(c.seen.filter((m) => m === "eth_call")).to.have.length(3)
         c.server.close()
     })
+
+    it("asks again when the node refuses any read for itself (-32004 'failed to serve request'), never a sent transaction", async () => {
+        let refuse = 2
+        const seen = []
+        const server = http.createServer((req, res) => {
+            let body = ""
+            req.on("data", (x) => (body += x)).on("end", () => {
+                const p = JSON.parse(body)
+                seen.push(p.method)
+                const busy = p.method !== "eth_chainId" && refuse-- > 0
+                res.end(JSON.stringify(busy ? { jsonrpc: "2.0", id: p.id, error: { code: -32004, message: "failed to serve request" } } : { jsonrpc: "2.0", id: p.id, result: p.method === "eth_sendRawTransaction" ? "0x" + "11".repeat(32) : null }))
+            })
+        })
+        await new Promise((r) => server.listen(0, r))
+        const url = `http://127.0.0.1:${server.address().port}`
+        const p = new SteadyProvider(url, 84532, { staticNetwork: true })
+        expect(await p.send("eth_getTransactionByHash", ["0x" + "22".repeat(32)])).to.equal(null)
+        expect(seen.filter((m) => m === "eth_getTransactionByHash")).to.have.length(3)
+        refuse = 1
+        await expect(p.send("eth_sendRawTransaction", ["0x00"])).to.be.rejectedWith(/failed to serve/)
+        expect(seen.filter((m) => m === "eth_sendRawTransaction")).to.have.length(1)
+        server.close()
+    })
+
+    it("sends a read the main RPC keeps refusing, or a transaction it plainly refused, to the deployment's other public RPCs", async () => {
+        const rpc = (answer) => new Promise((r) => {
+            const seen = []
+            const server = http.createServer((req, res) => {
+                let body = ""
+                req.on("data", (x) => (body += x)).on("end", () => {
+                    const p = JSON.parse(body)
+                    seen.push(p.method)
+                    res.end(JSON.stringify({ jsonrpc: "2.0", id: p.id, ...answer(p) }))
+                })
+            })
+            server.listen(0, () => r({ server, seen, url: `http://127.0.0.1:${server.address().port}` }))
+        })
+        const main = await rpc(() => ({ error: { code: -32004, message: "failed to serve request" } }))
+        const down = await rpc(() => ({ error: { code: 429, message: "Too Many Requests" } }))
+        const good = await rpc(() => ({ result: { hash: "0x" + "33".repeat(32) } }))
+        const p = new SteadyProvider(main.url, 84532, { staticNetwork: true }, [main.url, down.url, good.url])
+        expect((await p.send("eth_getTransactionByHash", ["0x" + "33".repeat(32)])).hash).to.equal("0x" + "33".repeat(32))
+        expect(main.seen).to.have.length(3) // asked three times, then never again as its own fallback
+        expect(down.seen).to.have.length(1)
+        // A signed transaction the main RPC refused: sent once there, then the same bytes to the next RPC that takes it.
+        await p.send("eth_sendRawTransaction", ["0x00"])
+        expect(main.seen.filter((m) => m === "eth_sendRawTransaction")).to.have.length(1)
+        expect(good.seen).to.deep.equal(["eth_getTransactionByHash", "eth_sendRawTransaction"])
+        for (const x of [main, down, good]) x.server.close()
+    })
 })
 
 describe("waking phones when claims open (/notify)", () => {

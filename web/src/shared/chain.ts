@@ -1,6 +1,6 @@
 // What every page reads from the chain: the deployment (web/deployment.json, written by scripts/deploy.js
 // and bundled at build time), a provider, the contract's public surface and the program list.
-import { Contract, JsonRpcProvider, type ContractRunner, type JsonRpcPayload, type JsonRpcResult } from "ethers"
+import { Contract, JsonRpcProvider, type ContractRunner, type JsonRpcApiProviderOptions, type JsonRpcPayload, type JsonRpcResult } from "ethers"
 import raw from "../../deployment.json"
 
 export type Deployment = {
@@ -88,22 +88,56 @@ export const ERC20_ABI = [
 
 // A load-balanced public RPC (sepolia.base.org) now and then answers a contract read with empty data or a data-less error, which
 // ethers reports as "missing revert data" though nothing reverted. Our reads always return data, so ask again,
-// twice at most. Batches that send a transaction are never repeated. lib/chain.js has the same.
+// twice at most. Any read the node refuses for its own reasons (-32004 "failed to serve request", rate limits, a dropped
+// connection) is asked again the same way, then sent to the deployment's other public RPCs (`logRpcs`): sepolia.base.org
+// has refused older transactions for hours that both of those serve, and refused transactions with the same -32004. A
+// signed transaction is never repeated on the main RPC, and goes elsewhere only when that node plainly refused it (a
+// JSON-RPC error, not a dropped connection, which may have broadcast it): the same signed bytes can only land once.
+// lib/chain.js has the same.
+type RpcError = { code?: number; message?: string; data?: unknown }
+const errorOf = (r: JsonRpcResult) => (r as { error?: RpcError }).error
+const busyError = (e?: RpcError) => !!e && (e.code === -32004 || e.code === 429 || /failed to serve|rate limit|too many requests/i.test(e.message ?? ""))
 export class SteadyProvider extends JsonRpcProvider {
+    private fallbacks: JsonRpcProvider[]
+    constructor(url: string, chainId: number, options?: JsonRpcApiProviderOptions, fallbacks: string[] = []) {
+        super(url, chainId, options)
+        this.fallbacks = fallbacks.filter((u) => u !== url).map((u) => new JsonRpcProvider(u, chainId, { staticNetwork: true }))
+    }
     async _send(payload: JsonRpcPayload | JsonRpcPayload[]): Promise<JsonRpcResult[]> {
         const list = [payload].flat()
+        const sends = list.some((p) => p.method === "eth_sendRawTransaction")
+        let out: JsonRpcResult[] | null = null
+        let failed: unknown = null
         for (let i = 0; ; i++) {
-            const out = await super._send(payload)
+            try {
+                out = await super._send(payload)
+                failed = null
+            } catch (e) {
+                if (sends) throw e
+                out = null
+                failed = e
+            }
             // Empty data, or an error with no revert data (a real revert of ours carries data): the node, not the contract.
-            const empty = out.some((r) => (r.result === "0x" || ("error" in r && !(r as { error?: { data?: unknown } }).error?.data)) && list.find((p) => p.id === r.id)?.method === "eth_call")
-            if (!empty || i >= 2 || list.some((p) => p.method === "eth_sendRawTransaction")) return out
+            const empty = out?.some((r) => (r.result === "0x" || ("error" in r && !errorOf(r)?.data)) && list.find((p) => p.id === r.id)?.method === "eth_call")
+            const busy = !out || out.some((r) => busyError(errorOf(r)))
+            if (!empty && !busy) return out!
+            if (sends) break
+            if (i >= 2) break
             await new Promise((r) => setTimeout(r, 300 * (i + 1)))
         }
+        for (const f of this.fallbacks) {
+            try {
+                const alt = await f._send(payload)
+                if (!alt.some((r) => busyError(errorOf(r)))) return alt
+            } catch {}
+        }
+        if (failed) throw failed
+        return out!
     }
 }
 
 /** staticNetwork: one chain id request less per page, and no retry storm when the RPC is down. */
-export const provider = (d: Deployment = deployment) => new SteadyProvider(d.rpc, d.chainId, { staticNetwork: true })
+export const provider = (d: Deployment = deployment) => new SteadyProvider(d.rpc, d.chainId, { staticNetwork: true }, d.logRpcs)
 export const naungan = (runner: ContractRunner = provider(), d: Deployment = deployment) => new Contract(d.naungan, NAUNGAN_ABI, runner)
 
 /** Metadata is free text on-chain: anything that does not parse reads as an unnamed program. */

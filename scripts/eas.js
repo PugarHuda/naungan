@@ -6,11 +6,14 @@
 //   node scripts/eas.js audit --program 2            re-verify every payout (lib/audit.mjs), then attest the result
 //   node scripts/eas.js audit --program 2 --dry-run  verify and print, send nothing
 //   node scripts/eas.js list  --program 2            audits other people published for the program
+//   node scripts/eas.js hypercert --program 1        re-check the program's hypercert (lib/hypercert.mjs evaluate) and
+//                                                    sign the result under Hypercerts' own evaluation schema [--dry-run]
 const { parseArgs } = require("util")
 const { ethers } = require("ethers")
 const { connect, logs, explain } = require("../lib/chain")
 const { auditClaims, groupRoot } = require("../lib/audit.mjs")
 const eas = require("../lib/eas.mjs")
+const hc = require("../lib/hypercert.mjs")
 
 const { values: a, positionals: [cmd] } = parseArgs({ allowPositionals: true, options: { program: { type: "string" }, "dry-run": { type: "boolean" } } })
 
@@ -22,7 +25,7 @@ async function collect({ naungan, provider, d }, pid) {
     if (events.length !== Number(p.claims)) throw new Error(`found ${events.length} Claimed events but the contract counts ${p.claims}: the indexer is behind, retry in a minute`)
     const claims = await Promise.all(events.map(async (e) => ({ nullifier: e.args.nullifier, payout: e.args.payout, tx: await provider.getTransaction(e.transactionHash) })))
     const res = await auditClaims({ programId: pid, members: members.map(String), claims, contract: d.naungan })
-    return { atBlock, members: members.length, res, root: groupRoot(members.map(String)) ?? 0n }
+    return { atBlock, members: members.length, res, blocks: events.map((e) => e.blockNumber), root: groupRoot(members.map(String)) ?? 0n }
 }
 
 ;(async () => {
@@ -48,7 +51,23 @@ async function collect({ naungan, provider, d }, pid) {
         for (const x of audits) console.log(`  ${new Date(x.time * 1000).toISOString()} ${x.attester} · ${x.verified}/${x.claims} verified at block ${x.atBlock} · ${d.eas.explorer}/attestation/view/${x.uid}`)
         return
     }
-    if (cmd !== "audit") throw new Error("usage: eas.js register | audit --program <id> [--dry-run] | list --program <id>")
+    if (cmd === "hypercert") {
+        const entry = require("../web/hypercerts.json").find((x) => x.chainId === d.chainId && x.contract === d.naungan && x.programId === Number(pid) && x.claimID)
+        if (!entry) throw new Error(`program ${pid} has no minted hypercert in web/hypercerts.json`)
+        const r = await collect(ctx, pid)
+        const funded = await logs(ctx.naungan, ctx.naungan.filters.Funded(pid), d.fromBlock ?? 0, r.atBlock)
+        const [metaText, listText] = await Promise.all([entry.uri, entry.uri.replace(/\.json$/, "-allowlist.json")].map(async (u) => (await fetch(u, { cache: "no-store" })).text()))
+        const v = await hc.evaluate({ entry, metaText, listText, gifts: funded.map((e) => ({ donor: e.args.donor, amount: e.args.amount, block: e.blockNumber })), payouts: r.res.map((x, i) => ({ block: r.blocks[i], ok: x.ok })) })
+        const audits = eas.summarise(await eas.listAudits({ graphql: d.eas.graphql, naungan: d.naungan, programId: pid }).catch(() => []))
+        const comment = hc.evaluationComment(entry, v, audits.auditors ? `${audits.clean} of ${audits.auditors} auditors found every payout valid` : "")
+        console.log(`hypercert ${entry.claimID}: basic ${v.basic} · work ${v.work} · contributors ${v.contributors} · properties ${v.properties} (1 valid, 2 invalid)
+${comment}`)
+        if (a["dry-run"]) return
+        const tx = await signer.sendTransaction({ to: d.eas.address, data: hc.evaluationCall(entry, v, comment) })
+        const id = eas.attestedUid(await tx.wait())
+        return console.log(`evaluation signed by ${wallet.address} · ${d.eas.explorer}/attestation/view/${id}`)
+    }
+    if (cmd !== "audit") throw new Error("usage: eas.js register | audit --program <id> [--dry-run] | list --program <id> | hypercert --program <id> [--dry-run]")
 
     const r = await collect(ctx, pid)
     const verified = r.res.filter((x) => x.ok).length
@@ -64,7 +83,7 @@ async function collect({ naungan, provider, d }, pid) {
     console.log(`attested by ${wallet.address} · ${tx.hash}\n${d.eas.explorer}/attestation/view/${id}`)
 })()
     .catch((e) => {
-        console.error(explain(e))
+        console.error(explain(e), process.env.DEBUG ? e : "")
         process.exitCode = 1
     })
     .finally(() => globalThis.curve_bn128?.terminate()) // snarkjs keeps a worker pool alive, which would hold the process open

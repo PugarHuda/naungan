@@ -87,6 +87,7 @@ async function mint({ d, signer, wallet }, x) {
     const stored = rc.logs.map((l) => { try { return minter.interface.parseLog(l) } catch { return null } }).find((l) => l?.name === "ClaimStored")
     if (!stored) throw new Error(`no ClaimStored in ${tx.hash}`)
     x.claimID = stored.args.claimID.toString()
+    x.creator = wallet.address
     x.tx = tx.hash
     console.log(`hypercert ${x.claimID} · ${d.explorer}/tx/${tx.hash}\n${hc.APP[d.chainId]}/hypercerts/${d.chainId}-${x.minter}-${x.claimID}`)
 }
