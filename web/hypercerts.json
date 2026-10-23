@@ -1,0 +1,34 @@
+[
+  {
+    "chainId": 84532,
+    "contract": "0x00E9E8F7a9E8Dd4923Eb92eC5536f70ecD0C70f4",
+    "programId": 1,
+    "claims": 3,
+    "block": 48997902,
+    "paid": "6000000",
+    "units": "100000000",
+    "minter": "0xC2d179166bc9dbB00A03686a5b17eCe2224c2704",
+    "uri": "https://naungan.vercel.app/hypercerts/84532-1-48997902.json",
+    "sha256": "6fa2aec701fad024f4d32f4a5dd308886406035888c4ce0a8d219a28ef8a3817",
+    "allowListSha256": "79f30d5eba33ee74bde204d5e2bd5c1c0b91dd396c49c3cb7df7d2731cf7f0ba",
+    "root": "0xc4b817cecc766bfa6cba3209c3f808f2aa0a876581f2f5c03de6c4b87c2bcd81",
+    "claimID": null,
+    "tx": null
+  },
+  {
+    "chainId": 84532,
+    "contract": "0x00E9E8F7a9E8Dd4923Eb92eC5536f70ecD0C70f4",
+    "programId": 2,
+    "claims": 2,
+    "block": 48997991,
+    "paid": "2000000",
+    "units": "100000000",
+    "minter": "0xC2d179166bc9dbB00A03686a5b17eCe2224c2704",
+    "uri": "https://naungan.vercel.app/hypercerts/84532-2-48997991.json",
+    "sha256": "f88b6651d1964e2c2124646e6a6548c88b4a0754c74debd3215e81bd0bf86664",
+    "allowListSha256": "79f30d5eba33ee74bde204d5e2bd5c1c0b91dd396c49c3cb7df7d2731cf7f0ba",
+    "root": "0xc4b817cecc766bfa6cba3209c3f808f2aa0a876581f2f5c03de6c4b87c2bcd81",
+    "claimID": null,
+    "tx": null
+  }
+]

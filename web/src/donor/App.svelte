@@ -8,6 +8,7 @@
     import { browserWallet, cancelled, why } from "../shared/wallet"
     import { netName, txUrl, usd } from "../dashboard/format"
     import { movesOf, statement, type Line, type Pool } from "./statement"
+    import Hypercerts from "./Hypercerts.svelte"
 
     const c = naungan()
     let input = $state(new URLSearchParams(location.search).get("address") ?? "")
@@ -127,6 +128,8 @@
                 </table>
             </div>
         </section>
+
+        <Hypercerts {who} programs={lines.map((l) => l.programId)} {names} />
 
         <section aria-labelledby="giftH">
             <div class="head"><h2 id="giftH">Gifts</h2><button class="btn ghost noprint" type="button" onclick={() => print()}>Print statement</button></div>
